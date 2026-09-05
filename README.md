@@ -1,6 +1,6 @@
-# Aslı App
+#NursingApp
 
-Aslı App is a mobile education application with a Flutter client and an ASP.NET Core backend.
+NursingApp is a mobile education application with a Flutter client and an ASP.NET Core backend.
 
 ## Repository structure
 
