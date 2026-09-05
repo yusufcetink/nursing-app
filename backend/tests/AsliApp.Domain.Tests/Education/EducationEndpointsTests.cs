@@ -69,6 +69,9 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             new EducationModuleWriteRequest("Denied", "Denied", 10, false));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.GetAsync("/api/education/content/modules")).StatusCode);
     }
 
     [Fact]
@@ -161,6 +164,31 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.NotNull(await response.Content.ReadFromJsonAsync<ContentMutationResponse>());
+    }
+
+    [Theory]
+    [InlineData("ContentEditor")]
+    [InlineData("Admin")]
+    public async Task AuthorizedContentRolesCanReadDraftModulesAndLessons(string role)
+    {
+        var content = await SeedContentAsync();
+        using var client = CreateClient(role);
+
+        var modules = await client.GetFromJsonAsync<List<ContentEducationModuleSummaryResponse>>(
+            "/api/education/content/modules");
+        Assert.NotNull(modules);
+        Assert.Contains(modules, module => module.Id == content.DraftModuleId && !module.IsPublished);
+
+        var module = await client.GetFromJsonAsync<ContentEducationModuleResponse>(
+            $"/api/education/content/modules/{content.ModuleId}");
+        Assert.NotNull(module);
+        Assert.Contains(module.Lessons, lesson =>
+            lesson.Id == content.DraftLessonId && !lesson.IsPublished);
+
+        var lesson = await client.GetFromJsonAsync<ContentLessonResponse>(
+            $"/api/education/content/lessons/{content.DraftLessonId}");
+        Assert.NotNull(lesson);
+        Assert.False(lesson.IsPublished);
     }
 
     private async Task<SeededContent> SeedContentAsync()

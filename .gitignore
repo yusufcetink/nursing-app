@@ -43,6 +43,9 @@ mobile/ios/Flutter/ephemeral/
 .DS_Store
 Thumbs.db
 
+# Local agent instructions
+AGENTS.md
+
 # Secrets and local configuration
 .env
 .env.*

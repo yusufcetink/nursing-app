@@ -138,6 +138,31 @@ public sealed class ProfileController(EducationService educationService) : Contr
 [Route("api/education")]
 public sealed class EducationContentController(EducationService educationService) : ControllerBase
 {
+    [HttpGet("content/modules")]
+    public async Task<ActionResult<IReadOnlyList<ContentEducationModuleSummaryResponse>>>
+        GetContentModules(CancellationToken cancellationToken)
+    {
+        return Ok(await educationService.GetContentModulesAsync(cancellationToken));
+    }
+
+    [HttpGet("content/modules/{id:guid}")]
+    public async Task<ActionResult<ContentEducationModuleResponse>> GetContentModule(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var module = await educationService.GetContentModuleAsync(id, cancellationToken);
+        return module is null ? NotFound() : Ok(module);
+    }
+
+    [HttpGet("content/lessons/{id:guid}")]
+    public async Task<ActionResult<ContentLessonResponse>> GetContentLesson(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var lesson = await educationService.GetContentLessonAsync(id, cancellationToken);
+        return lesson is null ? NotFound() : Ok(lesson);
+    }
+
     [HttpPost("modules")]
     public async Task<ActionResult<ContentMutationResponse>> CreateModule(
         EducationModuleWriteRequest request,

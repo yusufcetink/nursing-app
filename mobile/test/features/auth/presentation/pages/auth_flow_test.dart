@@ -4,11 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:asli_app/app/app.dart';
 import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/features/auth/data/auth_repository.dart';
+import 'package:asli_app/features/auth/domain/models/authenticated_user.dart';
+import 'package:asli_app/features/auth/domain/models/user_role.dart';
+import 'package:asli_app/features/content_management/data/content_management_repository.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
 
 import '../../../../helpers/fake_auth_repository.dart';
+import '../../../../helpers/fake_content_management_repository.dart';
 import '../../../../helpers/fake_learning_repositories.dart';
 
 void main() {
@@ -136,6 +140,7 @@ void main() {
 
     expect(find.text('Eğitim Modülleri'), findsOneWidget);
     expect(find.text('Tekrar hoş geldiniz'), findsNothing);
+    expect(find.text('İçerik'), findsNothing);
 
     container.read(appRouterProvider).go(AppRoutes.loginPath);
     await tester.pumpAndSettle();
@@ -169,5 +174,63 @@ void main() {
 
     expect(find.text('Tekrar hoş geldiniz'), findsOneWidget);
     expect(find.text('Profil'), findsNothing);
+  });
+
+  testWidgets('ContentEditor içerik sekmesini görür ve modül oluşturur', (
+    tester,
+  ) async {
+    final editor = AuthenticatedUser(
+      id: 'editor-id',
+      firstName: 'İçerik',
+      lastName: 'Editörü',
+      email: 'editor@example.com',
+      roles: const [UserRole.contentEditor],
+    );
+    final contentRepository = FakeContentManagementRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(
+            FakeAuthRepository(restoredUser: editor),
+          ),
+          educationRepositoryProvider.overrideWithValue(
+            FakeEducationRepository(),
+          ),
+          contentManagementRepositoryProvider.overrideWithValue(
+            contentRepository,
+          ),
+          progressRepositoryProvider.overrideWithValue(
+            FakeProgressRepository(),
+          ),
+          profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        ],
+        child: const App(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('İçerik'), findsOneWidget);
+    await tester.tap(find.text('İçerik'));
+    await tester.pumpAndSettle();
+    expect(find.text('İçerik Yönetimi'), findsOneWidget);
+    expect(find.text('Taslak Modül'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('create_module_button')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('module_title_field')),
+      'Yeni Modül',
+    );
+    await tester.enterText(
+      find.byKey(const Key('module_description_field')),
+      'Yeni açıklama',
+    );
+    await tester.enterText(find.byKey(const Key('module_order_field')), '2');
+    await tester.tap(find.byKey(const Key('save_module_button')));
+    await tester.pumpAndSettle();
+
+    expect(contentRepository.createModuleCallCount, 1);
+    expect(find.text('Yeni Modül'), findsOneWidget);
+    expect(find.text('Modül oluşturuldu.'), findsOneWidget);
   });
 }

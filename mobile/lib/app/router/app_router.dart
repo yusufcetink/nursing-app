@@ -9,6 +9,10 @@ import 'package:asli_app/features/auth/presentation/pages/login_page.dart';
 import 'package:asli_app/features/auth/presentation/pages/register_page.dart';
 import 'package:asli_app/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:asli_app/features/auth/presentation/pages/startup_page.dart';
+import 'package:asli_app/features/content_management/presentation/pages/content_module_detail_page.dart';
+import 'package:asli_app/features/content_management/presentation/pages/content_modules_page.dart';
+import 'package:asli_app/features/content_management/presentation/pages/lesson_form_page.dart';
+import 'package:asli_app/features/content_management/presentation/pages/module_form_page.dart';
 import 'package:asli_app/features/education/presentation/pages/education_module_page.dart';
 import 'package:asli_app/features/education/presentation/pages/lesson_page.dart';
 import 'package:asli_app/features/home/presentation/pages/home_page.dart';
@@ -47,6 +51,22 @@ abstract final class AppRoutes {
   static const lessonIdParameter = 'lessonId';
   static const quiz = 'quiz';
   static const quizPath = '/education/:moduleId/lessons/:lessonId/quiz';
+  static const content = 'content';
+  static const contentPath = '/content';
+  static const contentModuleCreate = 'content-module-create';
+  static const contentModuleCreatePath = '/content/modules/new';
+  static const contentModule = 'content-module';
+  static const contentModulePath = '/content/modules/:contentModuleId';
+  static const contentModuleEdit = 'content-module-edit';
+  static const contentModuleEditPath = '/content/modules/:contentModuleId/edit';
+  static const contentLessonCreate = 'content-lesson-create';
+  static const contentLessonCreatePath =
+      '/content/modules/:contentModuleId/lessons/new';
+  static const contentLessonEdit = 'content-lesson-edit';
+  static const contentLessonEditPath =
+      '/content/modules/:contentModuleId/lessons/:contentLessonId/edit';
+  static const contentModuleIdParameter = 'contentModuleId';
+  static const contentLessonIdParameter = 'contentLessonId';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -71,6 +91,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = _authPaths.contains(location);
       if (authState.value == null) {
         return _publicAuthPaths.contains(location) ? null : AppRoutes.loginPath;
+      }
+      if (location.startsWith(AppRoutes.contentPath) &&
+          !authState.value!.canManageContent) {
+        return AppRoutes.homePath;
       }
       return isAuthRoute ? AppRoutes.homePath : null;
     },
@@ -141,6 +165,54 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => QuizPage(
                   moduleId: state.pathParameters[AppRoutes.moduleIdParameter]!,
                   lessonId: state.pathParameters[AppRoutes.lessonIdParameter]!,
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.contentPath,
+                name: AppRoutes.content,
+                builder: (context, state) => const ContentModulesPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.contentModuleCreatePath,
+                name: AppRoutes.contentModuleCreate,
+                builder: (context, state) => const ModuleFormPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.contentModuleEditPath,
+                name: AppRoutes.contentModuleEdit,
+                builder: (context, state) => ModuleFormPage(
+                  moduleId:
+                      state.pathParameters[AppRoutes.contentModuleIdParameter]!,
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.contentLessonCreatePath,
+                name: AppRoutes.contentLessonCreate,
+                builder: (context, state) => LessonFormPage(
+                  moduleId:
+                      state.pathParameters[AppRoutes.contentModuleIdParameter]!,
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.contentLessonEditPath,
+                name: AppRoutes.contentLessonEdit,
+                builder: (context, state) => LessonFormPage(
+                  moduleId:
+                      state.pathParameters[AppRoutes.contentModuleIdParameter]!,
+                  lessonId:
+                      state.pathParameters[AppRoutes.contentLessonIdParameter]!,
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.contentModulePath,
+                name: AppRoutes.contentModule,
+                builder: (context, state) => ContentModuleDetailPage(
+                  moduleId:
+                      state.pathParameters[AppRoutes.contentModuleIdParameter]!,
                 ),
               ),
             ],

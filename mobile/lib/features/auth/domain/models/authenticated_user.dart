@@ -16,4 +16,6 @@ final class AuthenticatedUser {
   final List<UserRole> roles;
 
   UserRole get primaryRole => roles.first;
+
+  bool get canManageContent => roles.any((role) => role.canManageContent);
 }

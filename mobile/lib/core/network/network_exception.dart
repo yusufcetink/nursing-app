@@ -15,6 +15,9 @@ NetworkException mapNetworkException(DioException error) {
   if (error.response?.statusCode == 404) {
     return const NetworkException('İstenen içerik bulunamadı.');
   }
+  if (error.response?.statusCode == 403) {
+    return const NetworkException('Bu işlem için yetkiniz bulunmuyor.');
+  }
   return switch (error.type) {
     DioExceptionType.connectionTimeout ||
     DioExceptionType.sendTimeout ||

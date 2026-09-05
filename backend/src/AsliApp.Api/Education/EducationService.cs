@@ -309,6 +309,72 @@ public sealed class EducationService(AppDbContext dbContext)
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ContentEducationModuleSummaryResponse>> GetContentModulesAsync(
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.EducationModules
+            .AsNoTracking()
+            .OrderBy(module => module.Order)
+            .ThenBy(module => module.Title)
+            .Select(module => new ContentEducationModuleSummaryResponse(
+                module.Id,
+                module.Title,
+                module.Description,
+                module.Order,
+                module.IsPublished,
+                module.Lessons.Count,
+                module.UpdatedAtUtc))
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<ContentEducationModuleResponse?> GetContentModuleAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.EducationModules
+            .AsNoTracking()
+            .Where(module => module.Id == id)
+            .Select(module => new ContentEducationModuleResponse(
+                module.Id,
+                module.Title,
+                module.Description,
+                module.Order,
+                module.IsPublished,
+                module.Lessons
+                    .OrderBy(lesson => lesson.Order)
+                    .ThenBy(lesson => lesson.Title)
+                    .Select(lesson => new ContentLessonSummaryResponse(
+                        lesson.Id,
+                        lesson.Title,
+                        lesson.Description,
+                        lesson.EstimatedDurationMinutes,
+                        lesson.Order,
+                        lesson.IsPublished))
+                    .ToList(),
+                module.UpdatedAtUtc))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<ContentLessonResponse?> GetContentLessonAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.Lessons
+            .AsNoTracking()
+            .Where(lesson => lesson.Id == id)
+            .Select(lesson => new ContentLessonResponse(
+                lesson.Id,
+                lesson.EducationModuleId,
+                lesson.Title,
+                lesson.Description,
+                lesson.Content,
+                lesson.EstimatedDurationMinutes,
+                lesson.Order,
+                lesson.IsPublished,
+                lesson.UpdatedAtUtc))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateModuleAsync(
         EducationModuleWriteRequest request,
         CancellationToken cancellationToken)

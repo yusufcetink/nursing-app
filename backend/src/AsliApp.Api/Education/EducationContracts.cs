@@ -109,6 +109,43 @@ public sealed record QuizHistoryDetailResponse(
 
 public sealed record ContentMutationResponse(Guid Id);
 
+public sealed record ContentEducationModuleSummaryResponse(
+    Guid Id,
+    string Title,
+    string Description,
+    int Order,
+    bool IsPublished,
+    int LessonCount,
+    DateTimeOffset UpdatedAtUtc);
+
+public sealed record ContentEducationModuleResponse(
+    Guid Id,
+    string Title,
+    string Description,
+    int Order,
+    bool IsPublished,
+    IReadOnlyList<ContentLessonSummaryResponse> Lessons,
+    DateTimeOffset UpdatedAtUtc);
+
+public sealed record ContentLessonSummaryResponse(
+    Guid Id,
+    string Title,
+    string Description,
+    int EstimatedDurationMinutes,
+    int Order,
+    bool IsPublished);
+
+public sealed record ContentLessonResponse(
+    Guid Id,
+    Guid EducationModuleId,
+    string Title,
+    string Description,
+    string Content,
+    int EstimatedDurationMinutes,
+    int Order,
+    bool IsPublished,
+    DateTimeOffset UpdatedAtUtc);
+
 public sealed record EducationModuleWriteRequest(
     [Required, MaxLength(200)] string Title,
     [Required, MaxLength(1000)] string Description,
