@@ -1,0 +1,74 @@
+# Flutter and Dart
+**/.dart_tool/
+**/build/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/pubspec_overrides.yaml
+**/coverage/
+
+# Android
+**/local.properties
+**/.gradle/
+**/.kotlin/
+**/*.jks
+**/*.keystore
+**/key.properties
+
+# iOS and Xcode
+**/Pods/
+**/.symlinks/
+**/DerivedData/
+**/*.xcuserstate
+**/Runner.xcworkspace/xcuserdata/
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/Flutter/ephemeral/
+
+# .NET
+**/bin/
+**/obj/
+**/TestResults/
+**/artifacts/
+**/*.user
+**/*.suo
+**/*.nupkg
+**/*.snupkg
+
+# IDE and operating-system files
+.idea/
+*.iml
+.vs/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.local.json
+!appsettings*.example.json
+secrets.json
+*.pfx
+*.p12
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+*.bak
+
+# Logs and temporary files
+*.log
+logs/
+*.tmp
+*.temp
+.tmp/
+tmp/
+temp/

@@ -1,0 +1,167 @@
+using AsliApp.Domain.Education;
+using AsliApp.Domain.Users;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace AsliApp.Infrastructure.Persistence;
+
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
+    : IdentityDbContext<User, IdentityRole<Guid>, Guid>(options)
+{
+    public DbSet<EducationModule> EducationModules => Set<EducationModule>();
+    public DbSet<Lesson> Lessons => Set<Lesson>();
+    public DbSet<Quiz> Quizzes => Set<Quiz>();
+    public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
+    public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
+    public DbSet<QuizAttempt> QuizAttempts => Set<QuizAttempt>();
+    public DbSet<QuizAttemptAnswer> QuizAttemptAnswers => Set<QuizAttemptAnswer>();
+    public DbSet<LessonProgress> LessonProgress => Set<LessonProgress>();
+    public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.Property(user => user.FirstName).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.LastName).HasMaxLength(100).IsRequired();
+            entity.Property(user => user.Email).HasMaxLength(256).IsRequired();
+            entity.HasIndex(user => user.NormalizedEmail)
+                .HasDatabaseName("EmailIndex")
+                .IsUnique()
+                .HasFilter("[NormalizedEmail] IS NOT NULL");
+        });
+
+        modelBuilder.Entity<IdentityRole<Guid>>().HasData(
+            CreateRole(new Guid("611123a5-51ce-430a-9cf2-768a6a65b379"), UserRole.Student),
+            CreateRole(new Guid("46c5ee0a-dff9-4863-9027-a89c64e8e489"), UserRole.ContentEditor),
+            CreateRole(new Guid("39269fbd-20fd-4451-9cb0-f21b85a8ce41"), UserRole.Admin));
+
+        modelBuilder.Entity<EmailVerificationCode>(entity =>
+        {
+            entity.HasKey(code => code.Id);
+            entity.Property(code => code.Purpose).HasConversion<string>().HasMaxLength(50);
+            entity.Property(code => code.CodeHash).HasMaxLength(512).IsRequired();
+            entity.Property(code => code.RowVersion).IsRowVersion();
+            entity.HasIndex(code => new { code.UserId, code.Purpose, code.CreatedAtUtc });
+            entity.HasIndex(code => new { code.UserId, code.Purpose })
+                .IsUnique()
+                .HasFilter("[IsUsed] = 0");
+            entity.HasOne(code => code.User)
+                .WithMany(user => user.EmailVerificationCodes)
+                .HasForeignKey(code => code.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EducationModule>(entity =>
+        {
+            entity.HasKey(module => module.Id);
+            entity.Property(module => module.Title).HasMaxLength(200).IsRequired();
+            entity.Property(module => module.Description).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(module => module.Order);
+        });
+
+        modelBuilder.Entity<Lesson>(entity =>
+        {
+            entity.HasKey(lesson => lesson.Id);
+            entity.Property(lesson => lesson.Title).HasMaxLength(200).IsRequired();
+            entity.Property(lesson => lesson.Description).HasMaxLength(500).IsRequired();
+            entity.Property(lesson => lesson.Content).IsRequired();
+            entity.HasIndex(lesson => new { lesson.EducationModuleId, lesson.Order });
+            entity.HasOne(lesson => lesson.EducationModule)
+                .WithMany(module => module.Lessons)
+                .HasForeignKey(lesson => lesson.EducationModuleId);
+        });
+
+        modelBuilder.Entity<Quiz>(entity =>
+        {
+            entity.HasKey(quiz => quiz.Id);
+            entity.Property(quiz => quiz.Title).HasMaxLength(200).IsRequired();
+            entity.HasOne(quiz => quiz.Lesson)
+                .WithOne(lesson => lesson.Quiz)
+                .HasForeignKey<Quiz>(quiz => quiz.LessonId);
+        });
+
+        modelBuilder.Entity<QuizQuestion>(entity =>
+        {
+            entity.HasKey(question => question.Id);
+            entity.Property(question => question.Prompt).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(question => new { question.QuizId, question.Order }).IsUnique();
+            entity.HasOne(question => question.Quiz)
+                .WithMany(quiz => quiz.Questions)
+                .HasForeignKey(question => question.QuizId);
+        });
+
+        modelBuilder.Entity<QuizOption>(entity =>
+        {
+            entity.HasKey(option => option.Id);
+            entity.Property(option => option.Text).HasMaxLength(500).IsRequired();
+            entity.HasIndex(option => new { option.QuizQuestionId, option.Order }).IsUnique();
+            entity.HasOne(option => option.QuizQuestion)
+                .WithMany(question => question.Options)
+                .HasForeignKey(option => option.QuizQuestionId);
+        });
+
+        modelBuilder.Entity<QuizAttempt>(entity =>
+        {
+            entity.HasKey(attempt => attempt.Id);
+            entity.Property(attempt => attempt.ScorePercentage).HasPrecision(5, 2);
+            entity.HasIndex(attempt => new { attempt.UserId, attempt.CompletedAtUtc });
+            entity.HasOne(attempt => attempt.User)
+                .WithMany(user => user.QuizAttempts)
+                .HasForeignKey(attempt => attempt.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(attempt => attempt.Quiz)
+                .WithMany(quiz => quiz.Attempts)
+                .HasForeignKey(attempt => attempt.QuizId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<QuizAttemptAnswer>(entity =>
+        {
+            entity.HasKey(answer => answer.Id);
+            entity.HasIndex(answer => new { answer.QuizAttemptId, answer.QuizQuestionId })
+                .IsUnique();
+            entity.HasOne(answer => answer.QuizAttempt)
+                .WithMany(attempt => attempt.Answers)
+                .HasForeignKey(answer => answer.QuizAttemptId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(answer => answer.QuizQuestion)
+                .WithMany()
+                .HasForeignKey(answer => answer.QuizQuestionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(answer => answer.SelectedOption)
+                .WithMany()
+                .HasForeignKey(answer => answer.SelectedOptionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LessonProgress>(entity =>
+        {
+            entity.HasKey(progress => progress.Id);
+            entity.HasIndex(progress => new { progress.UserId, progress.LessonId }).IsUnique();
+            entity.HasOne(progress => progress.User)
+                .WithMany(user => user.LessonProgress)
+                .HasForeignKey(progress => progress.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(progress => progress.Lesson)
+                .WithMany(lesson => lesson.ProgressEntries)
+                .HasForeignKey(progress => progress.LessonId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static IdentityRole<Guid> CreateRole(Guid id, UserRole role)
+    {
+        var name = role.ToString();
+        return new IdentityRole<Guid>
+        {
+            Id = id,
+            Name = name,
+            NormalizedName = name.ToUpperInvariant(),
+            ConcurrencyStamp = id.ToString(),
+        };
+    }
+}

@@ -1,0 +1,173 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:asli_app/app/app.dart';
+import 'package:asli_app/app/router/app_router.dart';
+import 'package:asli_app/features/auth/data/auth_repository.dart';
+import 'package:asli_app/features/education/data/education_repository.dart';
+import 'package:asli_app/features/profile/data/profile_repository.dart';
+import 'package:asli_app/features/progress/data/progress_repository.dart';
+
+import '../../../../helpers/fake_auth_repository.dart';
+import '../../../../helpers/fake_learning_repositories.dart';
+
+void main() {
+  testWidgets('login, şifre sıfırlama ve kayıt akışları çalışır', (
+    tester,
+  ) async {
+    final repository = FakeAuthRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authRepositoryProvider.overrideWithValue(repository)],
+        child: const App(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Giriş Yap'));
+    await tester.pump();
+    expect(find.text('Email alanı zorunludur.'), findsOneWidget);
+    expect(find.text('Şifre alanı zorunludur.'), findsOneWidget);
+
+    await tester.tap(find.text('Şifremi unuttum'));
+    await tester.pumpAndSettle();
+    expect(find.text('Şifrenizi sıfırlayın'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('forgot_password_email_field')),
+      'student@example.com',
+    );
+    await tester.tap(find.text('Sıfırlama Emaili Gönder'));
+    await tester.pumpAndSettle();
+    expect(find.text('Yeni şifre oluşturun'), findsOneWidget);
+    expect(
+      find.text('Hesap uygunsa şifre sıfırlama emaili gönderildi.'),
+      findsOneWidget,
+    );
+    expect(repository.forgotPasswordCallCount, 1);
+
+    final returnToLoginButton = find.text('Giriş ekranına dön');
+    await tester.ensureVisible(returnToLoginButton);
+    await tester.pumpAndSettle();
+    await tester.tap(returnToLoginButton);
+    await tester.pumpAndSettle();
+    final openRegisterButton = find.text('Hesabınız yok mu? Kayıt Ol');
+    await tester.ensureVisible(openRegisterButton);
+    await tester.pumpAndSettle();
+    await tester.tap(openRegisterButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Hesap oluşturun'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('register_first_name_field')),
+      'Ayşe',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register_last_name_field')),
+      'Yılmaz',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register_email_field')),
+      'ayse@example.com',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register_password_field')),
+      'password123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('register_password_confirmation_field')),
+      'password456',
+    );
+    final registerButton = find.widgetWithText(FilledButton, 'Kayıt Ol');
+    await tester.ensureVisible(registerButton);
+    await tester.pumpAndSettle();
+    await tester.tap(registerButton);
+    await tester.pump();
+    expect(find.text('Şifreler eşleşmiyor.'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('register_password_confirmation_field')),
+      'password123',
+    );
+    await tester.ensureVisible(registerButton);
+    await tester.pumpAndSettle();
+    await tester.tap(registerButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Email adresinizi doğrulayın'), findsOneWidget);
+    expect(repository.registerCallCount, 1);
+
+    expect(find.text('Yeniden gönder (60 sn)'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 60));
+    await tester.tap(find.text('Doğrulama Emailini Yeniden Gönder'));
+    await tester.pumpAndSettle();
+    expect(repository.resendVerificationCallCount, 1);
+
+    await tester.enterText(
+      find.byKey(const Key('verification_code_field')),
+      '123456',
+    );
+    await tester.tap(find.text('Emaili Doğrula'));
+    await tester.pumpAndSettle();
+    expect(repository.verifyEmailCallCount, 1);
+    expect(find.text('Tekrar hoş geldiniz'), findsOneWidget);
+  });
+
+  testWidgets('geçerli sessionı geri yükler ve auth route erişimini engeller', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(
+          FakeAuthRepository(restoredUser: FakeAuthRepository.user),
+        ),
+        educationRepositoryProvider.overrideWithValue(
+          FakeEducationRepository(),
+        ),
+        progressRepositoryProvider.overrideWithValue(FakeProgressRepository()),
+        profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const App()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Eğitim Modülleri'), findsOneWidget);
+    expect(find.text('Tekrar hoş geldiniz'), findsNothing);
+
+    container.read(appRouterProvider).go(AppRoutes.loginPath);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Eğitim Modülleri'), findsOneWidget);
+    expect(find.text('Tekrar hoş geldiniz'), findsNothing);
+
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ayşe Yılmaz'), findsOneWidget);
+    expect(find.text('ayse@example.com'), findsOneWidget);
+  });
+
+  testWidgets('girişsiz kullanıcı protected route erişiminde login görür', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const App()),
+    );
+    await tester.pumpAndSettle();
+
+    container.read(appRouterProvider).go(AppRoutes.profilePath);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tekrar hoş geldiniz'), findsOneWidget);
+    expect(find.text('Profil'), findsNothing);
+  });
+}
