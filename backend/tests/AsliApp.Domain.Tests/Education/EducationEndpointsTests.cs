@@ -72,6 +72,10 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
         Assert.Equal(
             HttpStatusCode.Forbidden,
             (await client.GetAsync("/api/education/content/modules")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.GetAsync($"/api/education/content/lessons/{Guid.NewGuid()}/quiz"))
+                .StatusCode);
     }
 
     [Fact]
@@ -189,6 +193,34 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             $"/api/education/content/lessons/{content.DraftLessonId}");
         Assert.NotNull(lesson);
         Assert.False(lesson.IsPublished);
+
+        var quiz = await client.GetFromJsonAsync<ContentQuizResponse>(
+            $"/api/education/content/lessons/{content.LessonId}/quiz");
+        Assert.NotNull(quiz);
+        Assert.Contains(
+            quiz.Questions.Single().Options,
+            option => option.Id == content.CorrectOptionId && option.IsCorrect);
+
+        var invalidPublish = await client.PutAsJsonAsync(
+            $"/api/education/quizzes/{quiz.Id}",
+            new QuizWriteRequest(quiz.Title, true));
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPublish.StatusCode);
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            (await client.PostAsJsonAsync(
+                $"/api/education/questions/{content.QuestionId}/options",
+                new QuizOptionWriteRequest("Third option", false, 3))).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Created,
+            (await client.PostAsJsonAsync(
+                $"/api/education/questions/{content.QuestionId}/options",
+                new QuizOptionWriteRequest("Fourth option", false, 4))).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await client.PutAsJsonAsync(
+                $"/api/education/quizzes/{quiz.Id}",
+                new QuizWriteRequest(quiz.Title, true))).StatusCode);
     }
 
     private async Task<SeededContent> SeedContentAsync()

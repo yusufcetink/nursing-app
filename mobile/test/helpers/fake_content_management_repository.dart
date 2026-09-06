@@ -7,6 +7,9 @@ final class FakeContentManagementRepository
   int updateModuleCallCount = 0;
   int createLessonCallCount = 0;
   int updateLessonCallCount = 0;
+  int createQuestionCallCount = 0;
+  int createOptionCallCount = 0;
+  int correctOptionCount = 0;
 
   final modules = <ContentModuleSummary>[
     const ContentModuleSummary(
@@ -51,7 +54,18 @@ final class FakeContentManagementRepository
     estimatedDurationMinutes: 5,
     order: 1,
     isPublished: false,
+    quizId: 'quiz-id',
   );
+
+  @override
+  Future<ContentQuiz?> getQuizForLesson(String lessonId) async =>
+      const ContentQuiz(
+        id: 'quiz-id',
+        lessonId: 'draft-lesson',
+        title: 'Taslak Quiz',
+        isPublished: false,
+        questions: [],
+      );
 
   @override
   Future<ContentModule> getModule(String id) async => const ContentModule(
@@ -84,4 +98,36 @@ final class FakeContentManagementRepository
   Future<void> updateModule(String id, ModuleWriteInput input) async {
     updateModuleCallCount++;
   }
+
+  @override
+  Future<String> createQuiz(String lessonId, QuizWriteInput input) async =>
+      'quiz-id';
+
+  @override
+  Future<void> updateQuiz(String id, QuizWriteInput input) async {}
+
+  @override
+  Future<String> createQuestion(
+    String quizId,
+    QuizQuestionWriteInput input,
+  ) async {
+    createQuestionCallCount++;
+    return 'question-id';
+  }
+
+  @override
+  Future<void> updateQuestion(String id, QuizQuestionWriteInput input) async {}
+
+  @override
+  Future<String> createOption(
+    String questionId,
+    QuizOptionWriteInput input,
+  ) async {
+    createOptionCallCount++;
+    if (input.isCorrect) correctOptionCount++;
+    return 'option-$createOptionCallCount';
+  }
+
+  @override
+  Future<void> updateOption(String id, QuizOptionWriteInput input) async {}
 }

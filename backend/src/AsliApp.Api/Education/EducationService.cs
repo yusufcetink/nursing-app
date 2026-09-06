@@ -371,7 +371,39 @@ public sealed class EducationService(AppDbContext dbContext)
                 lesson.EstimatedDurationMinutes,
                 lesson.Order,
                 lesson.IsPublished,
+                lesson.Quiz == null ? null : lesson.Quiz.Id,
                 lesson.UpdatedAtUtc))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<ContentQuizResponse?> GetContentQuizAsync(
+        Guid lessonId,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.Quizzes
+            .AsNoTracking()
+            .Where(quiz => quiz.LessonId == lessonId)
+            .Select(quiz => new ContentQuizResponse(
+                quiz.Id,
+                quiz.LessonId,
+                quiz.Title,
+                quiz.IsPublished,
+                quiz.Questions
+                    .OrderBy(question => question.Order)
+                    .Select(question => new ContentQuizQuestionResponse(
+                        question.Id,
+                        question.Prompt,
+                        question.Order,
+                        question.Options
+                            .OrderBy(option => option.Order)
+                            .Select(option => new ContentQuizOptionResponse(
+                                option.Id,
+                                option.Text,
+                                option.IsCorrect,
+                                option.Order))
+                            .ToList()))
+                    .ToList(),
+                quiz.UpdatedAtUtc))
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -467,7 +499,8 @@ public sealed class EducationService(AppDbContext dbContext)
         QuizWriteRequest request,
         CancellationToken cancellationToken)
     {
-        if (!await dbContext.Lessons.AnyAsync(lesson => lesson.Id == lessonId, cancellationToken) ||
+        if (request.IsPublished ||
+            !await dbContext.Lessons.AnyAsync(lesson => lesson.Id == lessonId, cancellationToken) ||
             await dbContext.Quizzes.AnyAsync(quiz => quiz.LessonId == lessonId, cancellationToken))
         {
             return null;
@@ -488,19 +521,32 @@ public sealed class EducationService(AppDbContext dbContext)
         return quiz.Id;
     }
 
-    public async Task<bool> UpdateQuizAsync(
+    public async Task<QuizUpdateStatus> UpdateQuizAsync(
         Guid id,
         QuizWriteRequest request,
         CancellationToken cancellationToken)
     {
         var quiz = await dbContext.Quizzes.FindAsync([id], cancellationToken);
-        if (quiz is null) return false;
+        if (quiz is null) return QuizUpdateStatus.NotFound;
+
+        if (request.IsPublished)
+        {
+            var questions = dbContext.QuizQuestions.Where(question => question.QuizId == id);
+            if (!await questions.AnyAsync(cancellationToken) ||
+                await questions.AnyAsync(
+                    question => question.Options.Count != 4 ||
+                        question.Options.Count(option => option.IsCorrect) != 1,
+                    cancellationToken))
+            {
+                return QuizUpdateStatus.Invalid;
+            }
+        }
 
         quiz.Title = request.Title.Trim();
         quiz.IsPublished = request.IsPublished;
         quiz.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return true;
+        return QuizUpdateStatus.Success;
     }
 
     public async Task<Guid?> CreateQuestionAsync(
@@ -508,10 +554,13 @@ public sealed class EducationService(AppDbContext dbContext)
         QuizQuestionWriteRequest request,
         CancellationToken cancellationToken)
     {
-        if (!await dbContext.Quizzes.AnyAsync(quiz => quiz.Id == quizId, cancellationToken))
+        var quiz = await dbContext.Quizzes.FindAsync([quizId], cancellationToken);
+        if (quiz is null)
         {
             return null;
         }
+
+        UnpublishForEditing(quiz);
 
         var now = DateTimeOffset.UtcNow;
         var question = new QuizQuestion
@@ -533,8 +582,12 @@ public sealed class EducationService(AppDbContext dbContext)
         QuizQuestionWriteRequest request,
         CancellationToken cancellationToken)
     {
-        var question = await dbContext.QuizQuestions.FindAsync([id], cancellationToken);
+        var question = await dbContext.QuizQuestions
+            .Include(candidate => candidate.Quiz)
+            .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
         if (question is null) return false;
+
+        UnpublishForEditing(question.Quiz);
 
         question.Prompt = request.Prompt.Trim();
         question.Order = request.Order;
@@ -548,12 +601,15 @@ public sealed class EducationService(AppDbContext dbContext)
         QuizOptionWriteRequest request,
         CancellationToken cancellationToken)
     {
-        if (!await dbContext.QuizQuestions.AnyAsync(
-                question => question.Id == questionId,
-                cancellationToken))
+        var question = await dbContext.QuizQuestions
+            .Include(candidate => candidate.Quiz)
+            .SingleOrDefaultAsync(candidate => candidate.Id == questionId, cancellationToken);
+        if (question is null)
         {
             return null;
         }
+
+        UnpublishForEditing(question.Quiz);
 
         var now = DateTimeOffset.UtcNow;
         var option = new QuizOption
@@ -576,8 +632,13 @@ public sealed class EducationService(AppDbContext dbContext)
         QuizOptionWriteRequest request,
         CancellationToken cancellationToken)
     {
-        var option = await dbContext.QuizOptions.FindAsync([id], cancellationToken);
+        var option = await dbContext.QuizOptions
+            .Include(candidate => candidate.QuizQuestion)
+            .ThenInclude(question => question.Quiz)
+            .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
         if (option is null) return false;
+
+        UnpublishForEditing(option.QuizQuestion.Quiz);
 
         option.Text = request.Text.Trim();
         option.IsCorrect = request.IsCorrect;
@@ -586,6 +647,20 @@ public sealed class EducationService(AppDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    private static void UnpublishForEditing(Quiz quiz)
+    {
+        if (!quiz.IsPublished) return;
+        quiz.IsPublished = false;
+        quiz.UpdatedAtUtc = DateTimeOffset.UtcNow;
+    }
+}
+
+public enum QuizUpdateStatus
+{
+    Success,
+    NotFound,
+    Invalid,
 }
 
 public sealed record QuizSubmissionOutcome(

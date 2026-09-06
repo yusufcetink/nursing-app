@@ -17,6 +17,8 @@ abstract interface class ContentManagementRepository {
 
   Future<ContentLesson> getLesson(String id);
 
+  Future<ContentQuiz?> getQuizForLesson(String lessonId);
+
   Future<String> createModule(ModuleWriteInput input);
 
   Future<void> updateModule(String id, ModuleWriteInput input);
@@ -24,6 +26,18 @@ abstract interface class ContentManagementRepository {
   Future<String> createLesson(String moduleId, LessonWriteInput input);
 
   Future<void> updateLesson(String id, LessonWriteInput input);
+
+  Future<String> createQuiz(String lessonId, QuizWriteInput input);
+
+  Future<void> updateQuiz(String id, QuizWriteInput input);
+
+  Future<String> createQuestion(String quizId, QuizQuestionWriteInput input);
+
+  Future<void> updateQuestion(String id, QuizQuestionWriteInput input);
+
+  Future<String> createOption(String questionId, QuizOptionWriteInput input);
+
+  Future<void> updateOption(String id, QuizOptionWriteInput input);
 }
 
 final class DioContentManagementRepository
@@ -85,6 +99,23 @@ final class DioContentManagementRepository
   }
 
   @override
+  Future<ContentQuiz?> getQuizForLesson(String lessonId) async {
+    try {
+      final response = await _apiClient.dio.get<Map<String, dynamic>>(
+        '/api/education/content/lessons/$lessonId/quiz',
+      );
+      final data = response.data;
+      if (data == null) throw const FormatException();
+      return ContentQuizResponse.fromJson(data).toDomain();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) return null;
+      throw mapNetworkException(error);
+    } on Object {
+      throw const NetworkException('Sunucudan geçersiz quiz verisi alındı.');
+    }
+  }
+
+  @override
   Future<String> createModule(ModuleWriteInput input) async {
     try {
       final response = await _apiClient.dio.post<Map<String, dynamic>>(
@@ -142,6 +173,57 @@ final class DioContentManagementRepository
     }
   }
 
+  @override
+  Future<String> createQuiz(String lessonId, QuizWriteInput input) =>
+      _create('/api/education/lessons/$lessonId/quiz', _quizJson(input));
+
+  @override
+  Future<void> updateQuiz(String id, QuizWriteInput input) =>
+      _update('/api/education/quizzes/$id', _quizJson(input));
+
+  @override
+  Future<String> createQuestion(String quizId, QuizQuestionWriteInput input) =>
+      _create('/api/education/quizzes/$quizId/questions', _questionJson(input));
+
+  @override
+  Future<void> updateQuestion(String id, QuizQuestionWriteInput input) =>
+      _update('/api/education/questions/$id', _questionJson(input));
+
+  @override
+  Future<String> createOption(String questionId, QuizOptionWriteInput input) =>
+      _create(
+        '/api/education/questions/$questionId/options',
+        _optionJson(input),
+      );
+
+  @override
+  Future<void> updateOption(String id, QuizOptionWriteInput input) =>
+      _update('/api/education/options/$id', _optionJson(input));
+
+  Future<String> _create(String path, Map<String, Object> data) async {
+    try {
+      final response = await _apiClient.dio.post<Map<String, dynamic>>(
+        path,
+        data: data,
+      );
+      return response.data?['id'] as String;
+    } on DioException catch (error) {
+      throw mapNetworkException(error);
+    } on Object {
+      throw const NetworkException(
+        'İçerik kaydedilemedi. Lütfen tekrar deneyin.',
+      );
+    }
+  }
+
+  Future<void> _update(String path, Map<String, Object> data) async {
+    try {
+      await _apiClient.dio.put<void>(path, data: data);
+    } on DioException catch (error) {
+      throw mapNetworkException(error);
+    }
+  }
+
   static Map<String, Object> _moduleJson(ModuleWriteInput input) => {
     'title': input.title,
     'description': input.description,
@@ -156,5 +238,21 @@ final class DioContentManagementRepository
     'estimatedDurationMinutes': input.estimatedDurationMinutes,
     'order': input.order,
     'isPublished': input.isPublished,
+  };
+
+  static Map<String, Object> _quizJson(QuizWriteInput input) => {
+    'title': input.title,
+    'isPublished': input.isPublished,
+  };
+
+  static Map<String, Object> _questionJson(QuizQuestionWriteInput input) => {
+    'prompt': input.prompt,
+    'order': input.order,
+  };
+
+  static Map<String, Object> _optionJson(QuizOptionWriteInput input) => {
+    'text': input.text,
+    'isCorrect': input.isCorrect,
+    'order': input.order,
   };
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/app/theme/app_spacing.dart';
 import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/features/content_management/domain/models/content_models.dart';
@@ -123,7 +124,12 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
       appBar: AppBar(title: Text(isEditing ? 'Dersi Düzenle' : 'Yeni Ders')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            96,
+          ),
           child: Form(
             key: _formKey,
             child: Column(
@@ -214,6 +220,29 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
                     isEditing ? 'Değişiklikleri Kaydet' : 'Dersi Oluştur',
                   ),
                 ),
+                if (widget.lesson != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  OutlinedButton.icon(
+                    key: const Key('manage_quiz_button'),
+                    onPressed: isLoading
+                        ? null
+                        : () => context.pushNamed(
+                            AppRoutes.contentQuiz,
+                            pathParameters: {
+                              AppRoutes.contentModuleIdParameter:
+                                  widget.moduleId,
+                              AppRoutes.contentLessonIdParameter:
+                                  widget.lesson!.id,
+                            },
+                          ),
+                    icon: const Icon(Icons.quiz_outlined),
+                    label: Text(
+                      widget.lesson!.quizId == null
+                          ? 'Quiz Oluştur'
+                          : 'Quizi Yönet',
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -144,7 +144,28 @@ public sealed record ContentLessonResponse(
     int EstimatedDurationMinutes,
     int Order,
     bool IsPublished,
+    Guid? QuizId,
     DateTimeOffset UpdatedAtUtc);
+
+public sealed record ContentQuizResponse(
+    Guid Id,
+    Guid LessonId,
+    string Title,
+    bool IsPublished,
+    IReadOnlyList<ContentQuizQuestionResponse> Questions,
+    DateTimeOffset UpdatedAtUtc);
+
+public sealed record ContentQuizQuestionResponse(
+    Guid Id,
+    string Prompt,
+    int Order,
+    IReadOnlyList<ContentQuizOptionResponse> Options);
+
+public sealed record ContentQuizOptionResponse(
+    Guid Id,
+    string Text,
+    bool IsCorrect,
+    int Order);
 
 public sealed record EducationModuleWriteRequest(
     [Required, MaxLength(200)] string Title,

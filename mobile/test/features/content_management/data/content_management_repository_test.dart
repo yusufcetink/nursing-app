@@ -48,6 +48,7 @@ void main() {
         'estimatedDurationMinutes': 5,
         'order': 1,
         'isPublished': false,
+        'quizId': 'quiz-id',
         'updatedAtUtc': '2026-09-06T10:00:00Z',
       }),
       _JsonResponse(201, {'id': 'created-module-id'}),
@@ -101,6 +102,88 @@ void main() {
     expect(adapter.requests[3].data['isPublished'], isTrue);
     expect(adapter.requests[5].data['estimatedDurationMinutes'], 8);
   });
+
+  test(
+    'quiz, soru ve seçenek endpointlerini doğru payload ile kullanır',
+    () async {
+      final adapter = _SequenceAdapter([
+        _JsonResponse(200, {
+          'id': 'quiz-id',
+          'lessonId': 'lesson-id',
+          'title': 'Quiz',
+          'isPublished': false,
+          'questions': [
+            {
+              'id': 'question-id',
+              'prompt': 'Soru?',
+              'order': 1,
+              'options': [
+                {
+                  'id': 'option-id',
+                  'text': 'Doğru seçenek',
+                  'isCorrect': true,
+                  'order': 1,
+                },
+              ],
+            },
+          ],
+          'updatedAtUtc': '2026-09-06T10:00:00Z',
+        }),
+        _JsonResponse(201, {'id': 'created-quiz'}),
+        const _JsonResponse(204, ''),
+        _JsonResponse(201, {'id': 'created-question'}),
+        const _JsonResponse(204, ''),
+        _JsonResponse(201, {'id': 'created-option'}),
+        const _JsonResponse(204, ''),
+      ]);
+      final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+        ..httpClientAdapter = adapter;
+      final repository = DioContentManagementRepository(ApiClient(dio: dio));
+
+      final quiz = await repository.getQuizForLesson('lesson-id');
+      await repository.createQuiz(
+        'lesson-id',
+        const QuizWriteInput(title: 'Quiz', isPublished: false),
+      );
+      await repository.updateQuiz(
+        'quiz-id',
+        const QuizWriteInput(title: 'Quiz 2', isPublished: true),
+      );
+      await repository.createQuestion(
+        'quiz-id',
+        const QuizQuestionWriteInput(prompt: 'Soru?', order: 2),
+      );
+      await repository.updateQuestion(
+        'question-id',
+        const QuizQuestionWriteInput(prompt: 'Yeni soru?', order: 3),
+      );
+      await repository.createOption(
+        'question-id',
+        const QuizOptionWriteInput(text: 'Seçenek', isCorrect: true, order: 1),
+      );
+      await repository.updateOption(
+        'option-id',
+        const QuizOptionWriteInput(
+          text: 'Yeni seçenek',
+          isCorrect: false,
+          order: 2,
+        ),
+      );
+
+      expect(quiz!.questions.single.options.single.isCorrect, isTrue);
+      expect(adapter.requests.map((request) => request.path), [
+        '/api/education/content/lessons/lesson-id/quiz',
+        '/api/education/lessons/lesson-id/quiz',
+        '/api/education/quizzes/quiz-id',
+        '/api/education/quizzes/quiz-id/questions',
+        '/api/education/questions/question-id',
+        '/api/education/questions/question-id/options',
+        '/api/education/options/option-id',
+      ]);
+      expect(adapter.requests[5].data['isCorrect'], isTrue);
+      expect(adapter.requests[6].data['order'], 2);
+    },
+  );
 }
 
 final class _JsonResponse {

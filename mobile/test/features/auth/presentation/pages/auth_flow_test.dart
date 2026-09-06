@@ -232,5 +232,49 @@ void main() {
     expect(contentRepository.createModuleCallCount, 1);
     expect(find.text('Yeni Modül'), findsOneWidget);
     expect(find.text('Modül oluşturuldu.'), findsOneWidget);
+
+    await tester.tap(find.text('Taslak Modül'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Taslak Ders'));
+    await tester.pumpAndSettle();
+    final manageQuizButton = find.byKey(const Key('manage_quiz_button'));
+    await tester.drag(
+      find.byType(SingleChildScrollView).last,
+      const Offset(0, -400),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(manageQuizButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('create_question_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('option_0_text_field')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('question_prompt_field')),
+      'Yeni soru?',
+    );
+    for (var index = 0; index < 2; index++) {
+      await tester.enterText(
+        find.byKey(Key('option_${index}_text_field')),
+        '${index + 1}. seçenek',
+      );
+    }
+    await tester.drag(find.byType(ListView).last, const Offset(0, -600));
+    await tester.pumpAndSettle();
+    for (var index = 2; index < 4; index++) {
+      await tester.enterText(
+        find.byKey(Key('option_${index}_text_field')),
+        '${index + 1}. seçenek',
+      );
+    }
+    await tester.tap(find.byKey(const Key('correct_option_2')));
+    final saveQuestionButton = find.byKey(const Key('save_question_button'));
+    await tester.ensureVisible(saveQuestionButton);
+    await tester.tap(saveQuestionButton);
+    await tester.pumpAndSettle();
+
+    expect(contentRepository.createQuestionCallCount, 1);
+    expect(contentRepository.createOptionCallCount, 4);
+    expect(contentRepository.correctOptionCount, 1);
   });
 }

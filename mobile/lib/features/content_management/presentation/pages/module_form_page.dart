@@ -114,7 +114,12 @@ class _ModuleFormState extends ConsumerState<_ModuleForm> {
       appBar: AppBar(title: Text(isEditing ? 'Modülü Düzenle' : 'Yeni Modül')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.md,
+            96,
+          ),
           child: Form(
             key: _formKey,
             child: Column(

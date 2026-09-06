@@ -13,6 +13,8 @@ import 'package:asli_app/features/content_management/presentation/pages/content_
 import 'package:asli_app/features/content_management/presentation/pages/content_modules_page.dart';
 import 'package:asli_app/features/content_management/presentation/pages/lesson_form_page.dart';
 import 'package:asli_app/features/content_management/presentation/pages/module_form_page.dart';
+import 'package:asli_app/features/content_management/presentation/pages/question_form_page.dart';
+import 'package:asli_app/features/content_management/presentation/pages/quiz_editor_page.dart';
 import 'package:asli_app/features/education/presentation/pages/education_module_page.dart';
 import 'package:asli_app/features/education/presentation/pages/lesson_page.dart';
 import 'package:asli_app/features/home/presentation/pages/home_page.dart';
@@ -67,6 +69,17 @@ abstract final class AppRoutes {
       '/content/modules/:contentModuleId/lessons/:contentLessonId/edit';
   static const contentModuleIdParameter = 'contentModuleId';
   static const contentLessonIdParameter = 'contentLessonId';
+  static const contentQuiz = 'content-quiz';
+  static const contentQuizPath =
+      '/content/modules/:contentModuleId/lessons/:contentLessonId/quiz';
+  static const contentQuestionCreate = 'content-question-create';
+  static const contentQuestionCreatePath =
+      '/content/modules/:contentModuleId/lessons/:contentLessonId/quiz/:contentQuizId/questions/new';
+  static const contentQuestionEdit = 'content-question-edit';
+  static const contentQuestionEditPath =
+      '/content/modules/:contentModuleId/lessons/:contentLessonId/quiz/:contentQuizId/questions/:contentQuestionId/edit';
+  static const contentQuizIdParameter = 'contentQuizId';
+  static const contentQuestionIdParameter = 'contentQuestionId';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -205,6 +218,38 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                       state.pathParameters[AppRoutes.contentModuleIdParameter]!,
                   lessonId:
                       state.pathParameters[AppRoutes.contentLessonIdParameter]!,
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.contentQuizPath,
+                name: AppRoutes.contentQuiz,
+                builder: (context, state) => QuizEditorPage(
+                  moduleId:
+                      state.pathParameters[AppRoutes.contentModuleIdParameter]!,
+                  lessonId:
+                      state.pathParameters[AppRoutes.contentLessonIdParameter]!,
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.contentQuestionCreatePath,
+                name: AppRoutes.contentQuestionCreate,
+                builder: (context, state) => QuestionFormPage(
+                  lessonId:
+                      state.pathParameters[AppRoutes.contentLessonIdParameter]!,
+                  quizId:
+                      state.pathParameters[AppRoutes.contentQuizIdParameter]!,
+                ),
+              ),
+              GoRoute(
+                path: AppRoutes.contentQuestionEditPath,
+                name: AppRoutes.contentQuestionEdit,
+                builder: (context, state) => QuestionFormPage(
+                  lessonId:
+                      state.pathParameters[AppRoutes.contentLessonIdParameter]!,
+                  quizId:
+                      state.pathParameters[AppRoutes.contentQuizIdParameter]!,
+                  questionId: state
+                      .pathParameters[AppRoutes.contentQuestionIdParameter]!,
                 ),
               ),
               GoRoute(

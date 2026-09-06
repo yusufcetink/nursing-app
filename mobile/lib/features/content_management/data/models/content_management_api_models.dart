@@ -117,6 +117,105 @@ final class ContentLessonSummaryResponse {
   );
 }
 
+final class ContentQuizResponse {
+  const ContentQuizResponse({
+    required this.id,
+    required this.lessonId,
+    required this.title,
+    required this.isPublished,
+    required this.questions,
+  });
+
+  factory ContentQuizResponse.fromJson(Map<String, dynamic> json) =>
+      ContentQuizResponse(
+        id: json['id'] as String,
+        lessonId: json['lessonId'] as String,
+        title: json['title'] as String,
+        isPublished: json['isPublished'] as bool,
+        questions: (json['questions'] as List<dynamic>)
+            .map(
+              (item) => ContentQuizQuestionResponse.fromJson(
+                item as Map<String, dynamic>,
+              ).toDomain(),
+            )
+            .toList(growable: false),
+      );
+
+  final String id;
+  final String lessonId;
+  final String title;
+  final bool isPublished;
+  final List<ContentQuizQuestion> questions;
+
+  ContentQuiz toDomain() => ContentQuiz(
+    id: id,
+    lessonId: lessonId,
+    title: title,
+    isPublished: isPublished,
+    questions: questions,
+  );
+}
+
+final class ContentQuizQuestionResponse {
+  const ContentQuizQuestionResponse({
+    required this.id,
+    required this.prompt,
+    required this.order,
+    required this.options,
+  });
+
+  factory ContentQuizQuestionResponse.fromJson(Map<String, dynamic> json) =>
+      ContentQuizQuestionResponse(
+        id: json['id'] as String,
+        prompt: json['prompt'] as String,
+        order: json['order'] as int,
+        options: (json['options'] as List<dynamic>)
+            .map(
+              (item) => ContentQuizOptionResponse.fromJson(
+                item as Map<String, dynamic>,
+              ).toDomain(),
+            )
+            .toList(growable: false),
+      );
+
+  final String id;
+  final String prompt;
+  final int order;
+  final List<ContentQuizOption> options;
+
+  ContentQuizQuestion toDomain() => ContentQuizQuestion(
+    id: id,
+    prompt: prompt,
+    order: order,
+    options: options,
+  );
+}
+
+final class ContentQuizOptionResponse {
+  const ContentQuizOptionResponse({
+    required this.id,
+    required this.text,
+    required this.isCorrect,
+    required this.order,
+  });
+
+  factory ContentQuizOptionResponse.fromJson(Map<String, dynamic> json) =>
+      ContentQuizOptionResponse(
+        id: json['id'] as String,
+        text: json['text'] as String,
+        isCorrect: json['isCorrect'] as bool,
+        order: json['order'] as int,
+      );
+
+  final String id;
+  final String text;
+  final bool isCorrect;
+  final int order;
+
+  ContentQuizOption toDomain() =>
+      ContentQuizOption(id: id, text: text, isCorrect: isCorrect, order: order);
+}
+
 final class ContentLessonResponse {
   const ContentLessonResponse({
     required this.id,
@@ -127,6 +226,7 @@ final class ContentLessonResponse {
     required this.estimatedDurationMinutes,
     required this.order,
     required this.isPublished,
+    required this.quizId,
   });
 
   factory ContentLessonResponse.fromJson(Map<String, dynamic> json) =>
@@ -139,6 +239,7 @@ final class ContentLessonResponse {
         estimatedDurationMinutes: json['estimatedDurationMinutes'] as int,
         order: json['order'] as int,
         isPublished: json['isPublished'] as bool,
+        quizId: json['quizId'] as String?,
       );
 
   final String id;
@@ -149,6 +250,7 @@ final class ContentLessonResponse {
   final int estimatedDurationMinutes;
   final int order;
   final bool isPublished;
+  final String? quizId;
 
   ContentLesson toDomain() => ContentLesson(
     id: id,
@@ -159,5 +261,6 @@ final class ContentLessonResponse {
     estimatedDurationMinutes: estimatedDurationMinutes,
     order: order,
     isPublished: isPublished,
+    quizId: quizId,
   );
 }

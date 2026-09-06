@@ -14,6 +14,11 @@ final contentLessonProvider = FutureProvider.family<ContentLesson, String>(
   (ref, id) => ref.watch(contentManagementRepositoryProvider).getLesson(id),
 );
 
+final contentQuizProvider = FutureProvider.family<ContentQuiz?, String>(
+  (ref, lessonId) =>
+      ref.watch(contentManagementRepositoryProvider).getQuizForLesson(lessonId),
+);
+
 final contentMutationControllerProvider =
     AsyncNotifierProvider<ContentMutationController, void>(
       ContentMutationController.new,
@@ -68,6 +73,58 @@ final class ContentMutationController extends AsyncNotifier<void> {
         ..invalidate(contentModulesProvider)
         ..invalidate(contentModuleProvider(moduleId))
         ..invalidate(contentLessonProvider(id));
+      return true;
+    });
+    return result ?? false;
+  }
+
+  Future<bool> saveQuiz(
+    String lessonId,
+    ContentQuiz? quiz,
+    QuizWriteInput input,
+  ) async {
+    final result = await _mutate(() async {
+      final repository = ref.read(contentManagementRepositoryProvider);
+      if (quiz == null) {
+        await repository.createQuiz(lessonId, input);
+      } else {
+        await repository.updateQuiz(quiz.id, input);
+      }
+      ref
+        ..invalidate(contentQuizProvider(lessonId))
+        ..invalidate(contentLessonProvider(lessonId));
+      return true;
+    });
+    return result ?? false;
+  }
+
+  Future<bool> saveQuestion({
+    required String lessonId,
+    required String quizId,
+    required ContentQuizQuestion? question,
+    required QuizQuestionWriteInput input,
+    required List<QuizOptionWriteInput> options,
+  }) async {
+    final result = await _mutate(() async {
+      final repository = ref.read(contentManagementRepositoryProvider);
+      late final String questionId;
+      if (question == null) {
+        questionId = await repository.createQuestion(quizId, input);
+      } else {
+        questionId = question.id;
+        await repository.updateQuestion(questionId, input);
+      }
+      for (var index = 0; index < options.length; index++) {
+        if (question != null && index < question.options.length) {
+          await repository.updateOption(
+            question.options[index].id,
+            options[index],
+          );
+        } else {
+          await repository.createOption(questionId, options[index]);
+        }
+      }
+      ref.invalidate(contentQuizProvider(lessonId));
       return true;
     });
     return result ?? false;

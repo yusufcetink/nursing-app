@@ -163,6 +163,15 @@ public sealed class EducationContentController(EducationService educationService
         return lesson is null ? NotFound() : Ok(lesson);
     }
 
+    [HttpGet("content/lessons/{lessonId:guid}/quiz")]
+    public async Task<ActionResult<ContentQuizResponse>> GetContentQuiz(
+        Guid lessonId,
+        CancellationToken cancellationToken)
+    {
+        var quiz = await educationService.GetContentQuizAsync(lessonId, cancellationToken);
+        return quiz is null ? NotFound() : Ok(quiz);
+    }
+
     [HttpPost("modules")]
     public async Task<ActionResult<ContentMutationResponse>> CreateModule(
         EducationModuleWriteRequest request,
@@ -224,9 +233,16 @@ public sealed class EducationContentController(EducationService educationService
         QuizWriteRequest request,
         CancellationToken cancellationToken)
     {
-        return await educationService.UpdateQuizAsync(id, request, cancellationToken)
-            ? NoContent()
-            : NotFound();
+        return await educationService.UpdateQuizAsync(id, request, cancellationToken) switch
+        {
+            QuizUpdateStatus.Success => NoContent(),
+            QuizUpdateStatus.Invalid => BadRequest(new ProblemDetails
+            {
+                Title = "A published quiz requires questions with exactly four options and one correct answer.",
+                Status = StatusCodes.Status400BadRequest,
+            }),
+            _ => NotFound(),
+        };
     }
 
     [HttpPost("quizzes/{quizId:guid}/questions")]
