@@ -49,6 +49,16 @@ final class ContentMutationController extends AsyncNotifier<void> {
     return result ?? false;
   }
 
+  Future<bool> deleteModule(String id) async =>
+      await _mutate(() async {
+        await ref.read(contentManagementRepositoryProvider).deleteModule(id);
+        ref
+          ..invalidate(contentModulesProvider)
+          ..invalidate(contentModuleProvider(id));
+        return true;
+      }) ??
+      false;
+
   Future<String?> createLesson(String moduleId, LessonWriteInput input) =>
       _mutate(() async {
         final id = await ref
@@ -78,6 +88,18 @@ final class ContentMutationController extends AsyncNotifier<void> {
     return result ?? false;
   }
 
+  Future<bool> deleteLesson(String moduleId, String id) async =>
+      await _mutate(() async {
+        await ref.read(contentManagementRepositoryProvider).deleteLesson(id);
+        ref
+          ..invalidate(contentModulesProvider)
+          ..invalidate(contentModuleProvider(moduleId))
+          ..invalidate(contentLessonProvider(id))
+          ..invalidate(contentQuizProvider(id));
+        return true;
+      }) ??
+      false;
+
   Future<bool> saveQuiz(
     String lessonId,
     ContentQuiz? quiz,
@@ -97,6 +119,16 @@ final class ContentMutationController extends AsyncNotifier<void> {
     });
     return result ?? false;
   }
+
+  Future<bool> deleteQuiz(String lessonId, String id) async =>
+      await _mutate(() async {
+        await ref.read(contentManagementRepositoryProvider).deleteQuiz(id);
+        ref
+          ..invalidate(contentQuizProvider(lessonId))
+          ..invalidate(contentLessonProvider(lessonId));
+        return true;
+      }) ??
+      false;
 
   Future<bool> saveQuestion({
     required String lessonId,
@@ -129,6 +161,14 @@ final class ContentMutationController extends AsyncNotifier<void> {
     });
     return result ?? false;
   }
+
+  Future<bool> deleteQuestion(String lessonId, String id) async =>
+      await _mutate(() async {
+        await ref.read(contentManagementRepositoryProvider).deleteQuestion(id);
+        ref.invalidate(contentQuizProvider(lessonId));
+        return true;
+      }) ??
+      false;
 
   Future<T?> _mutate<T>(Future<T> Function() action) async {
     state = const AsyncLoading();

@@ -233,6 +233,23 @@ void main() {
     expect(find.text('Yeni Modül'), findsOneWidget);
     expect(find.text('Modül oluşturuldu.'), findsOneWidget);
 
+    final deleteCreatedModule = find.byKey(
+      const Key('delete_module_created-module'),
+    );
+    await tester.tap(deleteCreatedModule);
+    await tester.pumpAndSettle();
+    expect(find.text('Modül silinsin mi?'), findsOneWidget);
+    await tester.tap(find.text('Vazgeç'));
+    await tester.pumpAndSettle();
+    expect(contentRepository.deleteModuleCallCount, 0);
+
+    await tester.tap(deleteCreatedModule);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sil'));
+    await tester.pumpAndSettle();
+    expect(contentRepository.deleteModuleCallCount, 1);
+    expect(find.text('Yeni Modül'), findsNothing);
+
     await tester.tap(find.text('Taslak Modül'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Taslak Ders'));

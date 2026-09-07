@@ -7,6 +7,8 @@ public sealed class EducationModule
     public string Description { get; set; } = string.Empty;
     public int Order { get; set; }
     public bool IsPublished { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAtUtc { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 

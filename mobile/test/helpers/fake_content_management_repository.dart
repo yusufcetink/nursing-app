@@ -10,6 +10,10 @@ final class FakeContentManagementRepository
   int createQuestionCallCount = 0;
   int createOptionCallCount = 0;
   int correctOptionCount = 0;
+  int deleteModuleCallCount = 0;
+  int deleteLessonCallCount = 0;
+  int deleteQuizCallCount = 0;
+  int deleteQuestionCallCount = 0;
 
   final modules = <ContentModuleSummary>[
     const ContentModuleSummary(
@@ -42,6 +46,27 @@ final class FakeContentManagementRepository
   Future<String> createLesson(String moduleId, LessonWriteInput input) async {
     createLessonCallCount++;
     return 'created-lesson';
+  }
+
+  @override
+  Future<void> deleteModule(String id) async {
+    deleteModuleCallCount++;
+    modules.removeWhere((module) => module.id == id);
+  }
+
+  @override
+  Future<void> deleteLesson(String id) async {
+    deleteLessonCallCount++;
+  }
+
+  @override
+  Future<void> deleteQuiz(String id) async {
+    deleteQuizCallCount++;
+  }
+
+  @override
+  Future<void> deleteQuestion(String id) async {
+    deleteQuestionCallCount++;
   }
 
   @override

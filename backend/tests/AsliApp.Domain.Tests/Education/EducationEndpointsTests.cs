@@ -63,12 +63,49 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
     public async Task StudentCannotCreateContent()
     {
         using var client = CreateClient("Student");
+        var id = Guid.NewGuid();
+        var requests = new[]
+        {
+            client.PostAsJsonAsync(
+                "/api/education/modules",
+                new EducationModuleWriteRequest("Denied", "Denied", 10, false)),
+            client.PutAsJsonAsync(
+                $"/api/education/modules/{id}",
+                new EducationModuleWriteRequest("Denied", "Denied", 10, false)),
+            client.PostAsJsonAsync(
+                $"/api/education/modules/{id}/lessons",
+                new LessonWriteRequest("Denied", "Denied", "Denied", 1, 0, false)),
+            client.PutAsJsonAsync(
+                $"/api/education/lessons/{id}",
+                new LessonWriteRequest("Denied", "Denied", "Denied", 1, 0, false)),
+            client.PostAsJsonAsync(
+                $"/api/education/lessons/{id}/quiz",
+                new QuizWriteRequest("Denied", false)),
+            client.PutAsJsonAsync(
+                $"/api/education/quizzes/{id}",
+                new QuizWriteRequest("Denied", false)),
+            client.PostAsJsonAsync(
+                $"/api/education/quizzes/{id}/questions",
+                new QuizQuestionWriteRequest("Denied", 0)),
+            client.PutAsJsonAsync(
+                $"/api/education/questions/{id}",
+                new QuizQuestionWriteRequest("Denied", 0)),
+            client.PostAsJsonAsync(
+                $"/api/education/questions/{id}/options",
+                new QuizOptionWriteRequest("Denied", false, 0)),
+            client.PutAsJsonAsync(
+                $"/api/education/options/{id}",
+                new QuizOptionWriteRequest("Denied", false, 0)),
+            client.DeleteAsync($"/api/education/modules/{id}"),
+            client.DeleteAsync($"/api/education/lessons/{id}"),
+            client.DeleteAsync($"/api/education/quizzes/{id}"),
+            client.DeleteAsync($"/api/education/questions/{id}"),
+        };
 
-        var response = await client.PostAsJsonAsync(
-            "/api/education/modules",
-            new EducationModuleWriteRequest("Denied", "Denied", 10, false));
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        foreach (var request in requests)
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, (await request).StatusCode);
+        }
         Assert.Equal(
             HttpStatusCode.Forbidden,
             (await client.GetAsync("/api/education/content/modules")).StatusCode);
@@ -167,7 +204,60 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
                 false));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.NotNull(await response.Content.ReadFromJsonAsync<ContentMutationResponse>());
+        var createdModule = await response.Content
+            .ReadFromJsonAsync<ContentMutationResponse>();
+        Assert.NotNull(createdModule);
+
+        var moduleOrder = Random.Shared.Next(100, 10000);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await client.PutAsJsonAsync(
+                $"/api/education/modules/{createdModule.Id}",
+                new EducationModuleWriteRequest(
+                    $"{role} Updated Module",
+                    "Updated authorized content",
+                    moduleOrder,
+                    true))).StatusCode);
+        var lessonResponse = await client.PostAsJsonAsync(
+            $"/api/education/modules/{createdModule.Id}/lessons",
+            new LessonWriteRequest("Lesson", "Description", "Content", 5, 1, false));
+        Assert.Equal(HttpStatusCode.Created, lessonResponse.StatusCode);
+        var createdLesson = await lessonResponse.Content
+            .ReadFromJsonAsync<ContentMutationResponse>();
+        Assert.NotNull(createdLesson);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await client.PutAsJsonAsync(
+                $"/api/education/lessons/{createdLesson.Id}",
+                new LessonWriteRequest(
+                    "Updated lesson",
+                    "Updated description",
+                    "Updated content",
+                    8,
+                    2,
+                    true))).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Created,
+            (await client.PostAsJsonAsync(
+                $"/api/education/lessons/{createdLesson.Id}/quiz",
+                new QuizWriteRequest("Draft quiz", false))).StatusCode);
+
+        var modules = await client
+            .GetFromJsonAsync<List<ContentEducationModuleSummaryResponse>>(
+                "/api/education/content/modules");
+        var module = await client.GetFromJsonAsync<ContentEducationModuleResponse>(
+            $"/api/education/content/modules/{createdModule.Id}");
+        var lesson = await client.GetFromJsonAsync<ContentLessonResponse>(
+            $"/api/education/content/lessons/{createdLesson.Id}");
+        Assert.NotNull(modules);
+        Assert.NotNull(module);
+        Assert.NotNull(lesson);
+        Assert.Contains(
+            modules,
+            item => item.Id == createdModule.Id && item.Order == moduleOrder);
+        Assert.Equal(2, module.Lessons.Single().Order);
+        Assert.Equal("Updated content", lesson.Content);
+        Assert.NotNull(lesson.QuizId);
     }
 
     [Theory]
@@ -221,6 +311,167 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             (await client.PutAsJsonAsync(
                 $"/api/education/quizzes/{quiz.Id}",
                 new QuizWriteRequest(quiz.Title, true))).StatusCode);
+
+        var createQuestionResponse = await client.PostAsJsonAsync(
+            $"/api/education/quizzes/{quiz.Id}/questions",
+            new QuizQuestionWriteRequest("Second question?", 2));
+        Assert.Equal(HttpStatusCode.Created, createQuestionResponse.StatusCode);
+        var createdQuestion = await createQuestionResponse.Content
+            .ReadFromJsonAsync<ContentMutationResponse>();
+        Assert.NotNull(createdQuestion);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await client.PutAsJsonAsync(
+                $"/api/education/questions/{content.QuestionId}",
+                new QuizQuestionWriteRequest("Question?", 2))).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await client.PutAsJsonAsync(
+                $"/api/education/options/{content.CorrectOptionId}",
+                new QuizOptionWriteRequest("Correct", true, 2))).StatusCode);
+
+        var reorderedQuiz = await client.GetFromJsonAsync<ContentQuizResponse>(
+            $"/api/education/content/lessons/{content.LessonId}/quiz");
+        Assert.NotNull(reorderedQuiz);
+        Assert.False(reorderedQuiz.IsPublished);
+        Assert.Equal(
+            2,
+            reorderedQuiz.Questions.Single(question =>
+                question.Id == content.QuestionId).Order);
+        Assert.Equal(
+            1,
+            reorderedQuiz.Questions.Single(question =>
+                question.Id == createdQuestion.Id).Order);
+        var reorderedOptions = reorderedQuiz.Questions.Single(question =>
+            question.Id == content.QuestionId).Options;
+        Assert.Equal(
+            2,
+            reorderedOptions.Single(option =>
+                option.Id == content.CorrectOptionId).Order);
+        Assert.Equal(
+            1,
+            reorderedOptions.Single(option =>
+                option.Id == content.IncorrectOptionId).Order);
+    }
+
+    [Fact]
+    public async Task DeletesAreSoftCascadeSafelyAndRefreshContentReads()
+    {
+        var questionContent = await SeedContentAsync();
+        var quizContent = await SeedContentAsync();
+        var lessonContent = await SeedContentAsync();
+        var moduleContent = await SeedContentAsync();
+        var userId = await CreateUserAsync();
+        using var student = CreateClient("Student", userId);
+        using var admin = CreateClient("Admin");
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await student.PutAsync(
+                $"/api/education/lessons/{moduleContent.LessonId}/progress",
+                null)).StatusCode);
+        var submission = await student.PostAsJsonAsync(
+            $"/api/education/lessons/{moduleContent.LessonId}/quiz/submit",
+            new QuizSubmissionRequest(
+            [
+                new QuizAnswerRequest(
+                    moduleContent.QuestionId,
+                    moduleContent.CorrectOptionId),
+            ]));
+        Assert.Equal(HttpStatusCode.OK, submission.StatusCode);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.DeleteAsync(
+                $"/api/education/questions/{questionContent.QuestionId}"))
+                .StatusCode);
+        var questionQuiz = await admin.GetFromJsonAsync<ContentQuizResponse>(
+            $"/api/education/content/lessons/{questionContent.LessonId}/quiz");
+        Assert.NotNull(questionQuiz);
+        Assert.Empty(questionQuiz.Questions);
+        Assert.False(questionQuiz.IsPublished);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/education/quizzes/{await GetQuizIdAsync(quizContent.LessonId)}"))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await admin.GetAsync(
+                $"/api/education/content/lessons/{quizContent.LessonId}/quiz"))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Created,
+            (await admin.PostAsJsonAsync(
+                $"/api/education/lessons/{quizContent.LessonId}/quiz",
+                new QuizWriteRequest("Replacement quiz", false))).StatusCode);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/education/lessons/{lessonContent.LessonId}"))
+                .StatusCode);
+        var lessonModule = await admin.GetFromJsonAsync<ContentEducationModuleResponse>(
+            $"/api/education/content/modules/{lessonContent.ModuleId}");
+        Assert.NotNull(lessonModule);
+        Assert.DoesNotContain(
+            lessonModule.Lessons,
+            lesson => lesson.Id == lessonContent.LessonId);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/education/modules/{moduleContent.ModuleId}"))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await student.GetAsync($"/api/education/modules/{moduleContent.ModuleId}"))
+                .StatusCode);
+        var contentModules = await admin
+            .GetFromJsonAsync<List<ContentEducationModuleSummaryResponse>>(
+                "/api/education/content/modules");
+        Assert.NotNull(contentModules);
+        Assert.DoesNotContain(contentModules, module => module.Id == moduleContent.ModuleId);
+
+        var progress = await student.GetFromJsonAsync<ProgressResponse>(
+            "/api/profile/progress");
+        var history = await student.GetFromJsonAsync<List<QuizHistoryItemResponse>>(
+            "/api/profile/quiz-history");
+        Assert.NotNull(progress);
+        Assert.NotNull(history);
+        Assert.Contains(
+            progress.CompletedLessons,
+            item => item.LessonId == moduleContent.LessonId);
+        Assert.Contains(history, item => item.LessonId == moduleContent.LessonId);
+
+        using var scope = _factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var deletedModule = await dbContext.EducationModules
+            .IgnoreQueryFilters()
+            .SingleAsync(module => module.Id == moduleContent.ModuleId);
+        var deletedLesson = await dbContext.Lessons
+            .IgnoreQueryFilters()
+            .SingleAsync(lesson => lesson.Id == moduleContent.LessonId);
+        var deletedQuiz = await dbContext.Quizzes
+            .IgnoreQueryFilters()
+            .SingleAsync(quiz => quiz.LessonId == moduleContent.LessonId);
+        var deletedQuestion = await dbContext.QuizQuestions
+            .IgnoreQueryFilters()
+            .SingleAsync(question => question.Id == moduleContent.QuestionId);
+        Assert.True(deletedModule.IsDeleted);
+        Assert.True(deletedLesson.IsDeleted);
+        Assert.True(deletedQuiz.IsDeleted);
+        Assert.True(deletedQuestion.IsDeleted);
+        Assert.NotNull(deletedModule.DeletedAtUtc);
+    }
+
+    private async Task<Guid> GetQuizIdAsync(Guid lessonId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<AppDbContext>()
+            .Quizzes
+            .Where(quiz => quiz.LessonId == lessonId)
+            .Select(quiz => quiz.Id)
+            .SingleAsync();
     }
 
     private async Task<SeededContent> SeedContentAsync()
@@ -329,7 +580,8 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             lesson.Id,
             draftLesson.Id,
             question.Id,
-            correctOption.Id);
+            correctOption.Id,
+            incorrectOption.Id);
     }
 
     private async Task<Guid> CreateUserAsync()
@@ -388,5 +640,6 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
         Guid LessonId,
         Guid DraftLessonId,
         Guid QuestionId,
-        Guid CorrectOptionId);
+        Guid CorrectOptionId,
+        Guid IncorrectOptionId);
 }

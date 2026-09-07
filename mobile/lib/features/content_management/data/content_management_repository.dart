@@ -23,17 +23,25 @@ abstract interface class ContentManagementRepository {
 
   Future<void> updateModule(String id, ModuleWriteInput input);
 
+  Future<void> deleteModule(String id);
+
   Future<String> createLesson(String moduleId, LessonWriteInput input);
 
   Future<void> updateLesson(String id, LessonWriteInput input);
+
+  Future<void> deleteLesson(String id);
 
   Future<String> createQuiz(String lessonId, QuizWriteInput input);
 
   Future<void> updateQuiz(String id, QuizWriteInput input);
 
+  Future<void> deleteQuiz(String id);
+
   Future<String> createQuestion(String quizId, QuizQuestionWriteInput input);
 
   Future<void> updateQuestion(String id, QuizQuestionWriteInput input);
+
+  Future<void> deleteQuestion(String id);
 
   Future<String> createOption(String questionId, QuizOptionWriteInput input);
 
@@ -145,6 +153,9 @@ final class DioContentManagementRepository
   }
 
   @override
+  Future<void> deleteModule(String id) => _delete('/api/education/modules/$id');
+
+  @override
   Future<String> createLesson(String moduleId, LessonWriteInput input) async {
     try {
       final response = await _apiClient.dio.post<Map<String, dynamic>>(
@@ -174,6 +185,9 @@ final class DioContentManagementRepository
   }
 
   @override
+  Future<void> deleteLesson(String id) => _delete('/api/education/lessons/$id');
+
+  @override
   Future<String> createQuiz(String lessonId, QuizWriteInput input) =>
       _create('/api/education/lessons/$lessonId/quiz', _quizJson(input));
 
@@ -182,12 +196,19 @@ final class DioContentManagementRepository
       _update('/api/education/quizzes/$id', _quizJson(input));
 
   @override
+  Future<void> deleteQuiz(String id) => _delete('/api/education/quizzes/$id');
+
+  @override
   Future<String> createQuestion(String quizId, QuizQuestionWriteInput input) =>
       _create('/api/education/quizzes/$quizId/questions', _questionJson(input));
 
   @override
   Future<void> updateQuestion(String id, QuizQuestionWriteInput input) =>
       _update('/api/education/questions/$id', _questionJson(input));
+
+  @override
+  Future<void> deleteQuestion(String id) =>
+      _delete('/api/education/questions/$id');
 
   @override
   Future<String> createOption(String questionId, QuizOptionWriteInput input) =>
@@ -219,6 +240,14 @@ final class DioContentManagementRepository
   Future<void> _update(String path, Map<String, Object> data) async {
     try {
       await _apiClient.dio.put<void>(path, data: data);
+    } on DioException catch (error) {
+      throw mapNetworkException(error);
+    }
+  }
+
+  Future<void> _delete(String path) async {
+    try {
+      await _apiClient.dio.delete<void>(path);
     } on DioException catch (error) {
       throw mapNetworkException(error);
     }

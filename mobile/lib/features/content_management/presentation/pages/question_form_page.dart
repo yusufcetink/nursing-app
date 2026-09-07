@@ -57,6 +57,15 @@ class QuestionFormPage extends ConsumerWidget {
               lessonId: lessonId,
               quizId: quizId,
               question: question,
+              initialOrder:
+                  question?.order ??
+                  quiz.questions.fold(
+                    0,
+                    (next, item) => item.order >= next ? item.order + 1 : next,
+                  ),
+              unavailableOrders: question == null
+                  ? quiz.questions.map((item) => item.order).toSet()
+                  : const <int>{},
             );
           },
         );
@@ -68,11 +77,15 @@ class _QuestionForm extends ConsumerStatefulWidget {
     required this.lessonId,
     required this.quizId,
     required this.question,
+    required this.initialOrder,
+    required this.unavailableOrders,
   });
 
   final String lessonId;
   final String quizId;
   final ContentQuizQuestion? question;
+  final int initialOrder;
+  final Set<int> unavailableOrders;
 
   @override
   ConsumerState<_QuestionForm> createState() => _QuestionFormState();
@@ -92,7 +105,7 @@ class _QuestionFormState extends ConsumerState<_QuestionForm> {
     final question = widget.question;
     _promptController = TextEditingController(text: question?.prompt);
     _orderController = TextEditingController(
-      text: question?.order.toString() ?? '0',
+      text: widget.initialOrder.toString(),
     );
     _optionControllers = List.generate(
       4,
@@ -214,7 +227,7 @@ class _QuestionFormState extends ConsumerState<_QuestionForm> {
                 decoration: const InputDecoration(labelText: 'Soru sırası'),
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: _nonNegative,
+                validator: _questionOrderValidator,
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
@@ -275,7 +288,12 @@ class _QuestionFormState extends ConsumerState<_QuestionForm> {
               FilledButton.icon(
                 key: const Key('save_question_button'),
                 onPressed: isLoading ? null : _save,
-                icon: const Icon(Icons.save_outlined),
+                icon: isLoading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
                 label: const Text('Soruyu Kaydet'),
               ),
             ],
@@ -291,5 +309,13 @@ class _QuestionFormState extends ConsumerState<_QuestionForm> {
   static String? _nonNegative(String? value) {
     final number = int.tryParse(value ?? '');
     return number == null || number < 0 ? 'Geçerli bir sıra girin.' : null;
+  }
+
+  String? _questionOrderValidator(String? value) {
+    final validation = _nonNegative(value);
+    if (validation != null) return validation;
+    return widget.unavailableOrders.contains(int.parse(value!))
+        ? 'Bu sıra başka bir soruda kullanılıyor.'
+        : null;
   }
 }

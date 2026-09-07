@@ -53,13 +53,13 @@ class ContentModulesPage extends ConsumerWidget {
   }
 }
 
-class _ContentModuleCard extends StatelessWidget {
+class _ContentModuleCard extends ConsumerWidget {
   const _ContentModuleCard({required this.module});
 
   final ContentModuleSummary module;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -90,6 +90,12 @@ class _ContentModuleCard extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.edit_outlined),
                   ),
+                  IconButton(
+                    key: Key('delete_module_${module.id}'),
+                    tooltip: 'Modülü sil',
+                    onPressed: () => _delete(context, ref),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
                 ],
               ),
               Text(
@@ -117,6 +123,43 @@ class _ContentModuleCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Modül silinsin mi?'),
+        content: const Text(
+          'Modül, bağlı dersler ve quizler içerik listelerinden kaldırılacak. '
+          'Öğrenci ilerlemesi ve quiz geçmişi korunur.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final succeeded = await ref
+        .read(contentMutationControllerProvider.notifier)
+        .deleteModule(module.id);
+    if (!context.mounted) return;
+    final error = ref.read(contentMutationControllerProvider).error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          succeeded ? 'Modül silindi.' : networkErrorMessage(error ?? Object()),
         ),
       ),
     );

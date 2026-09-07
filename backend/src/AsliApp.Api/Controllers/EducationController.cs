@@ -192,6 +192,16 @@ public sealed class EducationContentController(EducationService educationService
             : NotFound();
     }
 
+    [HttpDelete("modules/{id:guid}")]
+    public async Task<IActionResult> DeleteModule(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return await educationService.DeleteModuleAsync(id, cancellationToken)
+            ? NoContent()
+            : NotFound();
+    }
+
     [HttpPost("modules/{moduleId:guid}/lessons")]
     public async Task<ActionResult<ContentMutationResponse>> CreateLesson(
         Guid moduleId,
@@ -211,6 +221,16 @@ public sealed class EducationContentController(EducationService educationService
         CancellationToken cancellationToken)
     {
         return await educationService.UpdateLessonAsync(id, request, cancellationToken)
+            ? NoContent()
+            : NotFound();
+    }
+
+    [HttpDelete("lessons/{id:guid}")]
+    public async Task<IActionResult> DeleteLesson(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return await educationService.DeleteLessonAsync(id, cancellationToken)
             ? NoContent()
             : NotFound();
     }
@@ -245,6 +265,16 @@ public sealed class EducationContentController(EducationService educationService
         };
     }
 
+    [HttpDelete("quizzes/{id:guid}")]
+    public async Task<IActionResult> DeleteQuiz(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return await educationService.DeleteQuizAsync(id, cancellationToken)
+            ? NoContent()
+            : NotFound();
+    }
+
     [HttpPost("quizzes/{quizId:guid}/questions")]
     public async Task<ActionResult<ContentMutationResponse>> CreateQuestion(
         Guid quizId,
@@ -264,6 +294,16 @@ public sealed class EducationContentController(EducationService educationService
         CancellationToken cancellationToken)
     {
         return await educationService.UpdateQuestionAsync(id, request, cancellationToken)
+            ? NoContent()
+            : NotFound();
+    }
+
+    [HttpDelete("questions/{id:guid}")]
+    public async Task<IActionResult> DeleteQuestion(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return await educationService.DeleteQuestionAsync(id, cancellationToken)
             ? NoContent()
             : NotFound();
     }

@@ -58,6 +58,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<EducationModule>(entity =>
         {
             entity.HasKey(module => module.Id);
+            entity.HasQueryFilter(module => !module.IsDeleted);
             entity.Property(module => module.Title).HasMaxLength(200).IsRequired();
             entity.Property(module => module.Description).HasMaxLength(1000).IsRequired();
             entity.HasIndex(module => module.Order);
@@ -66,6 +67,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Lesson>(entity =>
         {
             entity.HasKey(lesson => lesson.Id);
+            entity.HasQueryFilter(lesson => !lesson.IsDeleted);
             entity.Property(lesson => lesson.Title).HasMaxLength(200).IsRequired();
             entity.Property(lesson => lesson.Description).HasMaxLength(500).IsRequired();
             entity.Property(lesson => lesson.Content).IsRequired();
@@ -78,7 +80,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Quiz>(entity =>
         {
             entity.HasKey(quiz => quiz.Id);
+            entity.HasQueryFilter(quiz => !quiz.IsDeleted);
             entity.Property(quiz => quiz.Title).HasMaxLength(200).IsRequired();
+            entity.HasIndex(quiz => quiz.LessonId)
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
             entity.HasOne(quiz => quiz.Lesson)
                 .WithOne(lesson => lesson.Quiz)
                 .HasForeignKey<Quiz>(quiz => quiz.LessonId);
@@ -87,8 +93,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<QuizQuestion>(entity =>
         {
             entity.HasKey(question => question.Id);
+            entity.HasQueryFilter(question => !question.IsDeleted);
             entity.Property(question => question.Prompt).HasMaxLength(1000).IsRequired();
-            entity.HasIndex(question => new { question.QuizId, question.Order }).IsUnique();
+            entity.HasIndex(question => new { question.QuizId, question.Order })
+                .IsUnique()
+                .HasFilter("[IsDeleted] = 0");
             entity.HasOne(question => question.Quiz)
                 .WithMany(quiz => quiz.Questions)
                 .HasForeignKey(question => question.QuizId);
@@ -97,6 +106,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<QuizOption>(entity =>
         {
             entity.HasKey(option => option.Id);
+            entity.HasQueryFilter(option => !option.QuizQuestion.IsDeleted);
             entity.Property(option => option.Text).HasMaxLength(500).IsRequired();
             entity.HasIndex(option => new { option.QuizQuestionId, option.Order }).IsUnique();
             entity.HasOne(option => option.QuizQuestion)
@@ -107,6 +117,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<QuizAttempt>(entity =>
         {
             entity.HasKey(attempt => attempt.Id);
+            entity.HasQueryFilter(attempt => !attempt.Quiz.IsDeleted);
             entity.Property(attempt => attempt.ScorePercentage).HasPrecision(5, 2);
             entity.HasIndex(attempt => new { attempt.UserId, attempt.CompletedAtUtc });
             entity.HasOne(attempt => attempt.User)
@@ -122,6 +133,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<QuizAttemptAnswer>(entity =>
         {
             entity.HasKey(answer => answer.Id);
+            entity.HasQueryFilter(answer =>
+                !answer.QuizAttempt.Quiz.IsDeleted &&
+                !answer.QuizQuestion.IsDeleted);
             entity.HasIndex(answer => new { answer.QuizAttemptId, answer.QuizQuestionId })
                 .IsUnique();
             entity.HasOne(answer => answer.QuizAttempt)
@@ -141,6 +155,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<LessonProgress>(entity =>
         {
             entity.HasKey(progress => progress.Id);
+            entity.HasQueryFilter(progress => !progress.Lesson.IsDeleted);
             entity.HasIndex(progress => new { progress.UserId, progress.LessonId }).IsUnique();
             entity.HasOne(progress => progress.User)
                 .WithMany(user => user.LessonProgress)

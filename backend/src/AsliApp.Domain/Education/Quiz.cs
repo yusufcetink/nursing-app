@@ -6,6 +6,8 @@ public sealed class Quiz
     public Guid LessonId { get; set; }
     public string Title { get; set; } = string.Empty;
     public bool IsPublished { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAtUtc { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 

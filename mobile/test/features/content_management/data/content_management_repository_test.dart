@@ -55,6 +55,8 @@ void main() {
       const _JsonResponse(204, ''),
       _JsonResponse(201, {'id': 'created-lesson-id'}),
       const _JsonResponse(204, ''),
+      const _JsonResponse(204, ''),
+      const _JsonResponse(204, ''),
     ]);
     final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
       ..httpClientAdapter = adapter;
@@ -84,6 +86,8 @@ void main() {
       lessonInput,
     );
     await repository.updateLesson('lesson-id', lessonInput);
+    await repository.deleteModule('module-id');
+    await repository.deleteLesson('lesson-id');
 
     expect(modules.single.isPublished, isFalse);
     expect(module.lessons.single.title, 'Taslak Ders');
@@ -98,7 +102,11 @@ void main() {
       '/api/education/modules/module-id',
       '/api/education/modules/module-id/lessons',
       '/api/education/lessons/lesson-id',
+      '/api/education/modules/module-id',
+      '/api/education/lessons/lesson-id',
     ]);
+    expect(adapter.requests[7].method, 'DELETE');
+    expect(adapter.requests[8].method, 'DELETE');
     expect(adapter.requests[3].data['isPublished'], isTrue);
     expect(adapter.requests[5].data['estimatedDurationMinutes'], 8);
   });
@@ -135,6 +143,8 @@ void main() {
         const _JsonResponse(204, ''),
         _JsonResponse(201, {'id': 'created-option'}),
         const _JsonResponse(204, ''),
+        const _JsonResponse(204, ''),
+        const _JsonResponse(204, ''),
       ]);
       final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
         ..httpClientAdapter = adapter;
@@ -169,6 +179,8 @@ void main() {
           order: 2,
         ),
       );
+      await repository.deleteQuiz('quiz-id');
+      await repository.deleteQuestion('question-id');
 
       expect(quiz!.questions.single.options.single.isCorrect, isTrue);
       expect(adapter.requests.map((request) => request.path), [
@@ -179,7 +191,11 @@ void main() {
         '/api/education/questions/question-id',
         '/api/education/questions/question-id/options',
         '/api/education/options/option-id',
+        '/api/education/quizzes/quiz-id',
+        '/api/education/questions/question-id',
       ]);
+      expect(adapter.requests[7].method, 'DELETE');
+      expect(adapter.requests[8].method, 'DELETE');
       expect(adapter.requests[5].data['isCorrect'], isTrue);
       expect(adapter.requests[6].data['order'], 2);
     },

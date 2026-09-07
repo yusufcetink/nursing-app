@@ -130,12 +130,99 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
         );
   }
 
+  Future<void> _deleteQuiz() async {
+    final quiz = widget.quiz;
+    if (quiz == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Quiz silinsin mi?'),
+        content: const Text(
+          'Quiz ve soruları içerik listesinden kaldırılacak. '
+          'Önceki öğrenci denemeleri korunur.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final succeeded = await ref
+        .read(contentMutationControllerProvider.notifier)
+        .deleteQuiz(widget.lessonId, quiz.id);
+    if (!mounted) return;
+    final error = ref.read(contentMutationControllerProvider).error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          succeeded ? 'Quiz silindi.' : networkErrorMessage(error ?? Object()),
+        ),
+      ),
+    );
+    if (succeeded) context.pop(true);
+  }
+
+  Future<void> _deleteQuestion(ContentQuizQuestion question) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Soru silinsin mi?'),
+        content: const Text(
+          'Soru ve seçenekleri quizden kaldırılacak. Quiz taslağa alınır.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final succeeded = await ref
+        .read(contentMutationControllerProvider.notifier)
+        .deleteQuestion(widget.lessonId, question.id);
+    if (!mounted) return;
+    final error = ref.read(contentMutationControllerProvider).error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          succeeded ? 'Soru silindi.' : networkErrorMessage(error ?? Object()),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final quiz = widget.quiz;
     final isLoading = ref.watch(contentMutationControllerProvider).isLoading;
     return Scaffold(
-      appBar: AppBar(title: const Text('Quiz Yönetimi')),
+      appBar: AppBar(
+        title: const Text('Quiz Yönetimi'),
+        actions: [
+          if (quiz != null)
+            IconButton(
+              key: const Key('delete_quiz_button'),
+              tooltip: 'Quizi sil',
+              onPressed: isLoading ? null : _deleteQuiz,
+              icon: const Icon(Icons.delete_outline),
+            ),
+        ],
+      ),
       floatingActionButton: quiz == null
           ? null
           : Padding(
@@ -192,7 +279,12 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
                   child: FilledButton.icon(
                     key: const Key('save_quiz_button'),
                     onPressed: isLoading ? null : _save,
-                    icon: const Icon(Icons.save_outlined),
+                    icon: isLoading
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
                     label: Text(quiz == null ? 'Quiz Oluştur' : 'Quizi Kaydet'),
                   ),
                 ),
@@ -216,7 +308,20 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
                   subtitle: Text(
                     'Sıra ${question.order} · ${question.options.length}/4 seçenek',
                   ),
-                  trailing: const Icon(Icons.edit_outlined),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.edit_outlined),
+                      IconButton(
+                        key: Key('delete_question_${question.id}'),
+                        tooltip: 'Soruyu sil',
+                        onPressed: isLoading
+                            ? null
+                            : () => _deleteQuestion(question),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
                   onTap: () => context.pushNamed(
                     AppRoutes.contentQuestionEdit,
                     pathParameters: {

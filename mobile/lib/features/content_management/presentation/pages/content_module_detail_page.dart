@@ -91,14 +91,14 @@ class ContentModuleDetailPage extends ConsumerWidget {
   }
 }
 
-class _LessonCard extends StatelessWidget {
+class _LessonCard extends ConsumerWidget {
   const _LessonCard({required this.moduleId, required this.lesson});
 
   final String moduleId;
   final ContentLessonSummary lesson;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: ListTile(
         title: Text(lesson.title),
@@ -106,13 +106,61 @@ class _LessonCard extends StatelessWidget {
           '${lesson.isPublished ? 'Yayında' : 'Taslak'} · '
           '${lesson.estimatedDurationMinutes} dk · Sıra ${lesson.order}',
         ),
-        trailing: const Icon(Icons.edit_outlined),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.edit_outlined),
+            IconButton(
+              key: Key('delete_lesson_${lesson.id}'),
+              tooltip: 'Dersi sil',
+              onPressed: () => _delete(context, ref),
+              icon: const Icon(Icons.delete_outline),
+            ),
+          ],
+        ),
         onTap: () => context.pushNamed(
           AppRoutes.contentLessonEdit,
           pathParameters: {
             AppRoutes.contentModuleIdParameter: moduleId,
             AppRoutes.contentLessonIdParameter: lesson.id,
           },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ders silinsin mi?'),
+        content: const Text(
+          'Ders ve bağlı quiz içerik listelerinden kaldırılacak. '
+          'Öğrenci ilerlemesi ve quiz geçmişi korunur.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final succeeded = await ref
+        .read(contentMutationControllerProvider.notifier)
+        .deleteLesson(moduleId, lesson.id);
+    if (!context.mounted) return;
+    final error = ref.read(contentMutationControllerProvider).error;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          succeeded ? 'Ders silindi.' : networkErrorMessage(error ?? Object()),
         ),
       ),
     );

@@ -10,6 +10,8 @@ public sealed class Lesson
     public int EstimatedDurationMinutes { get; set; }
     public int Order { get; set; }
     public bool IsPublished { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTimeOffset? DeletedAtUtc { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
     public DateTimeOffset UpdatedAtUtc { get; set; }
 
