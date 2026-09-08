@@ -14,6 +14,9 @@ final class FakeContentManagementRepository
   int deleteLessonCallCount = 0;
   int deleteQuizCallCount = 0;
   int deleteQuestionCallCount = 0;
+  int uploadLessonMediaCallCount = 0;
+  int deleteLessonMediaCallCount = 0;
+  int createContentBlockCallCount = 0;
 
   final modules = <ContentModuleSummary>[
     const ContentModuleSummary(
@@ -70,16 +73,74 @@ final class FakeContentManagementRepository
   }
 
   @override
+  Future<ContentLessonMedia> uploadLessonMedia({
+    required String lessonId,
+    required String filePath,
+    required String fileName,
+    required int sortOrder,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    uploadLessonMediaCallCount++;
+    onSendProgress?.call(1, 1);
+    return ContentLessonMedia(
+      id: 'video-id',
+      lessonId: lessonId,
+      originalFileName: fileName,
+      contentType: 'video/mp4',
+      mediaType: ContentLessonMediaType.video,
+      sizeBytes: 1,
+      sortOrder: sortOrder,
+    );
+  }
+
+  @override
+  Future<void> deleteLessonMedia(String lessonId, String mediaId) async {
+    deleteLessonMediaCallCount++;
+  }
+
+  @override
+  Future<String> createContentBlock(
+    String lessonId,
+    ContentBlockWriteInput input,
+  ) async {
+    createContentBlockCallCount++;
+    return 'block-id';
+  }
+
+  @override
+  Future<void> updateContentBlock(
+    String id,
+    ContentBlockWriteInput input,
+  ) async {}
+
+  @override
+  Future<void> deleteContentBlock(String id) async {}
+
+  @override
+  Future<void> reorderContentBlocks(
+    String lessonId,
+    List<({String blockId, int sortOrder})> blocks,
+  ) async {}
+
+  @override
   Future<ContentLesson> getLesson(String id) async => const ContentLesson(
     id: 'draft-lesson',
     educationModuleId: 'draft-module',
     title: 'Taslak Ders',
     description: 'Ders açıklaması',
-    content: 'Ders içeriği',
     estimatedDurationMinutes: 5,
     order: 1,
     isPublished: false,
     quizId: 'quiz-id',
+    blocks: [
+      ContentLessonContentBlock(
+        id: 'text-block-id',
+        lessonId: 'draft-lesson',
+        blockType: ContentBlockType.text,
+        textContent: 'Düzenlenecek metin',
+        sortOrder: 0,
+      ),
+    ],
   );
 
   @override

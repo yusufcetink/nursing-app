@@ -1,10 +1,15 @@
 using AsliApp.Domain.Education;
+using AsliApp.Api.Storage;
 using AsliApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AsliApp.Api.Education;
 
-public sealed class EducationService(AppDbContext dbContext)
+public sealed class EducationService(
+    AppDbContext dbContext,
+    IFileStorage fileStorage,
+    IOptions<FileStorageOptions> fileStorageOptions)
 {
     public async Task<IReadOnlyList<EducationModuleSummaryResponse>> GetModulesAsync(
         CancellationToken cancellationToken)
@@ -66,12 +71,28 @@ public sealed class EducationService(AppDbContext dbContext)
                 lesson.EducationModuleId,
                 lesson.Title,
                 lesson.Description,
-                lesson.Content,
                 lesson.EstimatedDurationMinutes,
                 lesson.Order,
                 lesson.Quiz != null && lesson.Quiz.IsPublished && !lesson.Quiz.IsDeleted
                     ? lesson.Quiz.Id
                     : null,
+                lesson.ContentBlocks
+                    .OrderBy(block => block.SortOrder)
+                    .Select(block => new LessonContentBlockResponse(
+                        block.Id,
+                        block.LessonId,
+                        block.BlockType.ToString(),
+                        block.TextContent,
+                        block.Media == null ? null : new LessonMediaResponse(
+                            block.Media.Id,
+                            block.Media.LessonId,
+                            block.Media.OriginalFileName,
+                            block.Media.ContentType,
+                            block.Media.MediaType.ToString(),
+                            block.Media.SizeBytes,
+                            block.Media.SortOrder),
+                        block.SortOrder))
+                    .ToList(),
                 lesson.UpdatedAtUtc))
             .SingleOrDefaultAsync(cancellationToken);
     }
@@ -383,13 +404,354 @@ public sealed class EducationService(AppDbContext dbContext)
                 lesson.EducationModuleId,
                 lesson.Title,
                 lesson.Description,
-                lesson.Content,
                 lesson.EstimatedDurationMinutes,
                 lesson.Order,
                 lesson.IsPublished,
                 lesson.Quiz == null || lesson.Quiz.IsDeleted ? null : lesson.Quiz.Id,
+                lesson.ContentBlocks
+                    .OrderBy(block => block.SortOrder)
+                    .Select(block => new LessonContentBlockResponse(
+                        block.Id,
+                        block.LessonId,
+                        block.BlockType.ToString(),
+                        block.TextContent,
+                        block.Media == null ? null : new LessonMediaResponse(
+                            block.Media.Id,
+                            block.Media.LessonId,
+                            block.Media.OriginalFileName,
+                            block.Media.ContentType,
+                            block.Media.MediaType.ToString(),
+                            block.Media.SizeBytes,
+                            block.Media.SortOrder),
+                        block.SortOrder))
+                    .ToList(),
                 lesson.UpdatedAtUtc))
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<LessonMediaUploadOutcome> UploadLessonMediaAsync(
+        Guid lessonId,
+        string originalFileName,
+        string contentType,
+        long sizeBytes,
+        int sortOrder,
+        Stream content,
+        CancellationToken cancellationToken)
+    {
+        var lessonExists = await dbContext.Lessons.AnyAsync(
+            lesson => lesson.Id == lessonId && !lesson.IsDeleted,
+            cancellationToken);
+        if (!lessonExists)
+        {
+            return LessonMediaUploadOutcome.NotFound;
+        }
+
+        var safeOriginalFileName = Path.GetFileName(originalFileName).Trim();
+        var extension = Path.GetExtension(safeOriginalFileName).ToLowerInvariant();
+        var normalizedContentType = contentType.Split(';', 2)[0].Trim().ToLowerInvariant();
+        if (safeOriginalFileName.Length is 0 or > 255 ||
+            !TryGetMediaDetails(
+                extension,
+                normalizedContentType,
+                out var mediaType,
+                out var storageFolder))
+        {
+            return LessonMediaUploadOutcome.InvalidType;
+        }
+
+        if (sizeBytes <= 0 || sizeBytes > fileStorageOptions.Value.MaxFileSizeBytes)
+        {
+            return LessonMediaUploadOutcome.InvalidSize;
+        }
+
+        var media = new LessonMedia
+        {
+            Id = Guid.NewGuid(),
+            LessonId = lessonId,
+            OriginalFileName = safeOriginalFileName,
+            StorageKey = $"{storageFolder}/{Guid.NewGuid():N}{extension}",
+            ContentType = normalizedContentType,
+            MediaType = mediaType,
+            SizeBytes = sizeBytes,
+            SortOrder = sortOrder,
+        };
+
+        await fileStorage.WriteAsync(media.StorageKey, content, cancellationToken);
+        try
+        {
+            dbContext.LessonMedia.Add(media);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            await fileStorage.DeleteAsync(media.StorageKey, CancellationToken.None);
+            throw;
+        }
+
+        return LessonMediaUploadOutcome.Success(ToResponse(media));
+    }
+
+    public async Task<LessonMediaFile?> GetLessonMediaAsync(
+        Guid lessonId,
+        Guid mediaId,
+        bool allowUnpublished,
+        CancellationToken cancellationToken)
+    {
+        var media = await dbContext.LessonMedia
+            .AsNoTracking()
+            .Where(candidate =>
+                candidate.Id == mediaId &&
+                candidate.LessonId == lessonId &&
+                (allowUnpublished ||
+                    (candidate.Lesson.IsPublished &&
+                        candidate.Lesson.EducationModule.IsPublished)))
+            .Select(candidate => new
+            {
+                Response = new LessonMediaResponse(
+                    candidate.Id,
+                    candidate.LessonId,
+                    candidate.OriginalFileName,
+                    candidate.ContentType,
+                    candidate.MediaType.ToString(),
+                    candidate.SizeBytes,
+                    candidate.SortOrder),
+                candidate.StorageKey,
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (media is null)
+        {
+            return null;
+        }
+
+        var stream = await fileStorage.OpenReadAsync(media.StorageKey, cancellationToken);
+        return stream is null ? null : new LessonMediaFile(media.Response, stream);
+    }
+
+    public async Task<bool> DeleteLessonMediaAsync(
+        Guid lessonId,
+        Guid mediaId,
+        CancellationToken cancellationToken)
+    {
+        var media = await dbContext.LessonMedia.SingleOrDefaultAsync(
+            candidate => candidate.Id == mediaId && candidate.LessonId == lessonId,
+            cancellationToken);
+        if (media is null)
+        {
+            return false;
+        }
+
+        if (await dbContext.LessonContentBlocks.AnyAsync(
+                block => block.MediaId == mediaId,
+                cancellationToken))
+        {
+            return false;
+        }
+
+        await fileStorage.DeleteAsync(media.StorageKey, cancellationToken);
+        dbContext.LessonMedia.Remove(media);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private static LessonMediaResponse ToResponse(LessonMedia media) => new(
+        media.Id,
+        media.LessonId,
+        media.OriginalFileName,
+        media.ContentType,
+        media.MediaType.ToString(),
+        media.SizeBytes,
+        media.SortOrder);
+
+    private static bool TryGetMediaDetails(
+        string extension,
+        string contentType,
+        out LessonMediaType mediaType,
+        out string storageFolder)
+    {
+        var isImage = (extension, contentType) switch
+        {
+            (".jpg", "image/jpeg") => true,
+            (".jpeg", "image/jpeg") => true,
+            (".png", "image/png") => true,
+            (".webp", "image/webp") => true,
+            _ => false,
+        };
+        if (isImage)
+        {
+            mediaType = LessonMediaType.Image;
+            storageFolder = "images";
+            return true;
+        }
+
+        if (extension == ".mp4" && contentType == "video/mp4")
+        {
+            mediaType = LessonMediaType.Video;
+            storageFolder = "videos";
+            return true;
+        }
+
+        mediaType = default;
+        storageFolder = string.Empty;
+        return false;
+    }
+
+    public async Task<LessonContentBlockMutationOutcome> CreateContentBlockAsync(
+        Guid lessonId,
+        LessonContentBlockWriteRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!await dbContext.Lessons.AnyAsync(
+                lesson => lesson.Id == lessonId && !lesson.IsDeleted,
+                cancellationToken))
+        {
+            return LessonContentBlockMutationOutcome.NotFound;
+        }
+
+        var validation = await ValidateBlockAsync(
+            lessonId,
+            null,
+            request,
+            cancellationToken);
+        if (validation is null) return LessonContentBlockMutationOutcome.Invalid;
+
+        var block = new LessonContentBlock
+        {
+            Id = Guid.NewGuid(),
+            LessonId = lessonId,
+            BlockType = validation.Value.BlockType,
+            TextContent = validation.Value.TextContent,
+            MediaId = validation.Value.MediaId,
+            SortOrder = request.SortOrder,
+        };
+        dbContext.LessonContentBlocks.Add(block);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return LessonContentBlockMutationOutcome.Success(block.Id);
+    }
+
+    public async Task<LessonContentBlockMutationStatus> UpdateContentBlockAsync(
+        Guid id,
+        LessonContentBlockWriteRequest request,
+        CancellationToken cancellationToken)
+    {
+        var block = await dbContext.LessonContentBlocks.SingleOrDefaultAsync(
+            candidate => candidate.Id == id,
+            cancellationToken);
+        if (block is null) return LessonContentBlockMutationStatus.NotFound;
+
+        var validation = await ValidateBlockAsync(
+            block.LessonId,
+            id,
+            request,
+            cancellationToken);
+        if (validation is null) return LessonContentBlockMutationStatus.Invalid;
+
+        block.BlockType = validation.Value.BlockType;
+        block.TextContent = validation.Value.TextContent;
+        block.MediaId = validation.Value.MediaId;
+        block.SortOrder = request.SortOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return LessonContentBlockMutationStatus.Success;
+    }
+
+    public async Task<bool> DeleteContentBlockAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var block = await dbContext.LessonContentBlocks
+            .Include(candidate => candidate.Media)
+            .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+        if (block is null) return false;
+
+        var media = block.Media;
+        dbContext.LessonContentBlocks.Remove(block);
+        var removeMedia = media is not null && !await dbContext.LessonContentBlocks.AnyAsync(
+                candidate => candidate.Id != id && candidate.MediaId == media.Id,
+                cancellationToken);
+        if (removeMedia)
+        {
+            dbContext.LessonMedia.Remove(media!);
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        if (removeMedia)
+        {
+            await fileStorage.DeleteAsync(media!.StorageKey, cancellationToken);
+        }
+        return true;
+    }
+
+    public async Task<LessonContentBlockMutationStatus> ReorderContentBlocksAsync(
+        Guid lessonId,
+        LessonContentBlockReorderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var blocks = await dbContext.LessonContentBlocks
+            .Where(block => block.LessonId == lessonId)
+            .ToListAsync(cancellationToken);
+        if (blocks.Count == 0 ||
+            request.Blocks.Count != blocks.Count ||
+            request.Blocks.Select(item => item.BlockId).Distinct().Count() != blocks.Count ||
+            request.Blocks.Select(item => item.SortOrder).Distinct().Count() != blocks.Count ||
+            request.Blocks.Any(item => item.SortOrder < 0) ||
+            blocks.Any(block => request.Blocks.All(item => item.BlockId != block.Id)))
+        {
+            return blocks.Count == 0
+                ? LessonContentBlockMutationStatus.NotFound
+                : LessonContentBlockMutationStatus.Invalid;
+        }
+
+        var orders = request.Blocks.ToDictionary(item => item.BlockId, item => item.SortOrder);
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            blocks[index].SortOrder = -index - 1;
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        foreach (var block in blocks) block.SortOrder = orders[block.Id];
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return LessonContentBlockMutationStatus.Success;
+    }
+
+    private async Task<(LessonContentBlockType BlockType, string? TextContent, Guid? MediaId)?>
+        ValidateBlockAsync(
+            Guid lessonId,
+            Guid? blockId,
+            LessonContentBlockWriteRequest request,
+            CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<LessonContentBlockType>(
+                request.BlockType,
+                true,
+                out var blockType) ||
+            await dbContext.LessonContentBlocks.AnyAsync(
+                block => block.LessonId == lessonId &&
+                    block.Id != blockId &&
+                    block.SortOrder == request.SortOrder,
+                cancellationToken))
+        {
+            return null;
+        }
+
+        if (blockType is LessonContentBlockType.Heading or LessonContentBlockType.Text)
+        {
+            var text = request.TextContent?.Trim();
+            return string.IsNullOrWhiteSpace(text) || request.MediaId is not null
+                ? null
+                : (blockType, text, null);
+        }
+
+        if (request.MediaId is null || !string.IsNullOrWhiteSpace(request.TextContent))
+        {
+            return null;
+        }
+        var expectedMediaType = blockType == LessonContentBlockType.Image
+            ? LessonMediaType.Image
+            : LessonMediaType.Video;
+        return await dbContext.LessonMedia.AnyAsync(
+            media => media.Id == request.MediaId &&
+                media.LessonId == lessonId &&
+                media.MediaType == expectedMediaType,
+            cancellationToken)
+            ? (blockType, null, request.MediaId)
+            : null;
     }
 
     public Task<ContentQuizResponse?> GetContentQuizAsync(
@@ -480,7 +842,6 @@ public sealed class EducationService(AppDbContext dbContext)
             EducationModuleId = moduleId,
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),
-            Content = request.Content.Trim(),
             EstimatedDurationMinutes = request.EstimatedDurationMinutes,
             Order = request.Order,
             IsPublished = request.IsPublished,
@@ -502,7 +863,6 @@ public sealed class EducationService(AppDbContext dbContext)
 
         lesson.Title = request.Title.Trim();
         lesson.Description = request.Description.Trim();
-        lesson.Content = request.Content.Trim();
         lesson.EstimatedDurationMinutes = request.EstimatedDurationMinutes;
         lesson.Order = request.Order;
         lesson.IsPublished = request.IsPublished;
@@ -909,6 +1269,54 @@ public sealed record QuizSubmissionOutcome(
 }
 
 public enum QuizSubmissionStatus
+{
+    Success,
+    NotFound,
+    Invalid,
+}
+
+public sealed record LessonMediaFile(
+    LessonMediaResponse Metadata,
+    Stream Content);
+
+public sealed record LessonMediaUploadOutcome(
+    LessonMediaUploadStatus Status,
+    LessonMediaResponse? Response)
+{
+    public static LessonMediaUploadOutcome NotFound { get; } =
+        new(LessonMediaUploadStatus.NotFound, null);
+
+    public static LessonMediaUploadOutcome InvalidType { get; } =
+        new(LessonMediaUploadStatus.InvalidType, null);
+
+    public static LessonMediaUploadOutcome InvalidSize { get; } =
+        new(LessonMediaUploadStatus.InvalidSize, null);
+
+    public static LessonMediaUploadOutcome Success(LessonMediaResponse response) =>
+        new(LessonMediaUploadStatus.Success, response);
+}
+
+public enum LessonMediaUploadStatus
+{
+    Success,
+    NotFound,
+    InvalidType,
+    InvalidSize,
+}
+
+public sealed record LessonContentBlockMutationOutcome(
+    LessonContentBlockMutationStatus Status,
+    Guid? Id)
+{
+    public static LessonContentBlockMutationOutcome NotFound { get; } =
+        new(LessonContentBlockMutationStatus.NotFound, null);
+    public static LessonContentBlockMutationOutcome Invalid { get; } =
+        new(LessonContentBlockMutationStatus.Invalid, null);
+    public static LessonContentBlockMutationOutcome Success(Guid id) =>
+        new(LessonContentBlockMutationStatus.Success, id);
+}
+
+public enum LessonContentBlockMutationStatus
 {
     Success,
     NotFound,

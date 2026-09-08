@@ -4,6 +4,7 @@ using AsliApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AsliApp.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907200134_GeneralizeLessonMedia")]
+    partial class GeneralizeLessonMedia
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -69,6 +72,10 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("datetimeoffset");
 
@@ -108,39 +115,6 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                     b.HasIndex("EducationModuleId", "Order");
 
                     b.ToTable("Lessons");
-                });
-
-            modelBuilder.Entity("AsliApp.Domain.Education.LessonContentBlock", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BlockType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<Guid>("LessonId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("MediaId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TextContent")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MediaId");
-
-                    b.HasIndex("LessonId", "SortOrder")
-                        .IsUnique();
-
-                    b.ToTable("LessonContentBlocks");
                 });
 
             modelBuilder.Entity("AsliApp.Domain.Education.LessonMedia", b =>
@@ -691,24 +665,6 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                     b.Navigation("EducationModule");
                 });
 
-            modelBuilder.Entity("AsliApp.Domain.Education.LessonContentBlock", b =>
-                {
-                    b.HasOne("AsliApp.Domain.Education.Lesson", "Lesson")
-                        .WithMany("ContentBlocks")
-                        .HasForeignKey("LessonId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("AsliApp.Domain.Education.LessonMedia", "Media")
-                        .WithMany("ContentBlocks")
-                        .HasForeignKey("MediaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Lesson");
-
-                    b.Navigation("Media");
-                });
-
             modelBuilder.Entity("AsliApp.Domain.Education.LessonMedia", b =>
                 {
                     b.HasOne("AsliApp.Domain.Education.Lesson", "Lesson")
@@ -887,18 +843,11 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("AsliApp.Domain.Education.Lesson", b =>
                 {
-                    b.Navigation("ContentBlocks");
-
                     b.Navigation("Media");
 
                     b.Navigation("ProgressEntries");
 
                     b.Navigation("Quiz");
-                });
-
-            modelBuilder.Entity("AsliApp.Domain.Education.LessonMedia", b =>
-                {
-                    b.Navigation("ContentBlocks");
                 });
 
             modelBuilder.Entity("AsliApp.Domain.Education.Quiz", b =>

@@ -3,14 +3,30 @@ using System.Text.Json.Serialization;
 using AsliApp.Api.Authentication;
 using AsliApp.Api.Email;
 using AsliApp.Api.Education;
+using AsliApp.Api.Storage;
 using AsliApp.Domain.Users;
 using AsliApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var fileStorageOptions = builder.Configuration
+    .GetRequiredSection(FileStorageOptions.SectionName)
+    .Get<FileStorageOptions>()
+    ?? throw new InvalidOperationException("FileStorage configuration is missing.");
+fileStorageOptions.Validate(builder.Environment.ContentRootPath);
+var maxRequestBodySize = checked(fileStorageOptions.MaxFileSizeBytes + 64 * 1024);
+builder.WebHost.ConfigureKestrel(options =>
+    options.Limits.MaxRequestBodySize = maxRequestBodySize);
+builder.Services.Configure<FormOptions>(options =>
+    options.MultipartBodyLengthLimit = maxRequestBodySize);
+builder.Services.AddSingleton(Options.Create(fileStorageOptions));
+builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>

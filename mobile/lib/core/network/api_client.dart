@@ -10,7 +10,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 });
 
 final class ApiClient {
-  ApiClient({Dio? dio, TokenStorage? tokenStorage})
+  ApiClient({Dio? dio, this.tokenStorage})
     : dio =
           dio ??
           Dio(
@@ -21,12 +21,13 @@ final class ApiClient {
               sendTimeout: const Duration(seconds: 15),
             ),
           ) {
-    if (tokenStorage != null) {
+    final configuredTokenStorage = tokenStorage;
+    if (configuredTokenStorage != null) {
       this.dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) async {
             if (!options.headers.containsKey('Authorization')) {
-              final token = await tokenStorage.read();
+              final token = await configuredTokenStorage.read();
               if (token != null && token.trim().isNotEmpty) {
                 options.headers['Authorization'] = 'Bearer $token';
               }
@@ -39,6 +40,14 @@ final class ApiClient {
   }
 
   final Dio dio;
+  final TokenStorage? tokenStorage;
+
+  Future<Map<String, String>> authorizationHeaders() async {
+    final token = await tokenStorage?.read();
+    return token == null || token.trim().isEmpty
+        ? const {}
+        : {'Authorization': 'Bearer $token'};
+  }
 
   void close() {
     dio.close(force: true);

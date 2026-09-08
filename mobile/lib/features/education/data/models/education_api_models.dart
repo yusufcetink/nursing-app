@@ -110,7 +110,7 @@ final class LessonSummaryResponse {
     description: description,
     estimatedDurationMinutes: estimatedDurationMinutes,
     order: order,
-    sections: const [],
+    blocks: const [],
   );
 }
 
@@ -120,10 +120,10 @@ final class LessonResponse {
     required this.educationModuleId,
     required this.title,
     required this.description,
-    required this.content,
     required this.estimatedDurationMinutes,
     required this.order,
     required this.quizId,
+    required this.blocks,
   });
 
   factory LessonResponse.fromJson(Map<String, dynamic> json) {
@@ -132,10 +132,16 @@ final class LessonResponse {
       educationModuleId: json['educationModuleId'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
-      content: json['content'] as String,
       estimatedDurationMinutes: json['estimatedDurationMinutes'] as int,
       order: json['order'] as int,
       quizId: json['quizId'] as String?,
+      blocks: (json['blocks'] as List<dynamic>? ?? const [])
+          .map(
+            (item) => LessonContentBlockResponse.fromJson(
+              item as Map<String, dynamic>,
+            ).toDomain(),
+          )
+          .toList(growable: false),
     );
   }
 
@@ -143,10 +149,10 @@ final class LessonResponse {
   final String educationModuleId;
   final String title;
   final String description;
-  final String content;
   final int estimatedDurationMinutes;
   final int order;
   final String? quizId;
+  final List<LessonContentBlock> blocks;
 
   Lesson toDomain() => Lesson(
     id: id,
@@ -155,9 +161,98 @@ final class LessonResponse {
     description: description,
     estimatedDurationMinutes: estimatedDurationMinutes,
     order: order,
-    sections: content.trim().isEmpty
-        ? const []
-        : [LessonSection(title: 'Ders İçeriği', content: content)],
+    blocks: blocks,
     quizId: quizId,
   );
+}
+
+final class LessonContentBlockResponse {
+  const LessonContentBlockResponse({
+    required this.id,
+    required this.lessonId,
+    required this.blockType,
+    required this.sortOrder,
+    this.textContent,
+    this.media,
+  });
+
+  factory LessonContentBlockResponse.fromJson(Map<String, dynamic> json) =>
+      LessonContentBlockResponse(
+        id: json['id'] as String,
+        lessonId: json['lessonId'] as String,
+        blockType: LessonContentBlockType.values.firstWhere(
+          (type) => type.name == (json['blockType'] as String).toLowerCase(),
+        ),
+        textContent: json['textContent'] as String?,
+        media: json['media'] == null
+            ? null
+            : LessonMediaResponse.fromJson(
+                json['media'] as Map<String, dynamic>,
+              ).toDomain(),
+        sortOrder: json['sortOrder'] as int,
+      );
+
+  final String id;
+  final String lessonId;
+  final LessonContentBlockType blockType;
+  final String? textContent;
+  final LessonMedia? media;
+  final int sortOrder;
+
+  LessonContentBlock toDomain() => LessonContentBlock(
+    id: id,
+    lessonId: lessonId,
+    blockType: blockType,
+    textContent: textContent,
+    media: media,
+    sortOrder: sortOrder,
+  );
+}
+
+final class LessonMediaResponse {
+  const LessonMediaResponse({
+    required this.id,
+    required this.lessonId,
+    required this.originalFileName,
+    required this.contentType,
+    required this.mediaType,
+    required this.sizeBytes,
+    required this.sortOrder,
+  });
+
+  factory LessonMediaResponse.fromJson(Map<String, dynamic> json) =>
+      LessonMediaResponse(
+        id: json['id'] as String,
+        lessonId: json['lessonId'] as String,
+        originalFileName: json['originalFileName'] as String,
+        contentType: json['contentType'] as String,
+        mediaType: _mediaTypeFromJson(json['mediaType'] as String),
+        sizeBytes: json['sizeBytes'] as int,
+        sortOrder: json['sortOrder'] as int,
+      );
+
+  final String id;
+  final String lessonId;
+  final String originalFileName;
+  final String contentType;
+  final LessonMediaType mediaType;
+  final int sizeBytes;
+  final int sortOrder;
+
+  LessonMedia toDomain() => LessonMedia(
+    id: id,
+    lessonId: lessonId,
+    originalFileName: originalFileName,
+    contentType: contentType,
+    mediaType: mediaType,
+    sizeBytes: sizeBytes,
+    sortOrder: sortOrder,
+  );
+
+  static LessonMediaType _mediaTypeFromJson(String value) =>
+      switch (value.toLowerCase()) {
+        'image' => LessonMediaType.image,
+        'video' => LessonMediaType.video,
+        _ => throw FormatException('Unsupported lesson media type: $value'),
+      };
 }

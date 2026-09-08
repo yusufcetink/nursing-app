@@ -31,6 +31,30 @@ abstract interface class ContentManagementRepository {
 
   Future<void> deleteLesson(String id);
 
+  Future<ContentLessonMedia> uploadLessonMedia({
+    required String lessonId,
+    required String filePath,
+    required String fileName,
+    required int sortOrder,
+    void Function(int sent, int total)? onSendProgress,
+  });
+
+  Future<void> deleteLessonMedia(String lessonId, String mediaId);
+
+  Future<String> createContentBlock(
+    String lessonId,
+    ContentBlockWriteInput input,
+  );
+
+  Future<void> updateContentBlock(String id, ContentBlockWriteInput input);
+
+  Future<void> deleteContentBlock(String id);
+
+  Future<void> reorderContentBlocks(
+    String lessonId,
+    List<({String blockId, int sortOrder})> blocks,
+  );
+
   Future<String> createQuiz(String lessonId, QuizWriteInput input);
 
   Future<void> updateQuiz(String id, QuizWriteInput input);
@@ -188,6 +212,70 @@ final class DioContentManagementRepository
   Future<void> deleteLesson(String id) => _delete('/api/education/lessons/$id');
 
   @override
+  Future<ContentLessonMedia> uploadLessonMedia({
+    required String lessonId,
+    required String filePath,
+    required String fileName,
+    required int sortOrder,
+    void Function(int sent, int total)? onSendProgress,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post<Map<String, dynamic>>(
+        '/api/education/lessons/$lessonId/media',
+        data: FormData.fromMap({
+          'file': await MultipartFile.fromFile(
+            filePath,
+            filename: fileName,
+            contentType: _mediaContentType(fileName),
+          ),
+          'sortOrder': sortOrder,
+        }),
+        options: Options(sendTimeout: const Duration(minutes: 10)),
+        onSendProgress: onSendProgress,
+      );
+      final data = response.data;
+      if (data == null) throw const FormatException();
+      return ContentLessonMediaResponse.fromJson(data).toDomain();
+    } on DioException catch (error) {
+      throw mapNetworkException(error);
+    } on Object {
+      throw const NetworkException(
+        'Medya yüklenemedi. Dosyayı kontrol edip tekrar deneyin.',
+      );
+    }
+  }
+
+  @override
+  Future<void> deleteLessonMedia(String lessonId, String mediaId) =>
+      _delete('/api/education/lessons/$lessonId/media/$mediaId');
+
+  @override
+  Future<String> createContentBlock(
+    String lessonId,
+    ContentBlockWriteInput input,
+  ) => _create('/api/education/lessons/$lessonId/blocks', _blockJson(input));
+
+  @override
+  Future<void> updateContentBlock(String id, ContentBlockWriteInput input) =>
+      _update('/api/education/blocks/$id', _blockJson(input));
+
+  @override
+  Future<void> deleteContentBlock(String id) =>
+      _delete('/api/education/blocks/$id');
+
+  @override
+  Future<void> reorderContentBlocks(
+    String lessonId,
+    List<({String blockId, int sortOrder})> blocks,
+  ) => _update('/api/education/lessons/$lessonId/blocks/reorder', {
+    'blocks': blocks
+        .map(
+          (block) => {'blockId': block.blockId, 'sortOrder': block.sortOrder},
+        )
+        .toList(growable: false),
+  });
+
+  @override
   Future<String> createQuiz(String lessonId, QuizWriteInput input) =>
       _create('/api/education/lessons/$lessonId/quiz', _quizJson(input));
 
@@ -221,7 +309,7 @@ final class DioContentManagementRepository
   Future<void> updateOption(String id, QuizOptionWriteInput input) =>
       _update('/api/education/options/$id', _optionJson(input));
 
-  Future<String> _create(String path, Map<String, Object> data) async {
+  Future<String> _create(String path, Map<String, Object?> data) async {
     try {
       final response = await _apiClient.dio.post<Map<String, dynamic>>(
         path,
@@ -237,7 +325,7 @@ final class DioContentManagementRepository
     }
   }
 
-  Future<void> _update(String path, Map<String, Object> data) async {
+  Future<void> _update(String path, Map<String, Object?> data) async {
     try {
       await _apiClient.dio.put<void>(path, data: data);
     } on DioException catch (error) {
@@ -263,7 +351,6 @@ final class DioContentManagementRepository
   static Map<String, Object> _lessonJson(LessonWriteInput input) => {
     'title': input.title,
     'description': input.description,
-    'content': input.content,
     'estimatedDurationMinutes': input.estimatedDurationMinutes,
     'order': input.order,
     'isPublished': input.isPublished,
@@ -284,4 +371,27 @@ final class DioContentManagementRepository
     'isCorrect': input.isCorrect,
     'order': input.order,
   };
+
+  static Map<String, Object?> _blockJson(ContentBlockWriteInput input) => {
+    'blockType': switch (input.blockType) {
+      ContentBlockType.heading => 'Heading',
+      ContentBlockType.text => 'Text',
+      ContentBlockType.image => 'Image',
+      ContentBlockType.video => 'Video',
+    },
+    'textContent': input.textContent,
+    'mediaId': input.mediaId,
+    'sortOrder': input.sortOrder,
+  };
+
+  static DioMediaType _mediaContentType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    return switch (extension) {
+      'jpg' || 'jpeg' => DioMediaType('image', 'jpeg'),
+      'png' => DioMediaType('image', 'png'),
+      'webp' => DioMediaType('image', 'webp'),
+      'mp4' => DioMediaType('video', 'mp4'),
+      _ => throw const FormatException('Unsupported lesson media type.'),
+    };
+  }
 }

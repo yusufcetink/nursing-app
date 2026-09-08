@@ -41,12 +41,21 @@ public static class DevelopmentEducationSeeder
                     Id = LessonId,
                     Title = "Hasta Kimliğini Doğrulama",
                     Description = "Güvenli bakım öncesinde doğru hastayı doğrulamanın temelleri.",
-                    Content = "Her işlem öncesinde kurum politikasına uygun en az iki hasta tanımlayıcısı kullanılır. Oda veya yatak numarası tek başına hasta tanımlayıcısı değildir. Hasta bilgileri işlem ve kayıtlarla karşılaştırılır.",
                     EstimatedDurationMinutes = 5,
                     Order = 1,
                     IsPublished = true,
                     CreatedAtUtc = now,
                     UpdatedAtUtc = now,
+                    ContentBlocks =
+                    [
+                        new LessonContentBlock
+                        {
+                            Id = new Guid("c818c702-0633-4cc1-aed0-593c6346d55d"),
+                            BlockType = LessonContentBlockType.Text,
+                            TextContent = "Her işlem öncesinde kurum politikasına uygun en az iki hasta tanımlayıcısı kullanılır. Oda veya yatak numarası tek başına hasta tanımlayıcısı değildir. Hasta bilgileri işlem ve kayıtlarla karşılaştırılır.",
+                            SortOrder = 0,
+                        },
+                    ],
                     Quiz = new Quiz
                     {
                         Id = QuizId,

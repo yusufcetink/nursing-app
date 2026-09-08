@@ -7,6 +7,7 @@ import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/auth/domain/models/authenticated_user.dart';
 import 'package:asli_app/features/auth/domain/models/user_role.dart';
 import 'package:asli_app/features/content_management/data/content_management_repository.dart';
+import 'package:asli_app/features/content_management/presentation/pages/lesson_form_page.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
@@ -16,6 +17,29 @@ import '../../../../helpers/fake_content_management_repository.dart';
 import '../../../../helpers/fake_learning_repositories.dart';
 
 void main() {
+  testWidgets('yeni ders ekranı blok oluşturma yönlendirmesini gösterir', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          contentManagementRepositoryProvider.overrideWithValue(
+            FakeContentManagementRepository(),
+          ),
+        ],
+        child: const MaterialApp(
+          home: LessonFormPage(moduleId: 'draft-module'),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.text('İçerik blokları, ders oluşturulduktan sonra eklenebilir.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('login, şifre sıfırlama ve kayıt akışları çalışır', (
     tester,
   ) async {
@@ -255,10 +279,7 @@ void main() {
     await tester.tap(find.text('Taslak Ders'));
     await tester.pumpAndSettle();
     final manageQuizButton = find.byKey(const Key('manage_quiz_button'));
-    await tester.drag(
-      find.byType(SingleChildScrollView).last,
-      const Offset(0, -400),
-    );
+    await tester.ensureVisible(manageQuizButton);
     await tester.pumpAndSettle();
     await tester.tap(manageQuizButton);
     await tester.pumpAndSettle();

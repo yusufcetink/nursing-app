@@ -5,12 +5,14 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using AsliApp.Api.Education;
+using AsliApp.Api.Storage;
 using AsliApp.Domain.Education;
 using AsliApp.Infrastructure.Persistence;
 using AsliApp.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 
 namespace AsliApp.Domain.Tests.Education;
 
@@ -74,10 +76,10 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
                 new EducationModuleWriteRequest("Denied", "Denied", 10, false)),
             client.PostAsJsonAsync(
                 $"/api/education/modules/{id}/lessons",
-                new LessonWriteRequest("Denied", "Denied", "Denied", 1, 0, false)),
+                new LessonWriteRequest("Denied", "Denied", 1, 0, false)),
             client.PutAsJsonAsync(
                 $"/api/education/lessons/{id}",
-                new LessonWriteRequest("Denied", "Denied", "Denied", 1, 0, false)),
+                new LessonWriteRequest("Denied", "Denied", 1, 0, false)),
             client.PostAsJsonAsync(
                 $"/api/education/lessons/{id}/quiz",
                 new QuizWriteRequest("Denied", false)),
@@ -100,6 +102,7 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             client.DeleteAsync($"/api/education/lessons/{id}"),
             client.DeleteAsync($"/api/education/quizzes/{id}"),
             client.DeleteAsync($"/api/education/questions/{id}"),
+            client.DeleteAsync($"/api/education/lessons/{id}/media/{id}"),
         };
 
         foreach (var request in requests)
@@ -113,6 +116,309 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             HttpStatusCode.Forbidden,
             (await client.GetAsync($"/api/education/content/lessons/{Guid.NewGuid()}/quiz"))
                 .StatusCode);
+
+        using var upload = CreateMediaUpload([1, 2, 3], "denied.mp4", "video/mp4", 0);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.PostAsync(
+                $"/api/education/lessons/{id}/media",
+                upload)).StatusCode);
+    }
+
+    [Fact]
+    public async Task MediaUploadPersistsMetadataStreamsRangesAndDeletesFile()
+    {
+        var content = await SeedContentAsync();
+        using var admin = CreateClient("Admin");
+        using var student = CreateClient("Student");
+        byte[] videoBytes = [0, 1, 2, 3, 4, 5, 6, 7];
+
+        using var upload = CreateMediaUpload(
+            videoBytes,
+            "..\\training.mp4",
+            "video/mp4",
+            3);
+        var uploadResponse = await admin.PostAsync(
+            $"/api/education/lessons/{content.LessonId}/media",
+            upload);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
+        var uploaded = await uploadResponse.Content
+            .ReadFromJsonAsync<LessonMediaResponse>();
+        Assert.NotNull(uploaded);
+        Assert.Equal("training.mp4", uploaded.OriginalFileName);
+        Assert.Equal(nameof(LessonMediaType.Video), uploaded.MediaType);
+        Assert.Equal(videoBytes.Length, uploaded.SizeBytes);
+        Assert.Equal(3, uploaded.SortOrder);
+        var blockResponse = await admin.PostAsJsonAsync(
+            $"/api/education/lessons/{content.LessonId}/blocks",
+            new LessonContentBlockWriteRequest("Video", null, uploaded.Id, 0));
+        Assert.Equal(HttpStatusCode.Created, blockResponse.StatusCode);
+        var createdBlock = await blockResponse.Content
+            .ReadFromJsonAsync<ContentMutationResponse>();
+        Assert.NotNull(createdBlock);
+
+        string storageKey;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var metadata = await dbContext.LessonMedia.SingleAsync(
+                video => video.Id == uploaded.Id);
+            storageKey = metadata.StorageKey;
+            Assert.False(Path.IsPathFullyQualified(storageKey));
+            Assert.StartsWith("videos/", storageKey, StringComparison.Ordinal);
+            Assert.DoesNotContain("..", storageKey, StringComparison.Ordinal);
+        }
+
+        var storedPath = Path.Combine(
+            _factory.StorageRoot,
+            storageKey.Replace('/', Path.DirectorySeparatorChar));
+        Assert.True(File.Exists(storedPath));
+        Assert.Equal(videoBytes, await File.ReadAllBytesAsync(storedPath));
+
+        var lesson = await student.GetFromJsonAsync<LessonResponse>(
+            $"/api/education/lessons/{content.LessonId}");
+        Assert.NotNull(lesson);
+        Assert.Contains(
+            lesson.Blocks,
+            block => block.Media?.Id == uploaded.Id && block.BlockType == "Video");
+
+        using var rangeRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/education/lessons/{content.LessonId}/media/{uploaded.Id}");
+        rangeRequest.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(2, 5);
+        var rangeResponse = await student.SendAsync(rangeRequest);
+        Assert.Equal(HttpStatusCode.PartialContent, rangeResponse.StatusCode);
+        Assert.Equal("bytes", rangeResponse.Content.Headers.ContentRange?.Unit);
+        Assert.Equal([2, 3, 4, 5], await rangeResponse.Content.ReadAsByteArrayAsync());
+
+        using var invalidUpload = CreateMediaUpload(
+            [1, 2, 3],
+            "invalid.mov",
+            "video/quicktime",
+            0);
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (await admin.PostAsync(
+                $"/api/education/lessons/{content.LessonId}/media",
+                invalidUpload)).StatusCode);
+
+        using var oversizedUpload = CreateMediaUpload(
+            new byte[1025],
+            "oversized.mp4",
+            "video/mp4",
+            0);
+        Assert.Equal(
+            HttpStatusCode.RequestEntityTooLarge,
+            (await admin.PostAsync(
+                $"/api/education/lessons/{content.LessonId}/media",
+                oversizedUpload)).StatusCode);
+
+        using var draftUpload = CreateMediaUpload(
+            [7, 8, 9],
+            "draft.mp4",
+            "video/mp4",
+            0);
+        var draftUploadResponse = await admin.PostAsync(
+            $"/api/education/lessons/{content.DraftLessonId}/media",
+            draftUpload);
+        Assert.Equal(HttpStatusCode.Created, draftUploadResponse.StatusCode);
+        var draftVideo = await draftUploadResponse.Content
+            .ReadFromJsonAsync<LessonMediaResponse>();
+        Assert.NotNull(draftVideo);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await student.GetAsync(
+                $"/api/education/lessons/{content.DraftLessonId}/media/{draftVideo.Id}"))
+                .StatusCode);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await student.DeleteAsync(
+                $"/api/education/lessons/{content.LessonId}/media/{uploaded.Id}"))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/education/blocks/{createdBlock.Id}"))
+                .StatusCode);
+        Assert.False(File.Exists(storedPath));
+        using (var scope = _factory.Services.CreateScope())
+        {
+            Assert.False(await scope.ServiceProvider
+                .GetRequiredService<AppDbContext>()
+                .LessonMedia
+                .AnyAsync(video => video.Id == uploaded.Id));
+        }
+    }
+
+    [Theory]
+    [InlineData("photo.jpg", "image/jpeg")]
+    [InlineData("photo.jpeg", "image/jpeg")]
+    [InlineData("diagram.png", "image/png")]
+    [InlineData("illustration.webp", "image/webp")]
+    public async Task SupportedImagesUseGenericMediaFlow(
+        string fileName,
+        string contentType)
+    {
+        var content = await SeedContentAsync();
+        using var admin = CreateClient("Admin");
+        using var student = CreateClient("Student");
+        byte[] imageBytes = [10, 20, 30, 40];
+
+        using var upload = CreateMediaUpload(
+            imageBytes,
+            fileName,
+            contentType,
+            2);
+        var uploadResponse = await admin.PostAsync(
+            $"/api/education/lessons/{content.LessonId}/media",
+            upload);
+        Assert.Equal(HttpStatusCode.Created, uploadResponse.StatusCode);
+        var uploaded = await uploadResponse.Content
+            .ReadFromJsonAsync<LessonMediaResponse>();
+        Assert.NotNull(uploaded);
+        Assert.Equal(nameof(LessonMediaType.Image), uploaded.MediaType);
+        Assert.Equal(contentType, uploaded.ContentType);
+        var blockResponse = await admin.PostAsJsonAsync(
+            $"/api/education/lessons/{content.LessonId}/blocks",
+            new LessonContentBlockWriteRequest("Image", null, uploaded.Id, 0));
+        Assert.Equal(HttpStatusCode.Created, blockResponse.StatusCode);
+        var createdBlock = await blockResponse.Content
+            .ReadFromJsonAsync<ContentMutationResponse>();
+        Assert.NotNull(createdBlock);
+
+        string storageKey;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            storageKey = await scope.ServiceProvider
+                .GetRequiredService<AppDbContext>()
+                .LessonMedia
+                .Where(media => media.Id == uploaded.Id)
+                .Select(media => media.StorageKey)
+                .SingleAsync();
+        }
+        Assert.StartsWith("images/", storageKey, StringComparison.Ordinal);
+        Assert.False(Path.IsPathFullyQualified(storageKey));
+
+        var lesson = await student.GetFromJsonAsync<LessonResponse>(
+            $"/api/education/lessons/{content.LessonId}");
+        Assert.NotNull(lesson);
+        Assert.Contains(
+            lesson.Blocks,
+            block => block.Media?.Id == uploaded.Id && block.BlockType == "Image");
+
+        var readResponse = await student.GetAsync(
+            $"/api/education/lessons/{content.LessonId}/media/{uploaded.Id}");
+        Assert.Equal(HttpStatusCode.OK, readResponse.StatusCode);
+        Assert.Equal(contentType, readResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(imageBytes, await readResponse.Content.ReadAsByteArrayAsync());
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/education/blocks/{createdBlock.Id}"))
+                .StatusCode);
+    }
+
+    [Fact]
+    public async Task ContentBlocksSupportCrudValidationAndBulkReorder()
+    {
+        var content = await SeedContentAsync();
+        using var admin = CreateClient("Admin");
+        using var student = CreateClient("Student");
+
+        var headingResponse = await admin.PostAsJsonAsync(
+            $"/api/education/lessons/{content.LessonId}/blocks",
+            new LessonContentBlockWriteRequest("Heading", "Başlık", null, 0));
+        var textResponse = await admin.PostAsJsonAsync(
+            $"/api/education/lessons/{content.LessonId}/blocks",
+            new LessonContentBlockWriteRequest("Text", "Metin", null, 1));
+        Assert.Equal(HttpStatusCode.Created, headingResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, textResponse.StatusCode);
+        var heading = await headingResponse.Content.ReadFromJsonAsync<ContentMutationResponse>();
+        var text = await textResponse.Content.ReadFromJsonAsync<ContentMutationResponse>();
+        Assert.NotNull(heading);
+        Assert.NotNull(text);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await student.PostAsJsonAsync(
+                $"/api/education/lessons/{content.LessonId}/blocks",
+                new LessonContentBlockWriteRequest("Text", "Yetkisiz", null, 2)))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await student.PutAsJsonAsync(
+                $"/api/education/blocks/{heading.Id}",
+                new LessonContentBlockWriteRequest("Heading", "Yetkisiz", null, 0)))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await student.PutAsJsonAsync(
+                $"/api/education/lessons/{content.LessonId}/blocks/reorder",
+                new LessonContentBlockReorderRequest([
+                    new LessonContentBlockOrderRequest(text.Id, 0),
+                    new LessonContentBlockOrderRequest(heading.Id, 1),
+                ])))
+                .StatusCode);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (await admin.PostAsJsonAsync(
+                $"/api/education/lessons/{content.LessonId}/blocks",
+                new LessonContentBlockWriteRequest("Image", null, null, 2)))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.PutAsJsonAsync(
+                $"/api/education/blocks/{heading.Id}",
+                new LessonContentBlockWriteRequest("Heading", "Yeni başlık", null, 0)))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.PutAsJsonAsync(
+                $"/api/education/lessons/{content.LessonId}/blocks/reorder",
+                new LessonContentBlockReorderRequest([
+                    new LessonContentBlockOrderRequest(text.Id, 0),
+                    new LessonContentBlockOrderRequest(heading.Id, 1),
+                ])))
+                .StatusCode);
+
+        var lesson = await student.GetFromJsonAsync<LessonResponse>(
+            $"/api/education/lessons/{content.LessonId}");
+        Assert.NotNull(lesson);
+        Assert.Equal([text.Id, heading.Id], lesson.Blocks.Select(block => block.Id));
+        Assert.Equal("Yeni başlık", lesson.Blocks[1].TextContent);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await student.DeleteAsync($"/api/education/blocks/{text.Id}"))
+                .StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await admin.DeleteAsync($"/api/education/blocks/{heading.Id}"))
+                .StatusCode);
+    }
+
+    [Fact]
+    public async Task LocalFileStorageRejectsPathTraversal()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "AsliApp.StorageTest", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var storage = new LocalFileStorage(Options.Create(new FileStorageOptions
+            {
+                RootPath = root,
+                MaxFileSizeBytes = 1024,
+            }));
+            await Assert.ThrowsAsync<ArgumentException>(() => storage.WriteAsync(
+                "../escaped.mp4",
+                new MemoryStream([1, 2, 3])));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
     }
 
     [Fact]
@@ -220,7 +526,7 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
                     true))).StatusCode);
         var lessonResponse = await client.PostAsJsonAsync(
             $"/api/education/modules/{createdModule.Id}/lessons",
-            new LessonWriteRequest("Lesson", "Description", "Content", 5, 1, false));
+            new LessonWriteRequest("Lesson", "Description", 5, 1, false));
         Assert.Equal(HttpStatusCode.Created, lessonResponse.StatusCode);
         var createdLesson = await lessonResponse.Content
             .ReadFromJsonAsync<ContentMutationResponse>();
@@ -232,7 +538,6 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
                 new LessonWriteRequest(
                     "Updated lesson",
                     "Updated description",
-                    "Updated content",
                     8,
                     2,
                     true))).StatusCode);
@@ -241,6 +546,25 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             (await client.PostAsJsonAsync(
                 $"/api/education/lessons/{createdLesson.Id}/quiz",
                 new QuizWriteRequest("Draft quiz", false))).StatusCode);
+        using var videoUpload = CreateMediaUpload(
+            [0, 1, 2, 3],
+            $"{role}.mp4",
+            "video/mp4",
+            1);
+        var videoResponse = await client.PostAsync(
+            $"/api/education/lessons/{createdLesson.Id}/media",
+            videoUpload);
+        Assert.Equal(HttpStatusCode.Created, videoResponse.StatusCode);
+        var createdVideo = await videoResponse.Content
+            .ReadFromJsonAsync<LessonMediaResponse>();
+        Assert.NotNull(createdVideo);
+        var blockResponse = await client.PostAsJsonAsync(
+            $"/api/education/lessons/{createdLesson.Id}/blocks",
+            new LessonContentBlockWriteRequest("Video", null, createdVideo.Id, 0));
+        Assert.Equal(HttpStatusCode.Created, blockResponse.StatusCode);
+        var createdBlock = await blockResponse.Content
+            .ReadFromJsonAsync<ContentMutationResponse>();
+        Assert.NotNull(createdBlock);
 
         var modules = await client
             .GetFromJsonAsync<List<ContentEducationModuleSummaryResponse>>(
@@ -256,8 +580,12 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             modules,
             item => item.Id == createdModule.Id && item.Order == moduleOrder);
         Assert.Equal(2, module.Lessons.Single().Order);
-        Assert.Equal("Updated content", lesson.Content);
         Assert.NotNull(lesson.QuizId);
+        Assert.Contains(lesson.Blocks, block => block.Media?.Id == createdVideo.Id);
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await client.DeleteAsync($"/api/education/blocks/{createdBlock.Id}"))
+                .StatusCode);
     }
 
     [Theory]
@@ -474,6 +802,20 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             .SingleAsync();
     }
 
+    private static MultipartFormDataContent CreateMediaUpload(
+        byte[] content,
+        string fileName,
+        string contentType,
+        int sortOrder)
+    {
+        var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(content);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        form.Add(file, "file", fileName);
+        form.Add(new StringContent(sortOrder.ToString()), "sortOrder");
+        return form;
+    }
+
     private async Task<SeededContent> SeedContentAsync()
     {
         using var scope = _factory.Services.CreateScope();
@@ -505,7 +847,6 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             EducationModuleId = module.Id,
             Title = "Published lesson",
             Description = "Published lesson description",
-            Content = "Lesson content",
             EstimatedDurationMinutes = 10,
             Order = 1,
             IsPublished = true,
@@ -518,7 +859,6 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
             EducationModuleId = module.Id,
             Title = "Draft lesson",
             Description = "Draft lesson description",
-            Content = "Draft content",
             EstimatedDurationMinutes = 5,
             Order = 2,
             IsPublished = false,

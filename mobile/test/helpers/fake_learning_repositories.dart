@@ -20,14 +20,27 @@ final testLessons = [
     estimatedDurationMinutes: 8,
     order: 1,
     quizId: 'nursing-roles-quiz',
-    sections: [
-      LessonSection(
-        title: 'Bakım Verme Rolü',
-        content: 'Bütüncül ve güvenli bakım.',
+    blocks: [
+      LessonContentBlock(
+        id: 'block-1',
+        lessonId: 'nursing-roles',
+        blockType: LessonContentBlockType.heading,
+        textContent: 'Bakım Verme Rolü',
+        sortOrder: 0,
       ),
-      LessonSection(
-        title: 'Eğitim ve Savunuculuk',
-        content: 'Bireyin haklarını destekler.',
+      LessonContentBlock(
+        id: 'block-2',
+        lessonId: 'nursing-roles',
+        blockType: LessonContentBlockType.text,
+        textContent: 'Bütüncül ve güvenli bakım.',
+        sortOrder: 1,
+      ),
+      LessonContentBlock(
+        id: 'block-3',
+        lessonId: 'nursing-roles',
+        blockType: LessonContentBlockType.heading,
+        textContent: 'Eğitim ve Savunuculuk',
+        sortOrder: 2,
       ),
     ],
   ),
@@ -38,7 +51,7 @@ final testLessons = [
     description: 'Bakım sürecindeki etik yaklaşımlar.',
     estimatedDurationMinutes: 7,
     order: 2,
-    sections: [],
+    blocks: [],
   ),
   const Lesson(
     id: 'care-process',
@@ -47,7 +60,7 @@ final testLessons = [
     description: 'Bakım süreci adımları.',
     estimatedDurationMinutes: 10,
     order: 3,
-    sections: [],
+    blocks: [],
   ),
 ];
 
@@ -120,6 +133,8 @@ final testProfileQuizResult = ProfileQuizResult(
 );
 
 final class FakeEducationRepository implements EducationRepository {
+  int getLessonCallCount = 0;
+
   @override
   Future<EducationModule> getModule(String id) async => testModule;
 
@@ -136,8 +151,10 @@ final class FakeEducationRepository implements EducationRepository {
   ];
 
   @override
-  Future<Lesson> getLesson(String id) async =>
-      testLessons.firstWhere((lesson) => lesson.id == id);
+  Future<Lesson> getLesson(String id) async {
+    getLessonCallCount++;
+    return testLessons.firstWhere((lesson) => lesson.id == id);
+  }
 }
 
 final class FakeQuizRepository implements QuizRepository {

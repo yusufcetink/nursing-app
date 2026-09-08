@@ -173,6 +173,12 @@ public sealed class AuthEndpointsTests : IClassFixture<AuthApiFactory>
 public sealed class AuthApiFactory : WebApplicationFactory<Program>
 {
     private readonly InMemoryDatabaseRoot _databaseRoot = new();
+    private readonly string _storageRoot = Path.Combine(
+        Path.GetTempPath(),
+        "AsliApp.Tests",
+        Guid.NewGuid().ToString("N"));
+
+    public string StorageRoot => _storageRoot;
 
     public string SigningKey { get; } =
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
@@ -189,6 +195,8 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>
             "Jwt:Key",
             SigningKey);
         builder.UseSetting("Jwt:ExpirationMinutes", "15");
+        builder.UseSetting("FileStorage:RootPath", _storageRoot);
+        builder.UseSetting("FileStorage:MaxFileSizeBytes", "1024");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();
@@ -204,6 +212,15 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>
             using var scope = serviceProvider.CreateScope();
             scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
         });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (Directory.Exists(_storageRoot))
+        {
+            Directory.Delete(_storageRoot, recursive: true);
+        }
     }
 }
 

@@ -30,11 +30,28 @@ public sealed record LessonResponse(
     Guid EducationModuleId,
     string Title,
     string Description,
-    string Content,
     int EstimatedDurationMinutes,
     int Order,
     Guid? QuizId,
+    IReadOnlyList<LessonContentBlockResponse> Blocks,
     DateTimeOffset UpdatedAtUtc);
+
+public sealed record LessonMediaResponse(
+    Guid Id,
+    Guid LessonId,
+    string OriginalFileName,
+    string ContentType,
+    string MediaType,
+    long SizeBytes,
+    int SortOrder);
+
+public sealed record LessonContentBlockResponse(
+    Guid Id,
+    Guid LessonId,
+    string BlockType,
+    string? TextContent,
+    LessonMediaResponse? Media,
+    int SortOrder);
 
 public sealed record StudentQuizResponse(
     Guid Id,
@@ -140,12 +157,34 @@ public sealed record ContentLessonResponse(
     Guid EducationModuleId,
     string Title,
     string Description,
-    string Content,
     int EstimatedDurationMinutes,
     int Order,
     bool IsPublished,
     Guid? QuizId,
+    IReadOnlyList<LessonContentBlockResponse> Blocks,
     DateTimeOffset UpdatedAtUtc);
+
+public sealed class LessonMediaUploadRequest
+{
+    [Required]
+    public IFormFile? File { get; init; }
+
+    [Range(0, int.MaxValue)]
+    public int SortOrder { get; init; }
+}
+
+public sealed record LessonContentBlockWriteRequest(
+    [Required] string BlockType,
+    string? TextContent,
+    Guid? MediaId,
+    [Range(0, int.MaxValue)] int SortOrder);
+
+public sealed record LessonContentBlockReorderRequest(
+    [Required, MinLength(1)] IReadOnlyList<LessonContentBlockOrderRequest> Blocks);
+
+public sealed record LessonContentBlockOrderRequest(
+    Guid BlockId,
+    [Range(0, int.MaxValue)] int SortOrder);
 
 public sealed record ContentQuizResponse(
     Guid Id,
@@ -176,7 +215,6 @@ public sealed record EducationModuleWriteRequest(
 public sealed record LessonWriteRequest(
     [Required, MaxLength(200)] string Title,
     [Required, MaxLength(500)] string Description,
-    [Required] string Content,
     [Range(1, int.MaxValue)] int EstimatedDurationMinutes,
     [Range(0, int.MaxValue)] int Order,
     bool IsPublished);

@@ -6,7 +6,7 @@ final class Lesson {
     required this.description,
     required this.estimatedDurationMinutes,
     required this.order,
-    required this.sections,
+    required this.blocks,
     this.quizId,
   });
 
@@ -16,13 +16,48 @@ final class Lesson {
   final String description;
   final int estimatedDurationMinutes;
   final int order;
-  final List<LessonSection> sections;
+  final List<LessonContentBlock> blocks;
   final String? quizId;
 }
 
-final class LessonSection {
-  const LessonSection({required this.title, required this.content});
+final class LessonContentBlock {
+  const LessonContentBlock({
+    required this.id,
+    required this.lessonId,
+    required this.blockType,
+    required this.sortOrder,
+    this.textContent,
+    this.media,
+  });
 
-  final String title;
-  final String content;
+  final String id;
+  final String lessonId;
+  final LessonContentBlockType blockType;
+  final String? textContent;
+  final LessonMedia? media;
+  final int sortOrder;
 }
+
+enum LessonContentBlockType { heading, text, image, video }
+
+final class LessonMedia {
+  const LessonMedia({
+    required this.id,
+    required this.lessonId,
+    required this.originalFileName,
+    required this.contentType,
+    required this.mediaType,
+    required this.sizeBytes,
+    required this.sortOrder,
+  });
+
+  final String id;
+  final String lessonId;
+  final String originalFileName;
+  final String contentType;
+  final LessonMediaType mediaType;
+  final int sizeBytes;
+  final int sortOrder;
+}
+
+enum LessonMediaType { image, video }

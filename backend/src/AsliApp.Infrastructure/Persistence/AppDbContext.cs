@@ -11,6 +11,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 {
     public DbSet<EducationModule> EducationModules => Set<EducationModule>();
     public DbSet<Lesson> Lessons => Set<Lesson>();
+    public DbSet<LessonMedia> LessonMedia => Set<LessonMedia>();
+    public DbSet<LessonContentBlock> LessonContentBlocks => Set<LessonContentBlock>();
     public DbSet<Quiz> Quizzes => Set<Quiz>();
     public DbSet<QuizQuestion> QuizQuestions => Set<QuizQuestion>();
     public DbSet<QuizOption> QuizOptions => Set<QuizOption>();
@@ -70,11 +72,50 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasQueryFilter(lesson => !lesson.IsDeleted);
             entity.Property(lesson => lesson.Title).HasMaxLength(200).IsRequired();
             entity.Property(lesson => lesson.Description).HasMaxLength(500).IsRequired();
-            entity.Property(lesson => lesson.Content).IsRequired();
             entity.HasIndex(lesson => new { lesson.EducationModuleId, lesson.Order });
             entity.HasOne(lesson => lesson.EducationModule)
                 .WithMany(module => module.Lessons)
                 .HasForeignKey(lesson => lesson.EducationModuleId);
+        });
+
+        modelBuilder.Entity<LessonContentBlock>(entity =>
+        {
+            entity.HasKey(block => block.Id);
+            entity.HasQueryFilter(block => !block.Lesson.IsDeleted);
+            entity.Property(block => block.BlockType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(block => block.TextContent);
+            entity.HasIndex(block => new { block.LessonId, block.SortOrder }).IsUnique();
+            entity.HasOne(block => block.Lesson)
+                .WithMany(lesson => lesson.ContentBlocks)
+                .HasForeignKey(block => block.LessonId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(block => block.Media)
+                .WithMany(media => media.ContentBlocks)
+                .HasForeignKey(block => block.MediaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LessonMedia>(entity =>
+        {
+            entity.ToTable("LessonMedia");
+            entity.HasKey(media => media.Id);
+            entity.HasQueryFilter(media => !media.Lesson.IsDeleted);
+            entity.Property(media => media.OriginalFileName)
+                .HasMaxLength(255)
+                .IsRequired();
+            entity.Property(media => media.StorageKey)
+                .HasMaxLength(500)
+                .IsRequired();
+            entity.Property(media => media.ContentType)
+                .HasMaxLength(100)
+                .IsRequired();
+            entity.Property(media => media.MediaType).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(media => media.StorageKey).IsUnique();
+            entity.HasIndex(media => new { media.LessonId, media.SortOrder });
+            entity.HasOne(media => media.Lesson)
+                .WithMany(lesson => lesson.Media)
+                .HasForeignKey(media => media.LessonId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Quiz>(entity =>

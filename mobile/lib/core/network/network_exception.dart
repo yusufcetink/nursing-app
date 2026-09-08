@@ -18,6 +18,11 @@ NetworkException mapNetworkException(DioException error) {
   if (error.response?.statusCode == 403) {
     return const NetworkException('Bu işlem için yetkiniz bulunmuyor.');
   }
+  if (error.response?.statusCode == 413) {
+    return const NetworkException(
+      'Medya dosyası izin verilen boyut sınırını aşıyor.',
+    );
+  }
   return switch (error.type) {
     DioExceptionType.connectionTimeout ||
     DioExceptionType.sendTimeout ||

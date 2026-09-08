@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:asli_app/core/network/api_client.dart';
 import 'package:asli_app/core/storage/token_storage.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
+import 'package:asli_app/features/education/domain/models/lesson.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
 import 'package:asli_app/features/quiz/data/quiz_repository.dart';
@@ -40,6 +41,68 @@ void main() {
       'Bearer jwt-token',
     );
   });
+
+  test(
+    'published ders medya metadata bilgisini typed modele dönüştürür',
+    () async {
+      final adapter = _SequenceAdapter([
+        _JsonResponse(200, {
+          'id': 'lesson-id',
+          'educationModuleId': 'module-id',
+          'title': 'Video Ders',
+          'description': 'Açıklama',
+          'estimatedDurationMinutes': 5,
+          'order': 1,
+          'quizId': null,
+          'blocks': [
+            {
+              'id': 'image-block',
+              'lessonId': 'lesson-id',
+              'blockType': 'Image',
+              'textContent': null,
+              'media': {
+                'id': 'image-id',
+                'lessonId': 'lesson-id',
+                'originalFileName': 'lesson.png',
+                'contentType': 'image/png',
+                'mediaType': 'Image',
+                'sizeBytes': 1024,
+                'sortOrder': 0,
+              },
+              'sortOrder': 0,
+            },
+            {
+              'id': 'video-block',
+              'lessonId': 'lesson-id',
+              'blockType': 'Video',
+              'textContent': null,
+              'media': {
+                'id': 'video-id',
+                'lessonId': 'lesson-id',
+                'originalFileName': 'lesson.mp4',
+                'contentType': 'video/mp4',
+                'mediaType': 'Video',
+                'sizeBytes': 2048,
+                'sortOrder': 1,
+              },
+              'sortOrder': 1,
+            },
+          ],
+          'updatedAtUtc': '2026-09-07T10:00:00Z',
+        }),
+      ]);
+      final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+        ..httpClientAdapter = adapter;
+      final repository = DioEducationRepository(ApiClient(dio: dio));
+
+      final lesson = await repository.getLesson('lesson-id');
+
+      expect(lesson.blocks.first.media?.id, 'image-id');
+      expect(lesson.blocks.first.blockType, LessonContentBlockType.image);
+      expect(lesson.blocks.last.media?.originalFileName, 'lesson.mp4');
+      expect(lesson.blocks.last.blockType, LessonContentBlockType.video);
+    },
+  );
 
   test(
     'quiz doğru cevabı taşımadan yüklenir ve sunucuda değerlendirilir',

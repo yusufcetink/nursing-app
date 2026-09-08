@@ -1,4 +1,5 @@
 using AsliApp.Api.Education;
+using AsliApp.Domain.Education;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +34,27 @@ public sealed class EducationController(EducationService educationService) : Con
     {
         var lesson = await educationService.GetLessonAsync(id, cancellationToken);
         return lesson is null ? NotFound() : Ok(lesson);
+    }
+
+    [HttpGet("lessons/{lessonId:guid}/media/{mediaId:guid}")]
+    public async Task<IActionResult> GetLessonMedia(
+        Guid lessonId,
+        Guid mediaId,
+        CancellationToken cancellationToken)
+    {
+        var canManageContent = User.IsInRole("ContentEditor") || User.IsInRole("Admin");
+        var media = await educationService.GetLessonMediaAsync(
+            lessonId,
+            mediaId,
+            canManageContent,
+            cancellationToken);
+        return media is null
+            ? NotFound()
+            : File(
+                media.Content,
+                media.Metadata.ContentType,
+                enableRangeProcessing:
+                    media.Metadata.MediaType == nameof(LessonMediaType.Video));
     }
 
     [HttpGet("lessons/{id:guid}/quiz")]
@@ -234,6 +256,125 @@ public sealed class EducationContentController(EducationService educationService
             ? NoContent()
             : NotFound();
     }
+
+    [HttpPost("lessons/{lessonId:guid}/media")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<LessonMediaResponse>> UploadLessonMedia(
+        Guid lessonId,
+        [FromForm] LessonMediaUploadRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.File is null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "A media file is required.",
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+
+        await using var content = request.File.OpenReadStream();
+        var outcome = await educationService.UploadLessonMediaAsync(
+            lessonId,
+            request.File.FileName,
+            request.File.ContentType,
+            request.File.Length,
+            request.SortOrder,
+            content,
+            cancellationToken);
+        return outcome.Status switch
+        {
+            LessonMediaUploadStatus.Success => StatusCode(
+                StatusCodes.Status201Created,
+                outcome.Response),
+            LessonMediaUploadStatus.NotFound => NotFound(),
+            LessonMediaUploadStatus.InvalidSize => StatusCode(
+                StatusCodes.Status413PayloadTooLarge,
+                new ProblemDetails
+                {
+                    Title = "The media file is empty or exceeds the configured size limit.",
+                    Status = StatusCodes.Status413PayloadTooLarge,
+                }),
+            _ => BadRequest(new ProblemDetails
+            {
+                Title = "Only JPG, JPEG, PNG, WEBP, and MP4 files with matching content types are supported.",
+                Status = StatusCodes.Status400BadRequest,
+            }),
+        };
+    }
+
+    [HttpDelete("lessons/{lessonId:guid}/media/{mediaId:guid}")]
+    public async Task<IActionResult> DeleteLessonMedia(
+        Guid lessonId,
+        Guid mediaId,
+        CancellationToken cancellationToken)
+    {
+        return await educationService.DeleteLessonMediaAsync(
+            lessonId,
+            mediaId,
+            cancellationToken)
+            ? NoContent()
+            : NotFound();
+    }
+
+    [HttpPost("lessons/{lessonId:guid}/blocks")]
+    public async Task<ActionResult<ContentMutationResponse>> CreateContentBlock(
+        Guid lessonId,
+        LessonContentBlockWriteRequest request,
+        CancellationToken cancellationToken)
+    {
+        var outcome = await educationService.CreateContentBlockAsync(
+            lessonId,
+            request,
+            cancellationToken);
+        return outcome.Status switch
+        {
+            LessonContentBlockMutationStatus.Success => StatusCode(
+                StatusCodes.Status201Created,
+                new ContentMutationResponse(outcome.Id!.Value)),
+            LessonContentBlockMutationStatus.NotFound => NotFound(),
+            _ => BadRequest(new ProblemDetails
+            {
+                Title = "The lesson content block is invalid.",
+                Status = StatusCodes.Status400BadRequest,
+            }),
+        };
+    }
+
+    [HttpPut("blocks/{id:guid}")]
+    public async Task<IActionResult> UpdateContentBlock(
+        Guid id,
+        LessonContentBlockWriteRequest request,
+        CancellationToken cancellationToken) =>
+        await educationService.UpdateContentBlockAsync(id, request, cancellationToken) switch
+        {
+            LessonContentBlockMutationStatus.Success => NoContent(),
+            LessonContentBlockMutationStatus.NotFound => NotFound(),
+            _ => BadRequest(),
+        };
+
+    [HttpDelete("blocks/{id:guid}")]
+    public async Task<IActionResult> DeleteContentBlock(
+        Guid id,
+        CancellationToken cancellationToken) =>
+        await educationService.DeleteContentBlockAsync(id, cancellationToken)
+            ? NoContent()
+            : NotFound();
+
+    [HttpPut("lessons/{lessonId:guid}/blocks/reorder")]
+    public async Task<IActionResult> ReorderContentBlocks(
+        Guid lessonId,
+        LessonContentBlockReorderRequest request,
+        CancellationToken cancellationToken) =>
+        await educationService.ReorderContentBlocksAsync(
+            lessonId,
+            request,
+            cancellationToken) switch
+        {
+            LessonContentBlockMutationStatus.Success => NoContent(),
+            LessonContentBlockMutationStatus.NotFound => NotFound(),
+            _ => BadRequest(),
+        };
 
     [HttpPost("lessons/{lessonId:guid}/quiz")]
     public async Task<ActionResult<ContentMutationResponse>> CreateQuiz(

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:asli_app/features/content_management/data/content_management_repository.dart';
 import 'package:asli_app/features/content_management/domain/models/content_models.dart';
+import 'package:asli_app/features/education/presentation/providers/education_modules_provider.dart';
 
 final contentModulesProvider = FutureProvider<List<ContentModuleSummary>>(
   (ref) => ref.watch(contentManagementRepositoryProvider).getModules(),
@@ -96,6 +97,90 @@ final class ContentMutationController extends AsyncNotifier<void> {
           ..invalidate(contentModuleProvider(moduleId))
           ..invalidate(contentLessonProvider(id))
           ..invalidate(contentQuizProvider(id));
+        return true;
+      }) ??
+      false;
+
+  Future<ContentLessonMedia?> uploadLessonMedia({
+    required String lessonId,
+    required String filePath,
+    required String fileName,
+    required int sortOrder,
+    void Function(int sent, int total)? onSendProgress,
+  }) => _mutate(() async {
+    final media = await ref
+        .read(contentManagementRepositoryProvider)
+        .uploadLessonMedia(
+          lessonId: lessonId,
+          filePath: filePath,
+          fileName: fileName,
+          sortOrder: sortOrder,
+          onSendProgress: onSendProgress,
+        );
+    ref.invalidate(contentLessonProvider(lessonId));
+    ref.invalidate(lessonProvider);
+    return media;
+  });
+
+  Future<bool> deleteLessonMedia(String lessonId, String mediaId) async =>
+      await _mutate(() async {
+        await ref
+            .read(contentManagementRepositoryProvider)
+            .deleteLessonMedia(lessonId, mediaId);
+        ref.invalidate(contentLessonProvider(lessonId));
+        ref.invalidate(lessonProvider);
+        return true;
+      }) ??
+      false;
+
+  Future<String?> createContentBlock(
+    String lessonId,
+    ContentBlockWriteInput input,
+  ) => _mutate(() async {
+    final id = await ref
+        .read(contentManagementRepositoryProvider)
+        .createContentBlock(lessonId, input);
+    ref.invalidate(contentLessonProvider(lessonId));
+    ref.invalidate(lessonProvider);
+    return id;
+  });
+
+  Future<bool> updateContentBlock(
+    String lessonId,
+    String id,
+    ContentBlockWriteInput input,
+  ) async =>
+      await _mutate(() async {
+        await ref
+            .read(contentManagementRepositoryProvider)
+            .updateContentBlock(id, input);
+        ref.invalidate(contentLessonProvider(lessonId));
+        ref.invalidate(lessonProvider);
+        return true;
+      }) ??
+      false;
+
+  Future<bool> deleteContentBlock(String lessonId, String id) async =>
+      await _mutate(() async {
+        await ref
+            .read(contentManagementRepositoryProvider)
+            .deleteContentBlock(id);
+        ref.invalidate(contentLessonProvider(lessonId));
+        ref.invalidate(lessonProvider);
+        return true;
+      }) ??
+      false;
+
+  Future<bool> reorderContentBlocks(
+    String lessonId,
+    List<({String blockId, int sortOrder})> blocks,
+  ) async =>
+      await _mutate(() async {
+        await ref
+            .read(contentManagementRepositoryProvider)
+            .reorderContentBlocks(lessonId, blocks);
+        ref.invalidate(contentLessonProvider(lessonId));
+        ref.invalidate(lessonProvider);
         return true;
       }) ??
       false;

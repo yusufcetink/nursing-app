@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -44,11 +45,28 @@ void main() {
         'educationModuleId': 'module-id',
         'title': 'Taslak Ders',
         'description': 'Ders açıklaması',
-        'content': 'Ders içeriği',
         'estimatedDurationMinutes': 5,
         'order': 1,
         'isPublished': false,
         'quizId': 'quiz-id',
+        'blocks': [
+          {
+            'id': 'block-id',
+            'lessonId': 'lesson-id',
+            'blockType': 'Video',
+            'textContent': null,
+            'media': {
+              'id': 'video-id',
+              'lessonId': 'lesson-id',
+              'originalFileName': 'lesson.mp4',
+              'contentType': 'video/mp4',
+              'mediaType': 'Video',
+              'sizeBytes': 1024,
+              'sortOrder': 2,
+            },
+            'sortOrder': 2,
+          },
+        ],
         'updatedAtUtc': '2026-09-06T10:00:00Z',
       }),
       _JsonResponse(201, {'id': 'created-module-id'}),
@@ -70,7 +88,6 @@ void main() {
     const lessonInput = LessonWriteInput(
       title: 'Ders',
       description: 'Açıklama',
-      content: 'İçerik',
       estimatedDurationMinutes: 8,
       order: 4,
       isPublished: true,
@@ -91,7 +108,7 @@ void main() {
 
     expect(modules.single.isPublished, isFalse);
     expect(module.lessons.single.title, 'Taslak Ders');
-    expect(lesson.content, 'Ders içeriği');
+    expect(lesson.blocks.single.media?.originalFileName, 'lesson.mp4');
     expect(createdModuleId, 'created-module-id');
     expect(createdLessonId, 'created-lesson-id');
     expect(adapter.requests.map((request) => request.path), [
@@ -200,6 +217,59 @@ void main() {
       expect(adapter.requests[6].data['order'], 2);
     },
   );
+
+  test('video upload progress ve delete sözleşmesini kullanır', () async {
+    final adapter = _SequenceAdapter([
+      _JsonResponse(201, {
+        'id': 'video-id',
+        'lessonId': 'lesson-id',
+        'originalFileName': 'lesson.mp4',
+        'contentType': 'video/mp4',
+        'mediaType': 'Video',
+        'sizeBytes': 4,
+        'sortOrder': 3,
+      }),
+      const _JsonResponse(204, ''),
+    ]);
+    final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+      ..httpClientAdapter = adapter;
+    final repository = DioContentManagementRepository(ApiClient(dio: dio));
+    final file = File(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      'asli-video-${DateTime.now().microsecondsSinceEpoch}.mp4',
+    );
+    await file.writeAsBytes([0, 1, 2, 3]);
+    var progressCalled = false;
+
+    try {
+      final media = await repository.uploadLessonMedia(
+        lessonId: 'lesson-id',
+        filePath: file.path,
+        fileName: 'lesson.mp4',
+        sortOrder: 3,
+        onSendProgress: (_, _) => progressCalled = true,
+      );
+      await repository.deleteLessonMedia('lesson-id', media.id);
+
+      expect(media.originalFileName, 'lesson.mp4');
+      expect(progressCalled, isTrue);
+      expect(adapter.requests.map((request) => request.path), [
+        '/api/education/lessons/lesson-id/media',
+        '/api/education/lessons/lesson-id/media/video-id',
+      ]);
+      expect(adapter.requests.first.method, 'POST');
+      expect(adapter.requests.last.method, 'DELETE');
+      final form = adapter.requests.first.data as FormData;
+      expect(
+        form.fields.singleWhere((field) => field.key == 'sortOrder').value,
+        '3',
+      );
+      expect(form.files.single.value.filename, 'lesson.mp4');
+      expect(form.files.single.value.contentType?.mimeType, 'video/mp4');
+    } finally {
+      if (await file.exists()) await file.delete();
+    }
+  });
 }
 
 final class _JsonResponse {
@@ -223,6 +293,8 @@ final class _SequenceAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    await requestStream?.drain<void>();
+    options.onSendProgress?.call(1, 1);
     final response = _responses[_responseIndex++];
     return ResponseBody.fromString(
       response.body is String
