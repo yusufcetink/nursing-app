@@ -204,6 +204,21 @@ class _ProfileContent extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.sm),
                   ],
                 const SizedBox(height: AppSpacing.xl),
+                if (overview.user.role.canAccessAdministration) ...[
+                  Card(
+                    child: ListTile(
+                      key: const Key('user_management_link'),
+                      onTap: () => context.pushNamed(AppRoutes.userManagement),
+                      leading: const Icon(Icons.manage_accounts_outlined),
+                      title: const Text('Kullanıcı Yönetimi'),
+                      subtitle: const Text(
+                        'Kullanıcıları arayın ve uygulama rollerini yönetin.',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                ],
                 OutlinedButton.icon(
                   onPressed: () async {
                     final loggedOut = await ref

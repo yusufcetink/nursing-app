@@ -40,4 +40,18 @@ Authentication endpoints:
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
 
+Bootstrap the first administrator only through user-secrets or environment variables. The
+bootstrap is skipped after an Admin exists, and no public admin registration endpoint exists.
+If the configured email already belongs to a roleless account, that account is claimed only
+when the configured password matches its existing password:
+
+```powershell
+dotnet user-secrets set "AdminBootstrap:Email" "admin@example.com" --project src/AsliApp.Api
+dotnet user-secrets set "AdminBootstrap:Password" "use-a-strong-unique-password" --project src/AsliApp.Api
+```
+
+Environment variable equivalents are `AdminBootstrap__Email` and
+`AdminBootstrap__Password`. Optional display names use `AdminBootstrap__FirstName` and
+`AdminBootstrap__LastName`.
+
 Restore the local EF tool with `dotnet tool restore` before creating future migrations.

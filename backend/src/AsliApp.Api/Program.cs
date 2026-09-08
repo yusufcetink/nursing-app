@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using AsliApp.Api.Administration;
 using AsliApp.Api.Authentication;
 using AsliApp.Api.Email;
 using AsliApp.Api.Education;
@@ -12,6 +13,8 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
+using System.Security.Cryptography;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,9 +80,38 @@ builder.Services
             NameClaimType = "sub",
             RoleClaimType = "role",
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userIdValue = context.Principal?.FindFirstValue("sub");
+                var tokenStamp = context.Principal?.FindFirstValue("security_stamp");
+                if (!Guid.TryParse(userIdValue, out var userId) ||
+                    string.IsNullOrEmpty(tokenStamp))
+                {
+                    context.Fail("The access token is no longer valid.");
+                    return;
+                }
+
+                var userManager = context.HttpContext.RequestServices
+                    .GetRequiredService<UserManager<User>>();
+                var user = await userManager.FindByIdAsync(userId.ToString());
+                var currentStamp = user is null
+                    ? null
+                    : await userManager.GetSecurityStampAsync(user);
+                if (string.IsNullOrEmpty(currentStamp) ||
+                    !CryptographicOperations.FixedTimeEquals(
+                        Encoding.UTF8.GetBytes(tokenStamp),
+                        Encoding.UTF8.GetBytes(currentStamp)))
+                {
+                    context.Fail("The access token is no longer valid.");
+                }
+            },
+        };
     });
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AdminUserService>();
 builder.Services.AddScoped<IPasswordHasher<EmailVerificationCode>, PasswordHasher<EmailVerificationCode>>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<EducationService>();
@@ -91,6 +123,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 var app = builder.Build();
+
+await AdminBootstrapper.BootstrapAsync(app.Services, app.Configuration);
 
 if (app.Environment.IsDevelopment())
 {

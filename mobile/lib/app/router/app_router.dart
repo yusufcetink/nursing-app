@@ -22,6 +22,7 @@ import 'package:asli_app/features/profile/presentation/pages/profile_page.dart';
 import 'package:asli_app/features/profile/presentation/pages/quiz_history_page.dart';
 import 'package:asli_app/features/profile/presentation/pages/quiz_result_detail_page.dart';
 import 'package:asli_app/features/quiz/presentation/pages/quiz_page.dart';
+import 'package:asli_app/features/user_management/presentation/pages/user_management_page.dart';
 
 abstract final class AppRoutes {
   static const startup = 'startup';
@@ -44,6 +45,8 @@ abstract final class AppRoutes {
   static const quizHistoryPath = '/profile/quiz-history';
   static const quizResultDetail = 'quiz-result-detail';
   static const quizResultDetailPath = '/profile/quiz-history/:attemptId';
+  static const userManagement = 'user-management';
+  static const userManagementPath = '/profile/users';
   static const attemptIdParameter = 'attemptId';
   static const educationModule = 'education-module';
   static const educationModulePath = '/education/:moduleId';
@@ -107,6 +110,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
       if (location.startsWith(AppRoutes.contentPath) &&
           !authState.value!.canManageContent) {
+        return AppRoutes.homePath;
+      }
+      if (location.startsWith(AppRoutes.userManagementPath) &&
+          !authState.value!.primaryRole.canAccessAdministration) {
         return AppRoutes.homePath;
       }
       return isAuthRoute ? AppRoutes.homePath : null;
@@ -273,6 +280,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.quizHistoryPath,
                 name: AppRoutes.quizHistory,
                 builder: (context, state) => const QuizHistoryPage(),
+              ),
+              GoRoute(
+                path: AppRoutes.userManagementPath,
+                name: AppRoutes.userManagement,
+                builder: (context, state) => const UserManagementPage(),
               ),
               GoRoute(
                 path: AppRoutes.quizResultDetailPath,

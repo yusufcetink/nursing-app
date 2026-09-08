@@ -4,11 +4,17 @@ import 'package:asli_app/features/auth/domain/models/authenticated_user.dart';
 import 'package:asli_app/features/auth/domain/models/user_role.dart';
 
 final class FakeAuthRepository implements AuthRepository {
-  FakeAuthRepository({this.error, this.restoreError, this.restoredUser});
+  FakeAuthRepository({
+    this.error,
+    this.restoreError,
+    this.restoredUser,
+    this.loginUser,
+  });
 
   final AuthException? error;
   final AuthException? restoreError;
   final AuthenticatedUser? restoredUser;
+  final AuthenticatedUser? loginUser;
   int restoreSessionCallCount = 0;
   int loginCallCount = 0;
   int registerCallCount = 0;
@@ -41,7 +47,7 @@ final class FakeAuthRepository implements AuthRepository {
     if (error case final error?) {
       throw error;
     }
-    return user;
+    return loginUser ?? user;
   }
 
   @override

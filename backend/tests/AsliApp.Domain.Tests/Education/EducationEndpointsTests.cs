@@ -949,23 +949,51 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
 
     private HttpClient CreateClient(string role, Guid? userId = null)
     {
+        var tokenUserId = userId ?? Guid.NewGuid();
+        string securityStamp;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var user = dbContext.Users.SingleOrDefault(candidate => candidate.Id == tokenUserId);
+            if (user is null)
+            {
+                user = new User
+                {
+                    Id = tokenUserId,
+                    UserName = $"token-{tokenUserId}@example.com",
+                    NormalizedUserName = $"TOKEN-{tokenUserId}@EXAMPLE.COM",
+                    Email = $"token-{tokenUserId}@example.com",
+                    NormalizedEmail = $"TOKEN-{tokenUserId}@EXAMPLE.COM",
+                    EmailConfirmed = true,
+                    FirstName = "Token",
+                    LastName = "User",
+                    CreatedAtUtc = DateTimeOffset.UtcNow,
+                    SecurityStamp = Guid.NewGuid().ToString(),
+                    ConcurrencyStamp = Guid.NewGuid().ToString(),
+                };
+                dbContext.Users.Add(user);
+                dbContext.SaveChanges();
+            }
+            securityStamp = user.SecurityStamp!;
+        }
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            CreateToken(role, userId));
+            CreateToken(role, tokenUserId, securityStamp));
         return client;
     }
 
-    private string CreateToken(string role, Guid? userId = null)
+    private string CreateToken(string role, Guid userId, string securityStamp)
     {
         var token = new JwtSecurityToken(
             issuer: "AsliApp.Tests",
             audience: "AsliApp.Tests.Client",
             claims:
             [
-                new Claim("sub", (userId ?? Guid.NewGuid()).ToString()),
+                new Claim("sub", userId.ToString()),
                 new Claim("email", "education.test@example.com"),
                 new Claim("role", role),
+                new Claim("security_stamp", securityStamp),
             ],
             expires: DateTime.UtcNow.AddMinutes(15),
             signingCredentials: new SigningCredentials(

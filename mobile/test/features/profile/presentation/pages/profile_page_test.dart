@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:asli_app/app/app.dart';
 import 'package:asli_app/features/auth/data/auth_repository.dart';
+import 'package:asli_app/features/auth/domain/models/authenticated_user.dart';
+import 'package:asli_app/features/auth/domain/models/user_role.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
@@ -12,6 +14,63 @@ import '../../../../helpers/fake_auth_repository.dart';
 import '../../../../helpers/fake_learning_repositories.dart';
 
 void main() {
+  for (final testCase in [
+    (role: UserRole.admin, shouldSeeLink: true),
+    (role: UserRole.contentEditor, shouldSeeLink: false),
+  ]) {
+    testWidgets(
+      '${testCase.role.name} için kullanıcı yönetimi görünürlüğü doğrudur',
+      (tester) async {
+        final user = AuthenticatedUser(
+          id: 'manager-id',
+          firstName: 'Yönetici',
+          lastName: 'Kullanıcı',
+          email: 'manager@example.com',
+          roles: [testCase.role],
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authRepositoryProvider.overrideWithValue(
+                FakeAuthRepository(loginUser: user),
+              ),
+              educationRepositoryProvider.overrideWithValue(
+                FakeEducationRepository(),
+              ),
+              progressRepositoryProvider.overrideWithValue(
+                FakeProgressRepository(),
+              ),
+              profileRepositoryProvider.overrideWithValue(
+                FakeProfileRepository(),
+              ),
+            ],
+            child: const App(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const Key('login_email_field')),
+          user.email,
+        );
+        await tester.enterText(
+          find.byKey(const Key('login_password_field')),
+          'password123',
+        );
+        await tester.tap(find.text('Giriş Yap'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Profil'));
+        await tester.pumpAndSettle();
+        await tester.drag(find.byType(ListView), const Offset(0, -500));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('user_management_link')),
+          testCase.shouldSeeLink ? findsOneWidget : findsNothing,
+        );
+      },
+    );
+  }
+
   testWidgets('profil progress bilgisini gösterir ve logout state temizler', (
     tester,
   ) async {

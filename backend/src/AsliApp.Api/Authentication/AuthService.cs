@@ -94,6 +94,12 @@ public sealed class AuthService(
 
         var identityRoles = await userManager.GetRolesAsync(user);
         var roles = ParseRoles(identityRoles);
+        if (identityRoles.Count != 1 || roles.Length != 1)
+        {
+            logger.LogError(
+                "Authentication was rejected because an account does not have exactly one application role.");
+            return AuthResult<LoginResponse>.Failure("Account authorization is invalid.");
+        }
         var expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(_jwtOptions.ExpirationMinutes);
         var token = CreateToken(user, identityRoles, expiresAtUtc);
 
@@ -395,6 +401,7 @@ public sealed class AuthService(
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+            new("security_stamp", user.SecurityStamp ?? string.Empty),
         };
         claims.AddRange(roles.Select(role => new Claim("role", role)));
 
