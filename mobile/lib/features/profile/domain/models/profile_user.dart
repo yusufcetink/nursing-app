@@ -14,4 +14,14 @@ final class ProfileUser {
   final UserRole role;
 
   String get fullName => '$firstName $lastName';
+
+  String get initials {
+    final value = [firstName, lastName]
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .map((name) => String.fromCharCode(name.runes.first))
+        .join()
+        .toUpperCase();
+    return value.isEmpty ? 'A' : value;
+  }
 }

@@ -2,6 +2,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:asli_app/features/education/domain/models/education_module.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
 import 'package:asli_app/features/progress/domain/models/progress_state.dart';
+import 'package:asli_app/features/progress/domain/models/learning_activity.dart';
+
+final learningActivityProvider = Provider<AsyncValue<LearningActivity>>((ref) {
+  return ref
+      .watch(progressControllerProvider)
+      .whenData(
+        (progress) => LearningActivity.fromProgress(progress, DateTime.now()),
+      );
+});
+
+final nextLessonIdProvider = Provider.family<String?, EducationModule>((
+  ref,
+  module,
+) {
+  final completed =
+      ref.watch(progressControllerProvider).value?.completedLessonIds ??
+      const <String>{};
+  for (final lesson in module.lessons) {
+    if (!completed.contains(lesson.id)) return lesson.id;
+  }
+  return null;
+});
 
 final progressControllerProvider =
     AsyncNotifierProvider<ProgressController, ProgressState>(

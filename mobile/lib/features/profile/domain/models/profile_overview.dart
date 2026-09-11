@@ -38,4 +38,21 @@ final class ProfileOverview {
   final List<ProfileQuizResult> quizResults;
 
   int get completedQuizCount => quizResults.length;
+
+  int? get averageSuccessPercentage => quizResults.isEmpty
+      ? null
+      : (quizResults.fold<int>(
+                  0,
+                  (sum, result) => sum + result.successPercentage,
+                ) /
+                quizResults.length)
+            .round();
+
+  Set<LearningBadge> get earnedBadges => Set.unmodifiable({
+    if (completedLessonCount >= 1) LearningBadge.firstLesson,
+    if (completedLessonCount >= 5) LearningBadge.fiveLessons,
+    if (completedQuizCount >= 1) LearningBadge.firstQuiz,
+  });
 }
+
+enum LearningBadge { firstLesson, fiveLessons, firstQuiz }

@@ -26,6 +26,7 @@ abstract final class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: scaffoldBackground,
       visualDensity: VisualDensity.standard,
+      fontFamily: 'Manrope',
     );
     final textTheme = AppTypography.from(baseTheme.textTheme).apply(
       bodyColor: colorScheme.onSurface,
@@ -53,7 +54,7 @@ abstract final class AppTheme {
         color: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
         shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
-        elevation: AppElevation.low,
+        elevation: AppElevation.none,
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
@@ -65,7 +66,7 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(64, 52),
+          minimumSize: const Size(64, 56),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.sm,
@@ -126,15 +127,15 @@ abstract final class AppTheme {
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: colorScheme.primary,
+        color: colorScheme.primaryFixedDim,
         linearTrackColor: colorScheme.surfaceContainerHighest,
         circularTrackColor: colorScheme.surfaceContainerHighest,
-        linearMinHeight: AppSpacing.xs,
+        linearMinHeight: 10,
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
-        elevation: AppElevation.medium,
+        elevation: AppElevation.none,
         backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,
         indicatorColor: colorScheme.secondaryContainer,

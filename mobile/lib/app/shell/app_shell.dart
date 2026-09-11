@@ -5,46 +5,95 @@ import 'package:asli_app/features/auth/presentation/controllers/auth_controller.
 
 class AppShell extends ConsumerWidget {
   const AppShell({required this.navigationShell, super.key});
-
   final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final canManageContent =
         ref.watch(authControllerProvider).value?.canManageContent ?? false;
-    final branchIndices = canManageContent ? const [0, 1, 2] : const [0, 2];
-    final selectedIndex = branchIndices.indexOf(navigationShell.currentIndex);
+    final destinations = [
+      (branch: 0, label: 'Eğitim', icon: Icons.auto_stories_outlined),
+      if (canManageContent)
+        (branch: 1, label: 'İçerik', icon: Icons.edit_note_rounded),
+      (branch: 2, label: 'Profil', icon: Icons.person_outline_rounded),
+    ];
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: NavigationBar(
-          selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-          onDestinationSelected: (index) {
-            final branchIndex = branchIndices[index];
-            navigationShell.goBranch(
-              branchIndex,
-              initialLocation: branchIndex == navigationShell.currentIndex,
-            );
-          },
-          destinations: [
-            const NavigationDestination(
-              icon: Icon(Icons.school_outlined),
-              selectedIcon: Icon(Icons.school_rounded),
-              label: 'Eğitim',
+      bottomNavigationBar: Material(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+            child: Row(
+              children: [
+                for (final destination in destinations)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Semantics(
+                        selected:
+                            navigationShell.currentIndex == destination.branch,
+                        button: true,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: () => navigationShell.goBranch(
+                            destination.branch,
+                            initialLocation:
+                                destination.branch ==
+                                navigationShell.currentIndex,
+                          ),
+                          child: AnimatedContainer(
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              color:
+                                  navigationShell.currentIndex ==
+                                      destination.branch
+                                  ? scheme.primaryContainer
+                                  : Colors.transparent,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  destination.icon,
+                                  size: 26,
+                                  color:
+                                      navigationShell.currentIndex ==
+                                          destination.branch
+                                      ? scheme.onPrimaryContainer
+                                      : scheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  destination.label,
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color:
+                                            navigationShell.currentIndex ==
+                                                destination.branch
+                                            ? scheme.onPrimaryContainer
+                                            : scheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            if (canManageContent)
-              const NavigationDestination(
-                icon: Icon(Icons.edit_note_outlined),
-                selectedIcon: Icon(Icons.edit_note_rounded),
-                label: 'İçerik',
-              ),
-            const NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person_rounded),
-              label: 'Profil',
-            ),
-          ],
+          ),
         ),
       ),
     );

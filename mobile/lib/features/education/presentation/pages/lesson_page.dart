@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:asli_app/app/router/app_router.dart';
-import 'package:asli_app/app/theme/app_spacing.dart';
+import 'package:asli_app/shared/widgets/learning_design.dart';
 import 'package:asli_app/features/education/presentation/providers/education_modules_provider.dart';
 import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
 import 'package:asli_app/core/network/network_exception.dart';
@@ -39,145 +39,180 @@ class LessonPage extends ConsumerWidget {
   }
 }
 
-class _LessonContent extends ConsumerWidget {
+class _LessonContent extends ConsumerStatefulWidget {
   const _LessonContent({required this.moduleId, required this.lesson});
-
   final String moduleId;
   final Lesson lesson;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final lessonId = lesson.id;
-    final isCompleted = ref.watch(lessonCompletedProvider(lessonId));
+  ConsumerState<_LessonContent> createState() => _LessonContentState();
+}
 
-    final colorScheme = Theme.of(context).colorScheme;
+class _LessonContentState extends ConsumerState<_LessonContent> {
+  bool _saving = false;
 
+  Future<void> _completeLesson() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    final completed = await ref
+        .read(progressControllerProvider.notifier)
+        .completeLesson(widget.lesson.id);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (!completed) {
+      final error = ref
+          .read(progressControllerProvider.notifier)
+          .lastActionError;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(networkErrorMessage(error!))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lesson = widget.lesson;
+    final isCompleted = ref.watch(lessonCompletedProvider(lesson.id));
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text(lesson.title)),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: AppSpacing.readingContentWidth,
+      appBar: AppBar(title: const Text('Öğrenme zamanı')),
+      body: LearningBody(
+        children: [
+          Row(
+            children: [
+              LearningPill('DERS ${lesson.order.toString().padLeft(2, '0')}'),
+              const Spacer(),
+              if (isCompleted)
+                LearningPill(
+                  'Tamamlandı',
+                  icon: Icons.check_rounded,
+                  color: scheme.tertiaryContainer,
+                  foreground: scheme.onTertiaryContainer,
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(lesson.title, style: theme.textTheme.displaySmall),
+          const SizedBox(height: 12),
+          Text(
+            lesson.description,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.section,
-              ),
+          ),
+          const SizedBox(height: 20),
+          LearningPanel(
+            padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+            child: Row(
               children: [
-                Card(
-                  color: colorScheme.tertiaryContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.menu_book_rounded,
-                          color: colorScheme.onTertiaryContainer,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          lesson.description,
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(
-                                color: colorScheme.onTertiaryContainer,
-                              ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.schedule_rounded,
-                              size: 20,
-                              color: colorScheme.onTertiaryContainer,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(
-                              'Tahmini süre: ${lesson.estimatedDurationMinutes} dakika',
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: colorScheme.onTertiaryContainer,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kendi ritminde öğren.',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tahmini süre: ${lesson.estimatedDurationMinutes} dakika',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xl),
-                for (final block in lesson.blocks) ...[
-                  if (block.blockType == LessonContentBlockType.heading)
-                    Text(
-                      block.textContent ?? '',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    )
-                  else if (block.blockType == LessonContentBlockType.text)
-                    Text(
-                      block.textContent ?? '',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    )
-                  else if (block.blockType == LessonContentBlockType.image &&
-                      block.media != null)
-                    _LessonImage(media: block.media!)
-                  else if (block.blockType == LessonContentBlockType.video &&
-                      block.media != null)
-                    _LessonVideoPlayer(media: block.media!),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                const SizedBox(height: AppSpacing.sm),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: isCompleted && lesson.quizId == null
-                        ? null
-                        : () async {
-                            if (isCompleted) {
-                              context.pushNamed(
-                                AppRoutes.quiz,
-                                pathParameters: {
-                                  AppRoutes.moduleIdParameter: moduleId,
-                                  AppRoutes.lessonIdParameter: lessonId,
-                                },
-                              );
-                              return;
-                            }
-                            final completed = await ref
-                                .read(progressControllerProvider.notifier)
-                                .completeLesson(lessonId);
-                            if (!completed && context.mounted) {
-                              final error = ref
-                                  .read(progressControllerProvider.notifier)
-                                  .lastActionError;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(networkErrorMessage(error!)),
-                                ),
-                              );
-                            }
-                          },
-                    icon: Icon(
-                      isCompleted && lesson.quizId != null
-                          ? Icons.quiz_rounded
-                          : Icons.check_circle_outline_rounded,
-                    ),
-                    label: Text(
-                      !isCompleted
-                          ? 'Dersi Tamamla'
-                          : lesson.quizId == null
-                          ? 'Bu ders için quiz bulunmuyor'
-                          : "Quiz'e Geç",
+                const LearningArt(size: 96),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          Row(
+            children: [
+              Text(
+                'ANLATIM',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  letterSpacing: 1.8,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(child: Divider()),
+            ],
+          ),
+          const SizedBox(height: 24),
+          for (final block in lesson.blocks) ...[
+            if (block.blockType == LessonContentBlockType.heading)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  block.textContent ?? '',
+                  style: theme.textTheme.headlineSmall,
+                ),
+              )
+            else if (block.blockType == LessonContentBlockType.text)
+              SelectableText(
+                block.textContent ?? '',
+                style: theme.textTheme.bodyLarge?.copyWith(height: 1.7),
+              )
+            else if (block.blockType == LessonContentBlockType.image &&
+                block.media != null)
+              _LessonImage(media: block.media!)
+            else if (block.blockType == LessonContentBlockType.video &&
+                block.media != null)
+              _LessonVideoPlayer(media: block.media!),
+            const SizedBox(height: 18),
+          ],
+          const SizedBox(height: 16),
+          LearningPanel(
+            color: scheme.secondaryContainer,
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Icon(
+                  isCompleted
+                      ? Icons.task_alt_rounded
+                      : Icons.lightbulb_outline_rounded,
+                  color: scheme.onSecondaryContainer,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isCompleted
+                        ? 'Bir adım daha attın. Öğrendiklerini pekiştir.'
+                        : 'Hazır olduğunda bu adımı tamamlayabilirsin.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSecondaryContainer,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          const SizedBox(height: 20),
+          LearningAction(
+            busy: _saving,
+            label: !isCompleted
+                ? 'Dersi Tamamla'
+                : lesson.quizId == null
+                ? 'Ders tamamlandı'
+                : "Quiz'e Geç",
+            onPressed: isCompleted && lesson.quizId == null
+                ? null
+                : () {
+                    if (isCompleted) {
+                      context.pushNamed(
+                        AppRoutes.quiz,
+                        pathParameters: {
+                          AppRoutes.moduleIdParameter: widget.moduleId,
+                          AppRoutes.lessonIdParameter: lesson.id,
+                        },
+                      );
+                    } else {
+                      _completeLesson();
+                    }
+                  },
+          ),
+        ],
       ),
     );
   }

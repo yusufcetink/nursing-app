@@ -1,3 +1,5 @@
+import '../../../../helpers/ui_test_helpers.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,6 +54,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Giriş Yap'));
     await tester.tap(find.text('Giriş Yap'));
     await tester.pump();
     expect(find.text('Email alanı zorunludur.'), findsOneWidget);
@@ -97,6 +100,8 @@ void main() {
     );
     final returnToLoginButton = find.text('Giriş ekranına dön');
     await tester.ensureVisible(returnToLoginButton);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     await tester.tap(returnToLoginButton);
     await tester.pumpAndSettle();
     final openRegisterButton = find.text('Hesabınız yok mu? Kayıt Ol');
@@ -157,7 +162,7 @@ void main() {
     await tester.tap(find.text('Emaili Doğrula'));
     await tester.pumpAndSettle();
     expect(repository.verifyEmailCallCount, 1);
-    expect(find.text('Tekrar hoş geldiniz'), findsOneWidget);
+    expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsOneWidget);
   });
 
   testWidgets('geçerli sessionı geri yükler ve auth route erişimini engeller', (
@@ -182,15 +187,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.reveal(find.text('Eğitim Modülleri'), 200);
     expect(find.text('Eğitim Modülleri'), findsOneWidget);
-    expect(find.text('Tekrar hoş geldiniz'), findsNothing);
+    expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsNothing);
     expect(find.text('İçerik'), findsNothing);
 
     container.read(appRouterProvider).go(AppRoutes.loginPath);
     await tester.pumpAndSettle();
 
+    await tester.reveal(find.text('Eğitim Modülleri'), 200);
     expect(find.text('Eğitim Modülleri'), findsOneWidget);
-    expect(find.text('Tekrar hoş geldiniz'), findsNothing);
+    expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsNothing);
 
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();
@@ -216,7 +223,7 @@ void main() {
     container.read(appRouterProvider).go(AppRoutes.profilePath);
     await tester.pumpAndSettle();
 
-    expect(find.text('Tekrar hoş geldiniz'), findsOneWidget);
+    expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsOneWidget);
     expect(find.text('Profil'), findsNothing);
   });
 

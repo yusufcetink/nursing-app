@@ -1,3 +1,5 @@
+import '../../../../helpers/ui_test_helpers.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,11 +58,12 @@ void main() {
           find.byKey(const Key('login_password_field')),
           'password123',
         );
+        await tester.ensureVisible(find.text('Giriş Yap'));
         await tester.tap(find.text('Giriş Yap'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Profil'));
         await tester.pumpAndSettle();
-        await tester.drag(find.byType(ListView), const Offset(0, -500));
+        await tester.reveal(find.text('Çıkış Yap'), 200);
         await tester.pumpAndSettle();
 
         expect(
@@ -102,14 +105,21 @@ void main() {
       find.byKey(const Key('login_password_field')),
       'password123',
     );
+    await tester.ensureVisible(find.text('Giriş Yap'));
     await tester.tap(find.text('Giriş Yap'));
     await tester.pumpAndSettle();
 
     final container = ProviderScope.containerOf(
-      tester.element(find.text('Eğitim Modülleri')),
+      tester.element(find.text('Profil')),
     );
-    await tester.tap(find.text('Hemşireliğin Temelleri'));
+    await tester.reveal(find.text('Eğitim Modülleri'), 200);
+    await tester.reveal(
+      find.byKey(const Key('home_module_nursing-fundamentals')),
+      200,
+    );
+    await tester.tap(find.byKey(const Key('home_module_nursing-fundamentals')));
     await tester.pumpAndSettle();
+    await tester.reveal(find.text('Dersler'), 200);
     expect(find.text('Dersler'), findsOneWidget);
 
     await tester.tap(find.text('Profil'));
@@ -117,9 +127,9 @@ void main() {
 
     expect(find.text('Ayşe Yılmaz'), findsOneWidget);
     expect(find.text('ayse@example.com'), findsOneWidget);
+    await tester.reveal(find.text('Hemşirenin Temel Rolleri Quizi'), 200);
     expect(find.text('Hemşirenin Temel Rolleri Quizi'), findsOneWidget);
     expect(find.textContaining('Doğru: 2 · Yanlış: 0'), findsOneWidget);
-    expect(find.text('%100'), findsOneWidget);
 
     await tester.tap(find.text('Tümünü Gör'));
     await tester.pumpAndSettle();
@@ -135,13 +145,14 @@ void main() {
     expect(find.text('Quiz Sonuç Detayı'), findsOneWidget);
     expect(find.text('Başarı Yüzdesi'), findsOneWidget);
     expect(find.text('Toplam Soru'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Yanlış'), 200);
+    await tester.reveal(find.text('Yanlış'), 200);
     expect(find.text('2'), findsNWidgets(2));
     expect(find.text('Doğru'), findsOneWidget);
     expect(find.text('Yanlış'), findsOneWidget);
 
     await tester.tap(find.text('Eğitim'));
     await tester.pumpAndSettle();
+    await tester.reveal(find.text('Dersler'), 200);
     expect(find.text('Dersler'), findsOneWidget);
 
     await tester.tap(find.text('Profil'));
@@ -151,11 +162,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Çıkış Yap'), 200);
+    await tester.reveal(find.text('Çıkış Yap'), 200);
     await tester.tap(find.text('Çıkış Yap'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tekrar hoş geldiniz'), findsOneWidget);
+    expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsOneWidget);
     final clearedState = container
         .read(progressControllerProvider)
         .requireValue;

@@ -6,6 +6,7 @@ import 'package:asli_app/app/theme/app_spacing.dart';
 import 'package:asli_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:asli_app/features/auth/presentation/validation/auth_validators.dart';
 import 'package:asli_app/features/auth/presentation/widgets/auth_page_layout.dart';
+import 'package:asli_app/shared/widgets/learning_design.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -18,6 +19,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _passwordVisible = false;
 
   @override
   void dispose() {
@@ -27,6 +29,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _submit() async {
+    if (ref.read(authControllerProvider).isLoading) return;
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -55,8 +58,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
     return AuthPageLayout(
-      title: 'Tekrar hoş geldiniz',
-      subtitle: 'Eğitimlerinize devam etmek için giriş yapın.',
+      showIllustration: true,
+      title: 'Bilgin büyüsün.\nGüvenin artsın.',
+      subtitle: 'Küçük adımlarla, kendi ritminde öğren.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -66,7 +70,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               key: const Key('login_email_field'),
               controller: _emailController,
               decoration: const InputDecoration(
-                labelText: 'Email',
+                labelText: 'E-posta',
                 prefixIcon: Icon(Icons.email_outlined),
               ),
               keyboardType: TextInputType.emailAddress,
@@ -78,11 +82,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             TextFormField(
               key: const Key('login_password_field'),
               controller: _passwordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Şifre',
-                prefixIcon: Icon(Icons.lock_outline),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  tooltip: _passwordVisible
+                      ? 'Şifreyi gizle'
+                      : 'Şifreyi göster',
+                  onPressed: () =>
+                      setState(() => _passwordVisible = !_passwordVisible),
+                  icon: Icon(
+                    _passwordVisible
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
               ),
-              obscureText: true,
+              obscureText: !_passwordVisible,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.password],
               validator: AuthValidators.password,
@@ -95,14 +111,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: const Text('Şifremi unuttum'),
               ),
             ),
-            FilledButton(
+            LearningAction(
+              label: 'Giriş Yap',
+              busy: isLoading,
               onPressed: isLoading ? null : _submit,
-              child: isLoading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Giriş Yap'),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
