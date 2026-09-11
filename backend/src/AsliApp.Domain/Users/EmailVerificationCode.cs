@@ -19,4 +19,5 @@ public sealed class EmailVerificationCode
 public enum EmailVerificationPurpose
 {
     EmailConfirmation = 1,
+    PasswordReset = 2,
 }

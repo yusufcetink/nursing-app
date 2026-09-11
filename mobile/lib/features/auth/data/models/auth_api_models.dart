@@ -51,17 +51,17 @@ final class VerifyEmailRequest {
 final class ResetPasswordRequest {
   const ResetPasswordRequest({
     required this.email,
-    required this.token,
+    required this.code,
     required this.newPassword,
   });
 
   final String email;
-  final String token;
+  final String code;
   final String newPassword;
 
   Map<String, Object> toJson() => {
     'email': email,
-    'token': token,
+    'code': code,
     'newPassword': newPassword,
   };
 }

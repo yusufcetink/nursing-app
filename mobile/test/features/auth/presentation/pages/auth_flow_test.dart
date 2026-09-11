@@ -65,18 +65,38 @@ void main() {
       find.byKey(const Key('forgot_password_email_field')),
       'student@example.com',
     );
-    await tester.tap(find.text('Sıfırlama Emaili Gönder'));
+    await tester.tap(find.text('Sıfırlama Kodu Gönder'));
     await tester.pumpAndSettle();
     expect(find.text('Yeni şifre oluşturun'), findsOneWidget);
     expect(
-      find.text('Hesap uygunsa şifre sıfırlama emaili gönderildi.'),
+      find.text('Hesap uygunsa 6 haneli sıfırlama kodu gönderildi.'),
       findsOneWidget,
     );
     expect(repository.forgotPasswordCallCount, 1);
 
+    await tester.enterText(
+      find.byKey(const Key('reset_password_code_field')),
+      '123456',
+    );
+    await tester.enterText(
+      find.byKey(const Key('reset_password_new_password_field')),
+      'SecurePass1!',
+    );
+    await tester.enterText(
+      find.byKey(const Key('reset_password_confirmation_field')),
+      'SecurePass1!',
+    );
+    await tester.ensureVisible(find.text('Şifreyi Güncelle'));
+    await tester.tap(find.text('Şifreyi Güncelle'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(repository.resetPasswordCallCount, 1);
+    expect(
+      find.text('Şifreniz güncellendi. Giriş yapabilirsiniz.'),
+      findsOneWidget,
+    );
     final returnToLoginButton = find.text('Giriş ekranına dön');
     await tester.ensureVisible(returnToLoginButton);
-    await tester.pumpAndSettle();
     await tester.tap(returnToLoginButton);
     await tester.pumpAndSettle();
     final openRegisterButton = find.text('Hesabınız yok mu? Kayıt Ol');

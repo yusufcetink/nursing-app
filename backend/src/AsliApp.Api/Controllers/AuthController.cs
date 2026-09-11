@@ -80,9 +80,10 @@ public sealed class AuthController(AuthService authService) : ControllerBase
     [ProducesResponseType<AuthOperationResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<AuthErrorResponse>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthOperationResponse>> ResetPassword(
-        ResetPasswordRequest request)
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken)
     {
-        var result = await authService.ResetPasswordAsync(request);
+        var result = await authService.ResetPasswordAsync(request, cancellationToken);
         if (!result.Succeeded)
         {
             return BadRequest(new AuthErrorResponse(result.Errors));

@@ -82,7 +82,7 @@ final class AuthController extends AsyncNotifier<AuthenticatedUser?> {
 
   Future<bool> resetPassword({
     required String email,
-    required String token,
+    required String code,
     required String newPassword,
   }) {
     return _runPublicAction(
@@ -91,7 +91,7 @@ final class AuthController extends AsyncNotifier<AuthenticatedUser?> {
           .resetPassword(
             ResetPasswordRequest(
               email: email.trim(),
-              token: token.trim(),
+              code: code.trim(),
               newPassword: newPassword,
             ),
           ),

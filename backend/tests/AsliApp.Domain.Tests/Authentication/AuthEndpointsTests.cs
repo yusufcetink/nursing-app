@@ -12,7 +12,6 @@ using AsliApp.Api.Email;
 using AsliApp.Domain.Users;
 using AsliApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -100,21 +99,27 @@ public sealed class AuthEndpointsTests : IClassFixture<AuthApiFactory>
         Assert.Equal(registeredUser.Email, currentUser.Email);
         Assert.Equal(registeredUser.Roles, currentUser.Roles);
 
-        string encodedResetToken;
+        var forgotPasswordResponse = await _client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new EmailRequest(email));
+        Assert.Equal(HttpStatusCode.Accepted, forgotPasswordResponse.StatusCode);
+
+        string resetCode;
         using (var scope = _factory.Services.CreateScope())
         {
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-            var user = await userManager.FindByEmailAsync(email);
-            Assert.NotNull(user);
-            var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-            encodedResetToken = WebEncoders.Base64UrlEncode(
-                Encoding.UTF8.GetBytes(resetToken));
+            var emailSender = Assert.IsType<EndpointEmailSender>(
+                scope.ServiceProvider.GetRequiredService<IEmailSender>());
+            var message = emailSender.Messages.Last(message =>
+                message.Recipient == email && message.Subject.Contains("şifre sıfırlama"));
+            resetCode = Regex.Match(message.Body, @"\b\d{6}\b").Value;
+            Assert.Matches(@"^\d{6}$", resetCode);
+            Assert.DoesNotContain("token", message.Body, StringComparison.OrdinalIgnoreCase);
         }
 
         const string newPassword = "NewSecurePass2!";
         var resetResponse = await _client.PostAsJsonAsync(
             "/api/auth/reset-password",
-            new ResetPasswordRequest(email, encodedResetToken, newPassword));
+            new ResetPasswordRequest(email, resetCode, newPassword));
         Assert.Equal(HttpStatusCode.OK, resetResponse.StatusCode);
 
         var newPasswordLoginResponse = await _client.PostAsJsonAsync(

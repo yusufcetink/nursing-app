@@ -22,7 +22,7 @@ public sealed record VerifyEmailRequest(
 
 public sealed record ResetPasswordRequest(
     [Required, EmailAddress, MaxLength(256)] string Email,
-    [Required] string Token,
+    [Required, RegularExpression("^[0-9]{6}$")] string Code,
     [Required, MinLength(8), MaxLength(128)] string NewPassword);
 
 public sealed record UserResponse(

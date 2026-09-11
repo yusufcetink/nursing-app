@@ -6,7 +6,6 @@ using System.Text;
 using AsliApp.Api.Email;
 using AsliApp.Domain.Users;
 using AsliApp.Infrastructure.Persistence;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -245,14 +244,22 @@ public sealed class AuthService(
         {
             try
             {
-                var token = EncodeToken(await userManager.GeneratePasswordResetTokenAsync(user));
-                await emailSender.SendAsync(
-                    new EmailMessage(
-                        user.Email!,
-                        "Aslı App şifre sıfırlama",
-                        $"Aslı App şifre sıfırlama kodunuz:\n\n{token}\n\n" +
-                        "Bu isteği siz yapmadıysanız bu mesajı dikkate almayın."),
-                    cancellationToken);
+                var purpose = EmailVerificationPurpose.PasswordReset;
+                var latestCode = await dbContext.EmailVerificationCodes
+                    .Where(code => code.UserId == user.Id && code.Purpose == purpose)
+                    .OrderByDescending(code => code.CreatedAtUtc)
+                    .FirstOrDefaultAsync(cancellationToken);
+                var now = timeProvider.GetUtcNow();
+                if (latestCode is not null &&
+                    latestCode.CreatedAtUtc.AddSeconds(
+                        VerificationCodeResendCooldownSeconds) > now)
+                {
+                    return AuthResult<AuthOperationResponse>.Success(
+                        new AuthOperationResponse(
+                            "If an eligible account exists, a password reset email has been sent."));
+                }
+
+                await SendPasswordResetCodeAsync(user, cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -266,16 +273,83 @@ public sealed class AuthService(
     }
 
     public async Task<AuthResult<AuthOperationResponse>> ResetPasswordAsync(
-        ResetPasswordRequest request)
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByEmailAsync(request.Email.Trim());
-        if (user is null || !TryDecodeToken(request.Token, out var token))
+        if (user is null)
         {
             return AuthResult<AuthOperationResponse>.Failure(
                 "Password reset request is invalid or expired.");
         }
 
-        var result = await userManager.ResetPasswordAsync(user, token, request.NewPassword);
+        var purpose = EmailVerificationPurpose.PasswordReset;
+        var resetCode = await dbContext.EmailVerificationCodes
+            .Where(code => code.UserId == user.Id &&
+                code.Purpose == purpose &&
+                !code.IsUsed)
+            .OrderByDescending(code => code.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        if (resetCode is null ||
+            resetCode.ExpiresAtUtc <= now ||
+            resetCode.FailedAttempts >= VerificationCodeMaxFailedAttempts)
+        {
+            if (resetCode is not null)
+            {
+                MarkCodeUsed(resetCode, now);
+                try
+                {
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Another request already consumed or changed this code.
+                }
+            }
+            return AuthResult<AuthOperationResponse>.Failure(
+                "Password reset request is invalid or expired.");
+        }
+
+        var verificationResult = verificationCodeHasher.VerifyHashedPassword(
+            resetCode,
+            resetCode.CodeHash,
+            request.Code);
+        if (verificationResult == PasswordVerificationResult.Failed)
+        {
+            resetCode.FailedAttempts++;
+            if (resetCode.FailedAttempts >= VerificationCodeMaxFailedAttempts)
+            {
+                MarkCodeUsed(resetCode, now);
+            }
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Concurrent attempts receive the same non-sensitive response.
+            }
+            return AuthResult<AuthOperationResponse>.Failure(
+                "Password reset request is invalid or expired.");
+        }
+
+        MarkCodeUsed(resetCode, now);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return AuthResult<AuthOperationResponse>.Failure(
+                "Password reset request is invalid or expired.");
+        }
+
+        var identityToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await userManager.ResetPasswordAsync(
+            user,
+            identityToken,
+            request.NewPassword);
         if (!result.Succeeded)
         {
             return AuthResult<AuthOperationResponse>.Failure(
@@ -369,27 +443,78 @@ public sealed class AuthService(
         }
     }
 
+    private async Task SendPasswordResetCodeAsync(
+        User user,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var purpose = EmailVerificationPurpose.PasswordReset;
+        var activeCodes = await dbContext.EmailVerificationCodes
+            .Where(code => code.UserId == user.Id &&
+                code.Purpose == purpose &&
+                !code.IsUsed)
+            .ToListAsync(cancellationToken);
+        foreach (var activeCode in activeCodes)
+        {
+            MarkCodeUsed(activeCode, now);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var plainCode = RandomNumberGenerator.GetInt32(1_000_000).ToString("D6");
+        var resetCode = new EmailVerificationCode
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Purpose = purpose,
+            CreatedAtUtc = now,
+            ExpiresAtUtc = now.AddMinutes(VerificationCodeLifetimeMinutes),
+        };
+        resetCode.CodeHash = verificationCodeHasher.HashPassword(resetCode, plainCode);
+        dbContext.EmailVerificationCodes.Add(resetCode);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var encodedName = WebUtility.HtmlEncode(user.FirstName);
+        var htmlBody = $$"""
+            <!doctype html>
+            <html lang="tr">
+              <body style="margin:0;background:#f4f6f8;font-family:Arial,sans-serif;color:#1f2937">
+                <div style="max-width:560px;margin:32px auto;padding:32px;background:#ffffff;border-radius:16px">
+                  <h1 style="margin:0 0 16px;font-size:24px;color:#5b3cc4">Aslı App</h1>
+                  <p>Merhaba {{encodedName}},</p>
+                  <p>Şifrenizi sıfırlamak için aşağıdaki kodu uygulamaya girin:</p>
+                  <div style="margin:28px 0;padding:18px;text-align:center;background:#f3f0ff;border-radius:12px;font-size:36px;font-weight:700;letter-spacing:10px;color:#3f2a8a">{{plainCode}}</div>
+                  <p style="font-size:14px;color:#6b7280">Bu kod 10 dakika geçerlidir ve yalnızca bir kez kullanılabilir.</p>
+                  <p style="font-size:14px;color:#6b7280">Bu isteği siz yapmadıysanız bu emaili dikkate almayın.</p>
+                </div>
+              </body>
+            </html>
+            """;
+
+        try
+        {
+            await emailSender.SendAsync(
+                new EmailMessage(
+                    user.Email!,
+                    "Aslı App şifre sıfırlama kodunuz",
+                    $"Merhaba {user.FirstName},\n\nŞifre sıfırlama kodunuz: {plainCode}\n\n" +
+                    "Bu kod 10 dakika geçerlidir ve yalnızca bir kez kullanılabilir.\n\n" +
+                    "Bu isteği siz yapmadıysanız bu emaili dikkate almayın.",
+                    htmlBody),
+                cancellationToken);
+        }
+        catch
+        {
+            MarkCodeUsed(resetCode, timeProvider.GetUtcNow());
+            await dbContext.SaveChangesAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     private static void MarkCodeUsed(EmailVerificationCode code, DateTimeOffset usedAtUtc)
     {
         code.IsUsed = true;
         code.UsedAtUtc = usedAtUtc;
-    }
-
-    private static string EncodeToken(string token) =>
-        WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-
-    private static bool TryDecodeToken(string encodedToken, out string token)
-    {
-        try
-        {
-            token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(encodedToken));
-            return true;
-        }
-        catch (FormatException)
-        {
-            token = string.Empty;
-            return false;
-        }
     }
 
     private string CreateToken(

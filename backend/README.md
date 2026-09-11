@@ -40,6 +40,10 @@ Authentication endpoints:
 - `POST /api/auth/forgot-password`
 - `POST /api/auth/reset-password`
 
+Email confirmation and password reset use separate hashed, six-digit, single-use
+codes. Codes expire after 10 minutes, lock after five failed attempts, and enforce
+a resend cooldown; Identity reset tokens remain internal to the API.
+
 Bootstrap the first administrator only through user-secrets or environment variables. The
 bootstrap is skipped after an Admin exists, and no public admin registration endpoint exists.
 If the configured email already belongs to a roleless account, that account is claimed only

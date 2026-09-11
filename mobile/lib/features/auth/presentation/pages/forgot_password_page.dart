@@ -46,7 +46,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     context.goNamed(AppRoutes.resetPassword, queryParameters: {'email': email});
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Hesap uygunsa şifre sıfırlama emaili gönderildi.'),
+        content: Text('Hesap uygunsa 6 haneli sıfırlama kodu gönderildi.'),
       ),
     );
   }
@@ -56,7 +56,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     final isLoading = ref.watch(authControllerProvider).isLoading;
     return AuthPageLayout(
       title: 'Şifrenizi sıfırlayın',
-      subtitle: 'Hesabınıza bağlı email adresini girin.',
+      subtitle: '6 haneli sıfırlama kodu için email adresinizi girin.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -83,7 +83,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                       dimension: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Sıfırlama Emaili Gönder'),
+                  : const Text('Sıfırlama Kodu Gönder'),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(

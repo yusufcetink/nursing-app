@@ -9,6 +9,17 @@ import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/auth/data/models/auth_api_models.dart';
 
 void main() {
+  test('reset password isteği yalnızca 6 haneli kodu gönderir', () {
+    final json = const ResetPasswordRequest(
+      email: 'student@example.com',
+      code: '123456',
+      newPassword: 'SecurePass1!',
+    ).toJson();
+
+    expect(json['code'], '123456');
+    expect(json.containsKey('token'), isFalse);
+  });
+
   test('register hesabı oluşturur ve doğrulama öncesi token yazmaz', () async {
     final adapter = _SequenceAdapter([
       _JsonResponse(201, {

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:asli_app/app/router/app_router.dart';
@@ -17,22 +20,28 @@ class ResetPasswordPage extends ConsumerStatefulWidget {
 }
 
 class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
+  static const _resendCooldownSeconds = 60;
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _emailController;
-  final _tokenController = TextEditingController();
+  final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmationController = TextEditingController();
+  Timer? _cooldownTimer;
+  int _cooldownSeconds = _resendCooldownSeconds;
+  bool _resetSucceeded = false;
 
   @override
   void initState() {
     super.initState();
     _emailController = TextEditingController(text: widget.initialEmail);
+    _startCooldown();
   }
 
   @override
   void dispose() {
     _emailController.dispose();
-    _tokenController.dispose();
+    _cooldownTimer?.cancel();
+    _codeController.dispose();
     _passwordController.dispose();
     _confirmationController.dispose();
     super.dispose();
@@ -44,7 +53,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
         .read(authControllerProvider.notifier)
         .resetPassword(
           email: _emailController.text,
-          token: _tokenController.text,
+          code: _codeController.text,
           newPassword: _passwordController.text,
         );
     if (!mounted) return;
@@ -59,12 +68,50 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
       return;
     }
 
-    context.goNamed(AppRoutes.login);
+    setState(() => _resetSucceeded = true);
+  }
+
+  Future<void> _resend() async {
+    if (_cooldownSeconds > 0 ||
+        AuthValidators.email(_emailController.text) != null) {
+      return;
+    }
+    final succeeded = await ref
+        .read(authControllerProvider.notifier)
+        .forgotPassword(email: _emailController.text);
+    if (!mounted) return;
+    if (!succeeded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            authErrorMessage(ref.read(authControllerProvider).error),
+          ),
+        ),
+      );
+      return;
+    }
+    _startCooldown();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Şifreniz güncellendi. Giriş yapabilirsiniz.'),
-      ),
+      const SnackBar(content: Text('Sıfırlama kodu yeniden gönderildi.')),
     );
+  }
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    _cooldownSeconds = _resendCooldownSeconds;
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _cooldownSeconds--;
+        if (_cooldownSeconds <= 0) {
+          _cooldownSeconds = 0;
+          timer.cancel();
+        }
+      });
+    });
   }
 
   @override
@@ -72,7 +119,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     final isLoading = ref.watch(authControllerProvider).isLoading;
     return AuthPageLayout(
       title: 'Yeni şifre oluşturun',
-      subtitle: 'Emaildeki kodu ve yeni şifrenizi girin.',
+      subtitle: 'Emailinize gönderilen 6 haneli kodu ve yeni şifrenizi girin.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -91,15 +138,19 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(
-              key: const Key('reset_password_token_field'),
-              controller: _tokenController,
+              key: const Key('reset_password_code_field'),
+              controller: _codeController,
               decoration: const InputDecoration(
-                labelText: 'Şifre sıfırlama kodu',
-                prefixIcon: Icon(Icons.key_outlined),
+                labelText: '6 haneli sıfırlama kodu',
+                prefixIcon: Icon(Icons.password_outlined),
+                counterText: '',
               ),
+              autofillHints: const [AutofillHints.oneTimeCode],
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               textInputAction: TextInputAction.next,
-              validator: (value) =>
-                  AuthValidators.requiredField(value, 'Şifre sıfırlama kodu'),
+              validator: AuthValidators.verificationCode,
             ),
             const SizedBox(height: AppSpacing.md),
             TextFormField(
@@ -131,10 +182,32 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
             ),
             const SizedBox(height: AppSpacing.lg),
             FilledButton(
-              onPressed: isLoading ? null : _submit,
-              child: const Text('Şifreyi Güncelle'),
+              onPressed: isLoading || _resetSucceeded ? null : _submit,
+              child: isLoading
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Şifreyi Güncelle'),
             ),
+            if (_resetSucceeded) ...[
+              const SizedBox(height: AppSpacing.sm),
+              const Text(
+                'Şifreniz güncellendi. Giriş yapabilirsiniz.',
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
+            TextButton(
+              onPressed: isLoading || _resetSucceeded || _cooldownSeconds > 0
+                  ? null
+                  : _resend,
+              child: Text(
+                _cooldownSeconds > 0
+                    ? 'Yeniden gönder ($_cooldownSeconds sn)'
+                    : 'Sıfırlama Kodunu Yeniden Gönder',
+              ),
+            ),
             TextButton(
               onPressed: isLoading
                   ? null

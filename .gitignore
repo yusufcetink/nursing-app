@@ -45,6 +45,7 @@ Thumbs.db
 
 # Local agent instructions
 AGENTS.md
+!/AGENTS.md
 
 # Secrets and local configuration
 .env

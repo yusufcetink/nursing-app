@@ -189,6 +189,116 @@ public sealed class AuthServiceTests
         Assert.False(codes[1].IsUsed);
     }
 
+    [Fact]
+    public async Task PasswordResetCodeIsHashedSingleUseAndResetsWithInternalIdentityToken()
+    {
+        await using var context = new AuthTestContext();
+        const string email = "password-reset@example.com";
+        var user = await CreateConfirmedUserAsync(context, email);
+
+        await context.AuthService.ForgotPasswordAsync(new EmailRequest(email));
+        var message = context.EmailSender.Messages.Last(item =>
+            item.Subject.Contains("şifre sıfırlama"));
+        var code = Regex.Match(message.Body, @"\b\d{6}\b").Value;
+        var storedCode = await context.DbContext.EmailVerificationCodes.SingleAsync(item =>
+            item.Purpose == EmailVerificationPurpose.PasswordReset);
+
+        Assert.Matches(@"^\d{6}$", code);
+        Assert.DoesNotContain(code, storedCode.CodeHash);
+        Assert.DoesNotContain("token", message.Body, StringComparison.OrdinalIgnoreCase);
+
+        var result = await context.AuthService.ResetPasswordAsync(
+            new ResetPasswordRequest(email, code, "NewSecurePass2!"));
+        var reusedResult = await context.AuthService.ResetPasswordAsync(
+            new ResetPasswordRequest(email, code, "AnotherPass3!"));
+
+        Assert.True(result.Succeeded);
+        Assert.False(reusedResult.Succeeded);
+        Assert.True(storedCode.IsUsed);
+        Assert.True(await context.UserManager.CheckPasswordAsync(user, "NewSecurePass2!"));
+    }
+
+    [Fact]
+    public async Task PasswordResetCodeLocksAfterFiveFailedAttempts()
+    {
+        await using var context = new AuthTestContext();
+        const string email = "password-attempts@example.com";
+        await CreateConfirmedUserAsync(context, email);
+        await context.AuthService.ForgotPasswordAsync(new EmailRequest(email));
+        var issuedCode = Regex.Match(
+            context.EmailSender.Messages.Last().Body,
+            @"\b\d{6}\b").Value;
+        var wrongCode = issuedCode == "999999" ? "000000" : "999999";
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var result = await context.AuthService.ResetPasswordAsync(
+                new ResetPasswordRequest(email, wrongCode, "NewSecurePass2!"));
+            Assert.False(result.Succeeded);
+        }
+
+        var storedCode = await context.DbContext.EmailVerificationCodes.SingleAsync(item =>
+            item.Purpose == EmailVerificationPurpose.PasswordReset);
+        Assert.Equal(5, storedCode.FailedAttempts);
+        Assert.True(storedCode.IsUsed);
+    }
+
+    [Fact]
+    public async Task PasswordResetCodeExpiresAfterTenMinutes()
+    {
+        await using var context = new AuthTestContext();
+        const string email = "password-expired@example.com";
+        await CreateConfirmedUserAsync(context, email);
+        await context.AuthService.ForgotPasswordAsync(new EmailRequest(email));
+        var code = Regex.Match(context.EmailSender.Messages.Last().Body, @"\b\d{6}\b").Value;
+        context.Clock.Advance(TimeSpan.FromMinutes(10));
+
+        var result = await context.AuthService.ResetPasswordAsync(
+            new ResetPasswordRequest(email, code, "NewSecurePass2!"));
+
+        Assert.False(result.Succeeded);
+        Assert.True((await context.DbContext.EmailVerificationCodes.SingleAsync(item =>
+            item.Purpose == EmailVerificationPurpose.PasswordReset)).IsUsed);
+    }
+
+    [Fact]
+    public async Task PasswordResetResendHonorsCooldownAndInvalidatesPreviousCode()
+    {
+        await using var context = new AuthTestContext();
+        const string email = "password-resend@example.com";
+        await CreateConfirmedUserAsync(context, email);
+
+        await context.AuthService.ForgotPasswordAsync(new EmailRequest(email));
+        var sentMessageCount = context.EmailSender.Messages.Count;
+        await context.AuthService.ForgotPasswordAsync(new EmailRequest(email));
+        Assert.Equal(sentMessageCount, context.EmailSender.Messages.Count);
+
+        context.Clock.Advance(TimeSpan.FromSeconds(60));
+        await context.AuthService.ForgotPasswordAsync(new EmailRequest(email));
+
+        Assert.Equal(sentMessageCount + 1, context.EmailSender.Messages.Count);
+        var codes = await context.DbContext.EmailVerificationCodes
+            .Where(item => item.Purpose == EmailVerificationPurpose.PasswordReset)
+            .OrderBy(item => item.CreatedAtUtc)
+            .ToListAsync();
+        Assert.Equal(2, codes.Count);
+        Assert.True(codes[0].IsUsed);
+        Assert.False(codes[1].IsUsed);
+    }
+
+    private static async Task<User> CreateConfirmedUserAsync(
+        AuthTestContext context,
+        string email)
+    {
+        await context.AuthService.RegisterAsync(
+            new RegisterRequest("Password", "Reset", email, "SecurePass1!"));
+        var user = await context.UserManager.FindByEmailAsync(email);
+        Assert.NotNull(user);
+        var token = await context.UserManager.GenerateEmailConfirmationTokenAsync(user);
+        Assert.True((await context.UserManager.ConfirmEmailAsync(user, token)).Succeeded);
+        return user;
+    }
+
     private sealed class AuthTestContext : IAsyncDisposable
     {
         private readonly ServiceProvider _serviceProvider;
