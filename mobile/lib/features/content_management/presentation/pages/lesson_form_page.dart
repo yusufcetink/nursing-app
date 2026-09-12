@@ -121,7 +121,9 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          lesson == null ? 'Ders oluşturuldu.' : 'Ders güncellendi.',
+          input.isPublished
+              ? 'Ders yayınlandı. Yayındaki modülde öğrencilere görünür.'
+              : 'Taslak olarak kaydedildi, öğrencilere görünmez',
         ),
       ),
     );

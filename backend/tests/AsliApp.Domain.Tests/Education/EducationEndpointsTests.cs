@@ -500,6 +500,7 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
     public async Task AuthorizedContentRolesCanCreateModules(string role)
     {
         using var client = CreateClient(role);
+        using var student = CreateClient("Student");
 
         var response = await client.PostAsJsonAsync(
             "/api/education/modules",
@@ -513,6 +514,9 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
         var createdModule = await response.Content
             .ReadFromJsonAsync<ContentMutationResponse>();
         Assert.NotNull(createdModule);
+        var draftModules = await student.GetFromJsonAsync<List<EducationModuleSummaryResponse>>(
+            "/api/education/modules");
+        Assert.DoesNotContain(draftModules!, module => module.Id == createdModule.Id);
 
         var moduleOrder = Random.Shared.Next(100, 10000);
         Assert.Equal(
@@ -524,6 +528,10 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
                     "Updated authorized content",
                     moduleOrder,
                     true))).StatusCode);
+        var publishedModules = await student.GetFromJsonAsync<List<EducationModuleSummaryResponse>>(
+            "/api/education/modules");
+        Assert.Contains(publishedModules!, module =>
+            module.Id == createdModule.Id && module.Title == $"{role} Updated Module");
         var lessonResponse = await client.PostAsJsonAsync(
             $"/api/education/modules/{createdModule.Id}/lessons",
             new LessonWriteRequest("Lesson", "Description", 5, 1, false));
@@ -531,6 +539,11 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
         var createdLesson = await lessonResponse.Content
             .ReadFromJsonAsync<ContentMutationResponse>();
         Assert.NotNull(createdLesson);
+        var draftLessonModule = await student.GetFromJsonAsync<EducationModuleResponse>(
+            $"/api/education/modules/{createdModule.Id}");
+        Assert.Empty(draftLessonModule!.Lessons);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await student.GetAsync($"/api/education/lessons/{createdLesson.Id}")).StatusCode);
         Assert.Equal(
             HttpStatusCode.NoContent,
             (await client.PutAsJsonAsync(
@@ -541,6 +554,12 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
                     8,
                     2,
                     true))).StatusCode);
+        var publishedLessonModule = await student.GetFromJsonAsync<EducationModuleResponse>(
+            $"/api/education/modules/{createdModule.Id}");
+        Assert.Equal(createdLesson.Id, Assert.Single(publishedLessonModule!.Lessons).Id);
+        var publishedLesson = await student.GetFromJsonAsync<LessonResponse>(
+            $"/api/education/lessons/{createdLesson.Id}");
+        Assert.Equal("Updated lesson", publishedLesson!.Title);
         Assert.Equal(
             HttpStatusCode.Created,
             (await client.PostAsJsonAsync(

@@ -17,6 +17,7 @@ final class FakeContentManagementRepository
   int uploadLessonMediaCallCount = 0;
   int deleteLessonMediaCallCount = 0;
   int createContentBlockCallCount = 0;
+  Object? mutationError;
 
   final modules = <ContentModuleSummary>[
     const ContentModuleSummary(
@@ -31,6 +32,7 @@ final class FakeContentManagementRepository
 
   @override
   Future<String> createModule(ModuleWriteInput input) async {
+    if (mutationError case final error?) throw error;
     createModuleCallCount++;
     modules.add(
       ContentModuleSummary(
@@ -182,7 +184,18 @@ final class FakeContentManagementRepository
 
   @override
   Future<void> updateModule(String id, ModuleWriteInput input) async {
+    if (mutationError case final error?) throw error;
     updateModuleCallCount++;
+    final index = modules.indexWhere((module) => module.id == id);
+    if (index < 0) return;
+    modules[index] = ContentModuleSummary(
+      id: id,
+      title: input.title,
+      description: input.description,
+      order: input.order,
+      isPublished: input.isPublished,
+      lessonCount: modules[index].lessonCount,
+    );
   }
 
   @override

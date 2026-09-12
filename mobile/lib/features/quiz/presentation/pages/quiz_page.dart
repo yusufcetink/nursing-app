@@ -49,7 +49,12 @@ class _QuizContent extends ConsumerWidget {
     final selection = (moduleId: moduleId, lessonId: quiz.lessonId);
     final session = ref.watch(quizControllerProvider(selection));
     if (session.isCompleted) {
-      return QuizResultPage(quiz: quiz, session: session);
+      return QuizResultPage(
+        moduleId: moduleId,
+        currentLessonId: quiz.lessonId,
+        quiz: quiz,
+        session: session,
+      );
     }
     final question = quiz.questions[session.currentQuestionIndex];
     final isLast = session.currentQuestionIndex == quiz.questions.length - 1;

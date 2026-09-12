@@ -99,7 +99,9 @@ class _ModuleFormState extends ConsumerState<_ModuleForm> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          module == null ? 'Modül oluşturuldu.' : 'Modül güncellendi.',
+          input.isPublished
+              ? 'Modül yayınlandı, öğrencilere görünür.'
+              : 'Taslak olarak kaydedildi, öğrencilere görünmez',
         ),
       ),
     );

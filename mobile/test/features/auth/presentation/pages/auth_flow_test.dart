@@ -282,7 +282,11 @@ void main() {
 
     expect(contentRepository.createModuleCallCount, 1);
     expect(find.text('Yeni Modül'), findsOneWidget);
-    expect(find.text('Modül oluşturuldu.'), findsOneWidget);
+    expect(
+      find.text('Taslak olarak kaydedildi, öğrencilere görünmez'),
+      findsOneWidget,
+    );
+    expect(contentRepository.modules.last.isPublished, isFalse);
 
     final deleteCreatedModule = find.byKey(
       const Key('delete_module_created-module'),

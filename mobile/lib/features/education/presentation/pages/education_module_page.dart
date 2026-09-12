@@ -56,6 +56,9 @@ class _ModuleContent extends ConsumerWidget {
       body: LearningBody(
         children: [
           LearningPanel(
+            color: progressState.hasValue && progress >= 1
+                ? scheme.tertiaryContainer
+                : scheme.primaryContainer,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -67,28 +70,23 @@ class _ModuleContent extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        module.title,
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontSize: MediaQuery.sizeOf(context).width < 360
-                              ? 22
-                              : null,
-                        ),
-                      ),
-                    ),
-                    if (MediaQuery.sizeOf(context).width >= 380 &&
-                        MediaQuery.textScalerOf(context).scale(1) <= 1.2)
-                      const LearningArt(size: 100),
-                  ],
+                Center(
+                  child: LearningArtScene(
+                    artwork: progressState.hasValue && progress >= 1
+                        ? LearningArtwork.medal
+                        : LearningArtwork.book,
+                    size: 168,
+                  ),
                 ),
+                const SizedBox(height: 12),
+                Text(module.title, style: theme.textTheme.headlineMedium),
                 const SizedBox(height: 10),
                 Text(module.description, style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 12),
                 Text(
-                  '${module.lessonCount} ders',
+                  progressState.hasValue && progress >= 1
+                      ? 'Rotayı tamamladın!'
+                      : '${module.lessonCount} ders',
                   style: theme.textTheme.labelLarge,
                 ),
                 const SizedBox(height: 22),
@@ -101,9 +99,9 @@ class _ModuleContent extends ConsumerWidget {
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 10),
-                LinearProgressIndicator(
+                LearningProgress(
                   value: progressState.hasValue ? progress.clamp(0, 1) : null,
-                  semanticsLabel: 'Modül ilerlemesi',
+                  label: 'Modül ilerlemesi',
                 ),
                 if (progressState.hasError)
                   TextButton(
@@ -131,6 +129,7 @@ class _ModuleContent extends ConsumerWidget {
               index: index,
               current: progressState.hasValue && lesson.id == nextId,
               completed: ref.watch(lessonCompletedProvider(lesson.id)),
+              progressKnown: progressState.hasValue,
               last: index == module.lessons.length - 1,
               onTap: () => openLesson(lesson.id),
             ),
@@ -155,6 +154,7 @@ class _LessonStep extends StatelessWidget {
     required this.index,
     required this.current,
     required this.completed,
+    required this.progressKnown,
     required this.last,
     required this.onTap,
   });
@@ -162,6 +162,7 @@ class _LessonStep extends StatelessWidget {
   final int index;
   final bool current;
   final bool completed;
+  final bool progressKnown;
   final bool last;
   final VoidCallback onTap;
 
@@ -169,123 +170,175 @@ class _LessonStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final foreground = current ? scheme.onInverseSurface : scheme.onSurface;
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 42,
-            child: Column(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: completed
-                        ? scheme.tertiaryContainer
-                        : current
-                        ? scheme.inverseSurface
-                        : scheme.primaryContainer,
-                  ),
-                  child: completed
-                      ? Icon(
-                          Icons.check_rounded,
-                          color: scheme.onTertiaryContainer,
-                        )
-                      : Text(
-                          '${index + 1}',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: current
-                                ? scheme.onInverseSurface
-                                : scheme.onPrimaryContainer,
+    final foreground = current
+        ? scheme.onInverseSurface
+        : completed
+        ? scheme.onTertiaryContainer
+        : scheme.onSurface;
+    final status = completed
+        ? 'Tamamlandı'
+        : current
+        ? 'Sıradaki ders'
+        : progressKnown
+        ? 'Seni bekliyor'
+        : 'İlerleme bekleniyor';
+    return Semantics(
+      button: true,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: 48,
+              child: Column(
+                children: [
+                  AnimatedContainer(
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 300),
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: completed
+                          ? scheme.tertiaryContainer
+                          : current
+                          ? scheme.inverseSurface
+                          : scheme.surfaceContainerHighest,
+                      border: Border.all(
+                        color: current
+                            ? scheme.primary
+                            : completed
+                            ? scheme.tertiary
+                            : scheme.outlineVariant,
+                        width: 2,
+                      ),
+                    ),
+                    child: completed
+                        ? Icon(
+                            Icons.check_rounded,
+                            color: scheme.onTertiaryContainer,
+                          )
+                        : Text(
+                            '${index + 1}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: current
+                                  ? scheme.onInverseSurface
+                                  : scheme.onSurfaceVariant,
+                            ),
                           ),
+                  ),
+                  if (!last)
+                    Expanded(
+                      child: Center(
+                        child: Container(
+                          width: completed ? 4 : 2,
+                          color: completed
+                              ? scheme.tertiary
+                              : scheme.outlineVariant,
                         ),
-                ),
-                if (!last)
-                  Expanded(
-                    child: Center(
-                      child: Container(width: 2, color: scheme.outlineVariant),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Material(
+                  color: current
+                      ? scheme.inverseSurface
+                      : completed
+                      ? scheme.tertiaryContainer
+                      : scheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    side: BorderSide(
+                      color: current
+                          ? scheme.primary
+                          : completed
+                          ? scheme.tertiary.withValues(alpha: .4)
+                          : scheme.outlineVariant,
+                      width: current ? 2 : 1,
                     ),
                   ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Material(
-                color: current ? scheme.inverseSurface : scheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (current) ...[
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           LearningPill(
-                            'SIRADAKİ DERS',
-                            color: scheme.inversePrimary,
-                            foreground: scheme.inverseSurface,
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                        Text(
-                          lesson.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: foreground,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          lesson.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
+                            status,
+                            icon: completed
+                                ? Icons.check_circle_rounded
+                                : current
+                                ? Icons.play_circle_fill_rounded
+                                : Icons.radio_button_unchecked,
                             color: current
-                                ? scheme.onInverseSurface.withValues(alpha: .85)
+                                ? scheme.inversePrimary
+                                : completed
+                                ? scheme.surface
+                                : scheme.surfaceContainerHighest,
+                            foreground: current
+                                ? scheme.inverseSurface
+                                : completed
+                                ? scheme.tertiary
                                 : scheme.onSurfaceVariant,
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${lesson.estimatedDurationMinutes} dk',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: foreground,
-                                ),
-                              ),
-                            ),
-                            if (completed)
-                              Text(
-                                'Tamamlandı',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: scheme.tertiary,
-                                ),
-                              ),
-                            Icon(
-                              current
-                                  ? Icons.play_circle_fill_rounded
-                                  : Icons.chevron_right_rounded,
+                          const SizedBox(height: 10),
+                          Text(
+                            lesson.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               color: foreground,
-                              size: 22,
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            lesson.description,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: current
+                                  ? scheme.onInverseSurface.withValues(
+                                      alpha: .85,
+                                    )
+                                  : completed
+                                  ? scheme.onTertiaryContainer
+                                  : scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${lesson.estimatedDurationMinutes} dk',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: foreground,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                current
+                                    ? Icons.play_circle_fill_rounded
+                                    : Icons.chevron_right_rounded,
+                                color: foreground,
+                                size: 22,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

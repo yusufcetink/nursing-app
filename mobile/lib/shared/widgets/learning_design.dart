@@ -32,6 +32,111 @@ class LearningArt extends StatelessWidget {
   );
 }
 
+/// A larger decorative composition shared by module and achievement cards.
+class LearningArtScene extends StatelessWidget {
+  const LearningArtScene({
+    this.artwork = LearningArtwork.book,
+    this.size = 168,
+    super.key,
+  });
+  final LearningArtwork artwork;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: size * .85,
+              height: size * .85,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: scheme.surface.withValues(alpha: .48),
+                border: Border.all(
+                  color: scheme.primary.withValues(alpha: .12),
+                ),
+              ),
+            ),
+            Positioned(
+              right: size * .02,
+              bottom: size * .1,
+              child: Container(
+                width: size * .35,
+                height: size * .35,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: scheme.secondaryContainer,
+                ),
+              ),
+            ),
+            Transform.rotate(
+              angle: artwork == LearningArtwork.medal ? -.08 : .06,
+              child: LearningArt(artwork: artwork, size: size * .94),
+            ),
+            Positioned(
+              left: size * .02,
+              top: size * .14,
+              child: Icon(
+                Icons.auto_awesome,
+                size: size * .14,
+                color: scheme.secondary,
+              ),
+            ),
+            Positioned(
+              right: size * .08,
+              top: size * .06,
+              child: Icon(
+                Icons.add_rounded,
+                size: size * .1,
+                color: scheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LearningProgress extends StatelessWidget {
+  const LearningProgress({
+    required this.value,
+    required this.label,
+    this.color,
+    this.backgroundColor,
+    super.key,
+  });
+  final double? value;
+  final String label;
+  final Color? color;
+  final Color? backgroundColor;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: value?.clamp(0, 1) ?? 0),
+    duration: MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 500),
+    curve: Curves.easeOutCubic,
+    builder: (context, progress, _) => LinearProgressIndicator(
+      value: value == null ? null : progress,
+      minHeight: 9,
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      color: color,
+      backgroundColor: backgroundColor,
+      semanticsLabel: label,
+      semanticsValue: value == null
+          ? null
+          : '${(value!.clamp(0, 1) * 100).round()}',
+    ),
+  );
+}
+
 class BrandWordmark extends StatelessWidget {
   const BrandWordmark({super.key});
 

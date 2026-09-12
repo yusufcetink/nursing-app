@@ -133,22 +133,30 @@ final testProfileQuizResult = ProfileQuizResult(
 );
 
 final class FakeEducationRepository implements EducationRepository {
+  int getModulesCallCount = 0;
+  int getModuleCallCount = 0;
   int getLessonCallCount = 0;
 
   @override
-  Future<EducationModule> getModule(String id) async => testModule;
+  Future<EducationModule> getModule(String id) async {
+    getModuleCallCount++;
+    return testModule;
+  }
 
   @override
-  Future<List<EducationModule>> getModules() async => [
-    EducationModule(
-      id: testModule.id,
-      title: testModule.title,
-      description: testModule.description,
-      order: testModule.order,
-      lessonCount: testModule.lessonCount,
-      lessons: const [],
-    ),
-  ];
+  Future<List<EducationModule>> getModules() async {
+    getModulesCallCount++;
+    return [
+      EducationModule(
+        id: testModule.id,
+        title: testModule.title,
+        description: testModule.description,
+        order: testModule.order,
+        lessonCount: testModule.lessonCount,
+        lessons: const [],
+      ),
+    ];
+  }
 
   @override
   Future<Lesson> getLesson(String id) async {

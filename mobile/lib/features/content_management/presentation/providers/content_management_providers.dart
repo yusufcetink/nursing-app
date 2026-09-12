@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:asli_app/features/content_management/data/content_management_repository.dart';
 import 'package:asli_app/features/content_management/domain/models/content_models.dart';
 import 'package:asli_app/features/education/presentation/providers/education_modules_provider.dart';
+import 'package:asli_app/features/quiz/presentation/controllers/quiz_controller.dart';
 
 final contentModulesProvider = FutureProvider<List<ContentModuleSummary>>(
   (ref) => ref.watch(contentManagementRepositoryProvider).getModules(),
@@ -33,7 +34,7 @@ final class ContentMutationController extends AsyncNotifier<void> {
     final id = await ref
         .read(contentManagementRepositoryProvider)
         .createModule(input);
-    ref.invalidate(contentModulesProvider);
+    _invalidateModule(id);
     return id;
   });
 
@@ -42,9 +43,7 @@ final class ContentMutationController extends AsyncNotifier<void> {
       await ref
           .read(contentManagementRepositoryProvider)
           .updateModule(id, input);
-      ref
-        ..invalidate(contentModulesProvider)
-        ..invalidate(contentModuleProvider(id));
+      _invalidateModule(id, includeLessons: true);
       return true;
     });
     return result ?? false;
@@ -53,9 +52,7 @@ final class ContentMutationController extends AsyncNotifier<void> {
   Future<bool> deleteModule(String id) async =>
       await _mutate(() async {
         await ref.read(contentManagementRepositoryProvider).deleteModule(id);
-        ref
-          ..invalidate(contentModulesProvider)
-          ..invalidate(contentModuleProvider(id));
+        _invalidateModule(id, includeLessons: true);
         return true;
       }) ??
       false;
@@ -65,9 +62,7 @@ final class ContentMutationController extends AsyncNotifier<void> {
         final id = await ref
             .read(contentManagementRepositoryProvider)
             .createLesson(moduleId, input);
-        ref
-          ..invalidate(contentModulesProvider)
-          ..invalidate(contentModuleProvider(moduleId));
+        _invalidateLesson(moduleId, id);
         return id;
       });
 
@@ -80,10 +75,7 @@ final class ContentMutationController extends AsyncNotifier<void> {
       await ref
           .read(contentManagementRepositoryProvider)
           .updateLesson(id, input);
-      ref
-        ..invalidate(contentModulesProvider)
-        ..invalidate(contentModuleProvider(moduleId))
-        ..invalidate(contentLessonProvider(id));
+      _invalidateLesson(moduleId, id);
       return true;
     });
     return result ?? false;
@@ -92,11 +84,7 @@ final class ContentMutationController extends AsyncNotifier<void> {
   Future<bool> deleteLesson(String moduleId, String id) async =>
       await _mutate(() async {
         await ref.read(contentManagementRepositoryProvider).deleteLesson(id);
-        ref
-          ..invalidate(contentModulesProvider)
-          ..invalidate(contentModuleProvider(moduleId))
-          ..invalidate(contentLessonProvider(id))
-          ..invalidate(contentQuizProvider(id));
+        _invalidateLesson(moduleId, id);
         return true;
       }) ??
       false;
@@ -199,7 +187,9 @@ final class ContentMutationController extends AsyncNotifier<void> {
       }
       ref
         ..invalidate(contentQuizProvider(lessonId))
-        ..invalidate(contentLessonProvider(lessonId));
+        ..invalidate(contentLessonProvider(lessonId))
+        ..invalidate(lessonProvider)
+        ..invalidate(quizForLessonProvider(lessonId));
       return true;
     });
     return result ?? false;
@@ -210,7 +200,9 @@ final class ContentMutationController extends AsyncNotifier<void> {
         await ref.read(contentManagementRepositoryProvider).deleteQuiz(id);
         ref
           ..invalidate(contentQuizProvider(lessonId))
-          ..invalidate(contentLessonProvider(lessonId));
+          ..invalidate(contentLessonProvider(lessonId))
+          ..invalidate(lessonProvider)
+          ..invalidate(quizForLessonProvider(lessonId));
         return true;
       }) ??
       false;
@@ -241,7 +233,10 @@ final class ContentMutationController extends AsyncNotifier<void> {
           await repository.createOption(questionId, options[index]);
         }
       }
-      ref.invalidate(contentQuizProvider(lessonId));
+      ref
+        ..invalidate(contentQuizProvider(lessonId))
+        ..invalidate(lessonProvider)
+        ..invalidate(quizForLessonProvider(lessonId));
       return true;
     });
     return result ?? false;
@@ -250,10 +245,37 @@ final class ContentMutationController extends AsyncNotifier<void> {
   Future<bool> deleteQuestion(String lessonId, String id) async =>
       await _mutate(() async {
         await ref.read(contentManagementRepositoryProvider).deleteQuestion(id);
-        ref.invalidate(contentQuizProvider(lessonId));
+        ref
+          ..invalidate(contentQuizProvider(lessonId))
+          ..invalidate(lessonProvider)
+          ..invalidate(quizForLessonProvider(lessonId));
         return true;
       }) ??
       false;
+
+  void _invalidateModule(String id, {bool includeLessons = false}) {
+    ref
+      ..invalidate(contentModulesProvider)
+      ..invalidate(contentModuleProvider(id))
+      ..invalidate(educationModulesProvider)
+      ..invalidate(educationModuleProvider(id));
+    if (includeLessons) {
+      // A module's publication/deletion also changes access to its lessons.
+      // Invalidate the families even when module details were never loaded.
+      ref
+        ..invalidate(lessonProvider)
+        ..invalidate(quizForLessonProvider);
+    }
+  }
+
+  void _invalidateLesson(String moduleId, String lessonId) {
+    _invalidateModule(moduleId);
+    ref
+      ..invalidate(contentLessonProvider(lessonId))
+      ..invalidate(contentQuizProvider(lessonId))
+      ..invalidate(lessonProvider((moduleId: moduleId, lessonId: lessonId)))
+      ..invalidate(quizForLessonProvider(lessonId));
+  }
 
   Future<T?> _mutate<T>(Future<T> Function() action) async {
     state = const AsyncLoading();

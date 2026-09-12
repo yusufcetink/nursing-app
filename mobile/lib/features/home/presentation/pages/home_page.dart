@@ -122,8 +122,8 @@ class HomePage extends ConsumerWidget {
             const SizedBox(height: 14),
             for (final (index, module) in modules.indexed)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ModuleRow(module: module, index: index),
+                padding: const EdgeInsets.only(bottom: 18),
+                child: _ModuleCard(module: module, index: index),
               ),
           ],
         ),
@@ -174,7 +174,7 @@ class _ContinueLearning extends ConsumerWidget {
                 ),
                 if (constraints.maxWidth >= 280 &&
                     MediaQuery.textScalerOf(context).scale(1) <= 1.2)
-                  const LearningArt(size: 96),
+                  const LearningArtScene(size: 124),
               ],
             ),
           ),
@@ -190,11 +190,11 @@ class _ContinueLearning extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 10),
-          LinearProgressIndicator(
-            value: progressState.isLoading ? null : progress.clamp(0, 1),
+          LearningProgress(
+            value: progressState.hasValue ? progress : null,
             color: scheme.inversePrimary,
             backgroundColor: scheme.onInverseSurface.withValues(alpha: .14),
-            semanticsLabel: 'Modül ilerlemesi',
+            label: 'Modül ilerlemesi',
           ),
           const SizedBox(height: 16),
           LearningAction(
@@ -218,69 +218,189 @@ class _ContinueLearning extends ConsumerWidget {
   }
 }
 
-class _ModuleRow extends ConsumerWidget {
-  const _ModuleRow({required this.module, required this.index});
+class _ModuleCard extends ConsumerWidget {
+  const _ModuleCard({required this.module, required this.index});
   final EducationModule module;
   final int index;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final progress = ref.watch(moduleProgressProvider(module));
-    final hasProgress = ref.watch(progressControllerProvider).hasValue;
-    return Material(
-      key: Key('home_module_${module.id}'),
-      color: index.isEven ? scheme.primaryContainer : scheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(24),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.pushNamed(
-          AppRoutes.educationModule,
-          pathParameters: {AppRoutes.moduleIdParameter: module.id},
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final progress = ref.watch(moduleProgressProvider(module)).clamp(0.0, 1.0);
+    final progressState = ref.watch(progressControllerProvider);
+    final hasProgress = progressState.hasValue;
+    final completed = hasProgress && progress >= 1;
+    final recommended = ref.watch(recommendedModuleProvider)?.id == module.id;
+    final (background, foreground, accent, artwork) = switch (index % 3) {
+      0 => (
+        scheme.primaryContainer,
+        scheme.onPrimaryContainer,
+        scheme.primary,
+        LearningArtwork.book,
+      ),
+      1 => (
+        scheme.secondaryContainer,
+        scheme.onSecondaryContainer,
+        scheme.secondary,
+        LearningArtwork.shield,
+      ),
+      _ => (
+        scheme.tertiaryContainer,
+        scheme.onTertiaryContainer,
+        scheme.tertiary,
+        LearningArtwork.heart,
+      ),
+    };
+    final status = completed
+        ? 'Tamamlandı'
+        : !hasProgress
+        ? 'İlerleme bekleniyor'
+        : module.lessonCount == 0
+        ? 'Dersler hazırlanıyor'
+        : recommended
+        ? 'Sıradaki modülün'
+        : progress > 0
+        ? 'Devam ediyor'
+        : 'Keşfetmeye hazır';
+    return Semantics(
+      button: true,
+      child: Material(
+        key: Key('home_module_${module.id}'),
+        color: background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(32),
+          side: BorderSide(
+            color: recommended && !completed ? accent : background,
+            width: 1.5,
+          ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              LearningArt(
-                artwork: const [
-                  LearningArtwork.book,
-                  LearningArtwork.shield,
-                  LearningArtwork.heart,
-                ][index % 3],
-                size: 48,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      module.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 4,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.pushNamed(
+            AppRoutes.educationModule,
+            pathParameters: {AppRoutes.moduleIdParameter: module.id},
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact =
+                        constraints.maxWidth < 260 ||
+                        MediaQuery.textScalerOf(context).scale(1) > 1.3;
+                    final identity = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${module.lessonCount} ders',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        if (hasProgress)
-                          Text(
-                            '%${(progress * 100).round()} tamamlandı',
-                            style: Theme.of(context).textTheme.bodySmall,
+                          'MODÜL',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: foreground,
                           ),
+                        ),
+                        Text(
+                          '${index + 1}'.padLeft(2, '0'),
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: foreground,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${module.lessonCount} ders',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: foreground,
+                          ),
+                        ),
                       ],
+                    );
+                    final art = LearningArtScene(
+                      artwork: artwork,
+                      size: compact ? 148 : 164,
+                    );
+                    return compact
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              identity,
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: art,
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(child: identity),
+                              art,
+                            ],
+                          );
+                  },
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: LearningPill(
+                    status,
+                    icon: completed
+                        ? Icons.check_circle_rounded
+                        : recommended
+                        ? Icons.play_circle_outline_rounded
+                        : Icons.explore_outlined,
+                    color: scheme.surface,
+                    foreground: accent,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  module.title,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: foreground,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  module.description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: foreground,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hasProgress
+                            ? '%${(progress * 100).round()} tamamlandı'
+                            : progressState.hasError
+                            ? 'İlerleme yüklenemedi'
+                            : 'İlerleme yükleniyor…',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: foreground,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      completed
+                          ? Icons.replay_rounded
+                          : Icons.arrow_forward_rounded,
+                      color: foreground,
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded),
-            ],
+                const SizedBox(height: 10),
+                LearningProgress(
+                  value: hasProgress ? progress : null,
+                  label: '${module.title} ilerlemesi',
+                  color: accent,
+                  backgroundColor: foreground.withValues(alpha: .12),
+                ),
+              ],
+            ),
           ),
         ),
       ),

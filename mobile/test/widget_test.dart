@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:asli_app/app/app.dart';
+import 'package:asli_app/features/education/presentation/pages/lesson_page.dart';
+import 'package:go_router/go_router.dart';
 import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/quiz/data/quiz_repository.dart';
@@ -124,16 +126,18 @@ void main() {
     expect(find.text('1'), findsNWidgets(2));
     expect(find.text('%50'), findsOneWidget);
 
-    await tester.pageBack();
+    expect(find.text('Derse Dön'), findsNothing);
+    await tester.tap(find.text('Sıradaki Derse Geç'));
     await tester.pumpAndSettle();
-    expect(find.text("Quiz'e Geç"), findsOneWidget);
-
-    await tester.pageBack();
+    expect(find.text('Etik İlkeler'), findsOneWidget);
+    expect(find.text('Quiz Sonucu'), findsNothing);
+    expect(
+      GoRouter.of(tester.element(find.byType(LessonPage))).canPop(),
+      isFalse,
+    );
+    await tester.tap(find.text('Eğitim'));
     await tester.pumpAndSettle();
-    expect(find.text('Tamamlandı'), findsOneWidget);
-
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+    await tester.reveal(find.text('%33 tamamlandı'), 200);
     expect(find.text('%33 tamamlandı'), findsOneWidget);
   });
 }

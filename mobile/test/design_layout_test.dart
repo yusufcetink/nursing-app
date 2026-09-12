@@ -146,12 +146,14 @@ void main() {
         find.byKey(const Key('home_module_nursing-fundamentals')),
         200,
       );
+      await inspect('02-home-modules');
       await tester.tap(
         find.byKey(const Key('home_module_nursing-fundamentals')),
       );
       await tester.pumpAndSettle();
       await inspect('03-module');
       await tester.reveal(find.text('Hemşirenin Temel Rolleri'), 200);
+      await inspect('03-module-route');
       await tester.tap(find.text('Hemşirenin Temel Rolleri'));
       await tester.pumpAndSettle();
       await inspect('04-lesson');
@@ -173,8 +175,8 @@ void main() {
       await controller.submitAndContinue();
       await tester.pumpAndSettle();
       await inspect('06-result');
-      await tester.reveal(find.text('Derse Dön'), 200);
-      expect(find.text('Derse Dön').hitTestable(), findsOneWidget);
+      expect(find.text('Sıradaki Derse Geç').hitTestable(), findsOneWidget);
+      expect(find.text('Derse Dön'), findsNothing);
       container.read(appRouterProvider).goNamed(AppRoutes.profile);
       await tester.pumpAndSettle();
       await inspect('07-profile');
