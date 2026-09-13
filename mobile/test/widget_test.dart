@@ -1,3 +1,4 @@
+import 'helpers/fake_activity_repository.dart';
 import 'helpers/ui_test_helpers.dart';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:asli_app/app/app.dart';
 import 'package:asli_app/features/education/presentation/pages/lesson_page.dart';
+import 'package:asli_app/features/education/presentation/widgets/lesson_completion_sheet.dart';
 import 'package:go_router/go_router.dart';
 import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
@@ -20,6 +22,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
           authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
           educationRepositoryProvider.overrideWithValue(
             FakeEducationRepository(),
@@ -51,11 +56,10 @@ void main() {
     await tester.reveal(find.text('Eğitim Modülleri'), 200);
     expect(find.text('Eğitim Modülleri'), findsOneWidget);
     expect(find.text('Hemşireliğin Temelleri'), findsWidgets);
-    await tester.reveal(find.text('3 ders'), 200);
-    expect(find.text('3 ders'), findsOneWidget);
-    expect(find.text('%0 tamamlandı'), findsOneWidget);
+    await tester.reveal(find.text('0 / 3 ders'), 200);
+    expect(find.text('0 / 3 ders'), findsOneWidget);
+    expect(find.text('Başlanmadı'), findsOneWidget);
 
-    await tester.reveal(find.text('Eğitim Modülleri'), 200);
     await tester.reveal(
       find.byKey(const Key('home_module_nursing-fundamentals')),
       200,
@@ -63,14 +67,15 @@ void main() {
     await tester.tap(find.byKey(const Key('home_module_nursing-fundamentals')));
     await tester.pumpAndSettle();
 
-    await tester.reveal(find.text('Dersler'), 200);
-    expect(find.text('Dersler'), findsOneWidget);
+    await tester.reveal(find.text('Öğrenme yolculuğun'), 200);
+    expect(find.text('Öğrenme yolculuğun'), findsOneWidget);
     expect(find.text('Hemşirenin Temel Rolleri'), findsOneWidget);
+    await tester.reveal(find.text('Etik İlkeler'), 160);
     expect(find.text('Etik İlkeler'), findsOneWidget);
     await tester.reveal(find.text('Hemşirelik Bakım Süreci'), 200);
     expect(find.text('Hemşirelik Bakım Süreci'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Hemşirenin Temel Rolleri'));
+    await tester.reveal(find.text('Hemşirenin Temel Rolleri'), -160);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hemşirenin Temel Rolleri'));
     await tester.pumpAndSettle();
@@ -86,11 +91,14 @@ void main() {
 
     await tester.reveal(find.text('Dersi Tamamla'), 200);
     await tester.tap(find.text('Dersi Tamamla'));
-    await tester.pump();
-
-    expect(find.text("Quiz'e Geç"), findsOneWidget);
-
-    await tester.tap(find.text("Quiz'e Geç"));
+    await tester.pumpAndSettle();
+    expect(find.byType(LessonCompletionSheet), findsOneWidget);
+    final completionAction = find.descendant(
+      of: find.byType(LessonCompletionSheet),
+      matching: find.text("Quiz'e Geç"),
+    );
+    await tester.ensureVisible(completionAction);
+    await tester.tap(completionAction);
     await tester.pumpAndSettle();
 
     expect(find.text('Soru 1 / 2'), findsOneWidget);
@@ -122,8 +130,9 @@ void main() {
     expect(find.text('Quiz Sonucu'), findsOneWidget);
     await tester.reveal(find.text('Doğru'), 200);
     expect(find.text('Doğru'), findsOneWidget);
-    expect(find.text('Tekrar'), findsOneWidget);
+    expect(find.text('Yanlış'), findsOneWidget);
     expect(find.text('1'), findsNWidgets(2));
+    await tester.reveal(find.text('%50'), -160);
     expect(find.text('%50'), findsOneWidget);
 
     expect(find.text('Derse Dön'), findsNothing);
@@ -137,7 +146,7 @@ void main() {
     );
     await tester.tap(find.text('Eğitim'));
     await tester.pumpAndSettle();
-    await tester.reveal(find.text('%33 tamamlandı'), 200);
-    expect(find.text('%33 tamamlandı'), findsOneWidget);
+    await tester.reveal(find.text('1 / 3 ders'), 200);
+    expect(find.text('1 / 3 ders'), findsOneWidget);
   });
 }

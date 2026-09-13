@@ -21,6 +21,8 @@ class ResetPasswordPage extends ConsumerStatefulWidget {
 
 class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
   static const _resendCooldownSeconds = 60;
+  static const _loginFallbackMessage =
+      'Şifreniz güncellendi, yeni şifrenizle giriş yapabilirsiniz.';
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _emailController;
   final _codeController = TextEditingController();
@@ -69,6 +71,29 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     }
 
     setState(() => _resetSucceeded = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Şifreniz güncellendi. Giriş yapılıyor…')),
+    );
+
+    // Give the success feedback a frame to render before login can complete.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    final loggedIn = await ref
+        .read(authControllerProvider.notifier)
+        .login(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    if (loggedIn) {
+      context.goNamed(AppRoutes.home);
+      return;
+    }
+
+    context.goNamed(AppRoutes.login, extra: _loginFallbackMessage);
   }
 
   Future<void> _resend() async {
@@ -193,7 +218,7 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
             if (_resetSucceeded) ...[
               const SizedBox(height: AppSpacing.sm),
               const Text(
-                'Şifreniz güncellendi. Giriş yapabilirsiniz.',
+                'Şifreniz güncellendi. Giriş yapılıyor…',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -208,12 +233,13 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
                     : 'Sıfırlama Kodunu Yeniden Gönder',
               ),
             ),
-            TextButton(
-              onPressed: isLoading
-                  ? null
-                  : () => context.goNamed(AppRoutes.login),
-              child: const Text('Giriş ekranına dön'),
-            ),
+            if (!_resetSucceeded)
+              TextButton(
+                onPressed: isLoading
+                    ? null
+                    : () => context.goNamed(AppRoutes.login),
+                child: const Text('Giriş ekranına dön'),
+              ),
           ],
         ),
       ),

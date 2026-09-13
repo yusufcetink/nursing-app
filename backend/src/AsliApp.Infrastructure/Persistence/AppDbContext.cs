@@ -1,4 +1,6 @@
 using AsliApp.Domain.Education;
+using AsliApp.Domain.Analytics;
+using AsliApp.Domain.Notifications;
 using AsliApp.Domain.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -20,6 +22,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<QuizAttemptAnswer> QuizAttemptAnswers => Set<QuizAttemptAnswer>();
     public DbSet<LessonProgress> LessonProgress => Set<LessonProgress>();
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
+    public DbSet<UserActivityEvent> UserActivityEvents => Set<UserActivityEvent>();
+    public DbSet<AppSession> AppSessions => Set<AppSession>();
+    public DbSet<UserDevice> UserDevices => Set<UserDevice>();
+    public DbSet<PushNotificationLog> PushNotificationLogs => Set<PushNotificationLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -206,6 +212,64 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
                 .WithMany(lesson => lesson.ProgressEntries)
                 .HasForeignKey(progress => progress.LessonId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AppSession>(entity =>
+        {
+            entity.HasKey(session => session.Id);
+            entity.HasIndex(session => new { session.UserId, session.LastActivityAtUtc });
+            entity.HasOne(session => session.User)
+                .WithMany(user => user.AppSessions)
+                .HasForeignKey(session => session.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserActivityEvent>(entity =>
+        {
+            entity.HasKey(activity => activity.Id);
+            entity.Property(activity => activity.EventType).HasConversion<string>().HasMaxLength(40);
+            entity.Property(activity => activity.ScreenName).HasMaxLength(100);
+            entity.Property(activity => activity.Target).HasMaxLength(200);
+            entity.Property(activity => activity.MetadataJson).HasMaxLength(2000);
+            entity.HasIndex(activity => activity.ClientEventId).IsUnique();
+            entity.HasIndex(activity => new { activity.UserId, activity.OccurredAtUtc });
+            entity.HasIndex(activity => new { activity.UserId, activity.ScreenName, activity.OccurredAtUtc });
+            entity.HasOne(activity => activity.User)
+                .WithMany(user => user.ActivityEvents)
+                .HasForeignKey(activity => activity.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(activity => activity.Session)
+                .WithMany(session => session.Events)
+                .HasForeignKey(activity => activity.SessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserDevice>(entity =>
+        {
+            entity.HasKey(device => device.Id);
+            entity.Property(device => device.InstallationId).HasMaxLength(200).IsRequired();
+            entity.Property(device => device.DeviceToken).HasMaxLength(2048).IsRequired();
+            entity.Property(device => device.Platform).HasMaxLength(20).IsRequired();
+            entity.HasIndex(device => device.InstallationId).IsUnique();
+            entity.HasIndex(device => device.DeviceToken)
+                .IsUnique()
+                .HasFilter("[DeviceToken] <> N''");
+            entity.HasIndex(device => new { device.UserId, device.IsActive });
+            entity.HasOne(device => device.User)
+                .WithMany(user => user.Devices)
+                .HasForeignKey(device => device.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PushNotificationLog>(entity =>
+        {
+            entity.HasKey(log => log.Id);
+            entity.Property(log => log.NotificationType).HasMaxLength(50).IsRequired();
+            entity.HasIndex(log => new { log.UserId, log.NotificationType, log.SentAtUtc });
+            entity.HasOne(log => log.User)
+                .WithMany(user => user.NotificationLogs)
+                .HasForeignKey(log => log.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

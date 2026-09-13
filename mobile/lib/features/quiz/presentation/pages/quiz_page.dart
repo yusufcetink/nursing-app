@@ -7,6 +7,7 @@ import 'package:asli_app/features/quiz/presentation/pages/quiz_result_page.dart'
 import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
 import 'package:asli_app/shared/widgets/learning_design.dart';
+import 'package:asli_app/shared/widgets/learning_motion.dart';
 
 class QuizPage extends ConsumerWidget {
   const QuizPage({required this.moduleId, required this.lessonId, super.key});
@@ -208,63 +209,87 @@ class _QuizOption extends StatelessWidget {
     final scheme = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Semantics(
-        selected: selected,
-        button: true,
-        inMutuallyExclusiveGroup: true,
-        child: Material(
-          color: selected ? scheme.primaryContainer : scheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-            side: BorderSide(
-              color: selected ? scheme.primary : scheme.outlineVariant,
-              width: selected ? 2 : 1,
+      child: AnimatedScale(
+        scale: selected ? .99 : 1,
+        duration: LearningMotion.duration(
+          context,
+          const Duration(milliseconds: 120),
+        ),
+        curve: Curves.easeOutCubic,
+        child: Semantics(
+          selected: selected,
+          button: true,
+          inMutuallyExclusiveGroup: true,
+          child: AnimatedContainer(
+            duration: LearningMotion.duration(
+              context,
+              const Duration(milliseconds: 180),
             ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: selected
-                          ? scheme.primary
-                          : scheme.surfaceContainerHighest,
-                    ),
-                    child: Text(
-                      String.fromCharCode(65 + index),
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: selected ? scheme.onPrimary : scheme.onSurface,
+            decoration: BoxDecoration(
+              color: selected ? scheme.primaryContainer : scheme.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: selected ? scheme.primary : scheme.outlineVariant,
+                width: 2,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(22),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 20,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: selected
+                              ? scheme.primary
+                              : scheme.surfaceContainerHighest,
+                        ),
+                        child: Text(
+                          String.fromCharCode(65 + index),
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: selected
+                                ? scheme.onPrimary
+                                : scheme.onSurface,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      text,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          text,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        selected
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        color: selected
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
+                        size: 22,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    selected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    color: selected ? scheme.primary : scheme.onSurfaceVariant,
-                    size: 22,
-                  ),
-                ],
+                ),
               ),
             ),
           ),

@@ -9,6 +9,8 @@ import 'package:asli_app/features/user_management/data/user_management_repositor
 import 'package:asli_app/features/user_management/domain/models/managed_user.dart';
 import 'package:asli_app/features/user_management/presentation/providers/user_management_providers.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
+import 'package:asli_app/app/router/app_router.dart';
+import 'package:go_router/go_router.dart';
 
 class UserManagementPage extends ConsumerStatefulWidget {
   const UserManagementPage({super.key});
@@ -90,6 +92,12 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
                             itemBuilder: (context, index) => _UserCard(
                               user: items[index],
                               enabled: !mutation.isLoading,
+                              onOpenAnalytics: () => context.pushNamed(
+                                AppRoutes.userActivity,
+                                pathParameters: {
+                                  AppRoutes.userIdParameter: items[index].id,
+                                },
+                              ),
                               onRoleChanged: (role) =>
                                   _changeRole(items[index], role),
                             ),
@@ -122,11 +130,13 @@ class _UserCard extends StatelessWidget {
     required this.user,
     required this.enabled,
     required this.onRoleChanged,
+    required this.onOpenAnalytics,
   });
 
   final ManagedUser user;
   final bool enabled;
   final ValueChanged<UserRole> onRoleChanged;
+  final VoidCallback onOpenAnalytics;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -138,6 +148,14 @@ class _UserCard extends StatelessWidget {
           Text(user.fullName, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xxs),
           Text(user.email),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: onOpenAnalytics,
+              icon: const Icon(Icons.analytics_outlined),
+              label: const Text('Kullanım Analizi'),
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<UserRole>(
             key: Key('role_${user.id}'),

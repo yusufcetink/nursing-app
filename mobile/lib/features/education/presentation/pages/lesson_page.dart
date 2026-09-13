@@ -5,12 +5,15 @@ import 'package:video_player/video_player.dart';
 import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/shared/widgets/learning_design.dart';
 import 'package:asli_app/features/education/presentation/providers/education_modules_provider.dart';
+import 'package:asli_app/features/education/presentation/providers/lesson_completion_provider.dart';
+import 'package:asli_app/features/education/presentation/widgets/lesson_completion_sheet.dart';
 import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
 import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/core/config/app_config.dart';
 import 'package:asli_app/core/network/api_client.dart';
 import 'package:asli_app/features/education/domain/models/lesson.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
+import 'package:asli_app/features/analytics/application/activity_tracker.dart';
 
 class LessonPage extends ConsumerWidget {
   const LessonPage({required this.moduleId, required this.lessonId, super.key});
@@ -53,6 +56,7 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
 
   Future<void> _completeLesson() async {
     if (_saving) return;
+    final wasCompleted = ref.read(lessonCompletedProvider(widget.lesson.id));
     setState(() => _saving = true);
     final completed = await ref
         .read(progressControllerProvider.notifier)
@@ -65,12 +69,76 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
           .lastActionError;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(networkErrorMessage(error!))));
+    } else {
+      ref
+          .read(activityTrackerProvider)
+          .track(
+            'lesson_complete',
+            moduleId: widget.moduleId,
+            lessonId: widget.lesson.id,
+          );
+      if (!wasCompleted) {
+        final completion = ref.read(lessonCompletionProvider(widget.moduleId));
+        final continueLearning = await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          useRootNavigator: true,
+          useSafeArea: true,
+          showDragHandle: true,
+          sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
+              ? AnimationStyle.noAnimation
+              : const AnimationStyle(
+                  duration: Duration(milliseconds: 280),
+                  reverseDuration: Duration(milliseconds: 180),
+                ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .92,
+          ),
+          builder: (context) => LessonCompletionSheet(
+            lessonTitle: widget.lesson.title,
+            completion: completion,
+            actionLabel: widget.lesson.quizId != null
+                ? "Quiz'e Geç"
+                : completion?.moduleCompleted == true
+                ? 'Eğitim modüllerini keşfet'
+                : completion?.nextLesson != null
+                ? 'Sıradaki derse geç'
+                : 'Modüle dön',
+          ),
+        );
+        if (!mounted || continueLearning != true) return;
+        if (widget.lesson.quizId != null) {
+          context.pushNamed(
+            AppRoutes.quiz,
+            pathParameters: {
+              AppRoutes.moduleIdParameter: widget.moduleId,
+              AppRoutes.lessonIdParameter: widget.lesson.id,
+            },
+          );
+        } else if (completion?.moduleCompleted == true) {
+          context.goNamed(AppRoutes.home);
+        } else if (completion?.nextLesson != null) {
+          context.goNamed(
+            AppRoutes.lesson,
+            pathParameters: {
+              AppRoutes.moduleIdParameter: widget.moduleId,
+              AppRoutes.lessonIdParameter: completion!.nextLesson!.id,
+            },
+          );
+        } else {
+          context.goNamed(
+            AppRoutes.educationModule,
+            pathParameters: {AppRoutes.moduleIdParameter: widget.moduleId},
+          );
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final lesson = widget.lesson;
+    ref.watch(lessonCompletionProvider(widget.moduleId));
     final isCompleted = ref.watch(lessonCompletedProvider(lesson.id));
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -78,10 +146,11 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
       appBar: AppBar(title: const Text('Öğrenme zamanı')),
       body: LearningBody(
         children: [
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
             children: [
               LearningPill('DERS ${lesson.order.toString().padLeft(2, '0')}'),
-              const Spacer(),
               if (isCompleted)
                 LearningPill(
                   'Tamamlandı',
@@ -230,6 +299,7 @@ class _LessonVideoPlayer extends ConsumerStatefulWidget {
 class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
   VideoPlayerController? _controller;
   Object? _error;
+  bool _completedTracked = false;
 
   @override
   void initState() {
@@ -248,6 +318,7 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
         httpHeaders: headers,
       );
       await controller.initialize();
+      controller.addListener(_videoChanged);
       if (!mounted) {
         await controller.dispose();
         return;
@@ -260,6 +331,7 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
 
   @override
   void dispose() {
+    _controller?.removeListener(_videoChanged);
     _controller?.dispose();
     super.dispose();
   }
@@ -306,8 +378,36 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
                   : () async {
                       if (controller.value.isPlaying) {
                         await controller.pause();
+                        ref
+                            .read(activityTrackerProvider)
+                            .track(
+                              'video_pause',
+                              target: widget.media.id,
+                              lessonId: widget.media.lessonId,
+                              metadata: {
+                                'positionSeconds': controller
+                                    .value
+                                    .position
+                                    .inSeconds
+                                    .toString(),
+                              },
+                            );
                       } else {
                         await controller.play();
+                        ref
+                            .read(activityTrackerProvider)
+                            .track(
+                              'video_play',
+                              target: widget.media.id,
+                              lessonId: widget.media.lessonId,
+                              metadata: {
+                                'positionSeconds': controller
+                                    .value
+                                    .position
+                                    .inSeconds
+                                    .toString(),
+                              },
+                            );
                       }
                       if (mounted) setState(() {});
                     },
@@ -321,6 +421,23 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
         ],
       ),
     );
+  }
+
+  void _videoChanged() {
+    final controller = _controller;
+    if (controller == null || _completedTracked) return;
+    final duration = controller.value.duration;
+    if (duration > Duration.zero && controller.value.position >= duration) {
+      _completedTracked = true;
+      ref
+          .read(activityTrackerProvider)
+          .track(
+            'video_complete',
+            target: widget.media.id,
+            lessonId: widget.media.lessonId,
+            durationSeconds: duration.inSeconds,
+          );
+    }
   }
 }
 

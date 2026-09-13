@@ -6,12 +6,18 @@ import 'package:asli_app/features/auth/domain/models/user_role.dart';
 final class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({
     this.error,
+    this.loginError,
+    this.loginGate,
+    this.resetPasswordError,
     this.restoreError,
     this.restoredUser,
     this.loginUser,
   });
 
   final AuthException? error;
+  final AuthException? loginError;
+  final Future<void>? loginGate;
+  final AuthException? resetPasswordError;
   final AuthException? restoreError;
   final AuthenticatedUser? restoredUser;
   final AuthenticatedUser? loginUser;
@@ -23,6 +29,8 @@ final class FakeAuthRepository implements AuthRepository {
   int forgotPasswordCallCount = 0;
   int resetPasswordCallCount = 0;
   int logoutCallCount = 0;
+  LoginRequest? lastLoginRequest;
+  ResetPasswordRequest? lastResetPasswordRequest;
 
   static final user = AuthenticatedUser(
     id: '7a73a68e-4ccd-43eb-b293-fbd419af96d0',
@@ -44,8 +52,11 @@ final class FakeAuthRepository implements AuthRepository {
   @override
   Future<AuthenticatedUser> login(LoginRequest request) async {
     loginCallCount++;
-    if (error case final error?) {
-      throw error;
+    lastLoginRequest = request;
+    await loginGate;
+    final actionError = loginError ?? error;
+    if (actionError != null) {
+      throw actionError;
     }
     return loginUser ?? user;
   }
@@ -79,7 +90,11 @@ final class FakeAuthRepository implements AuthRepository {
   @override
   Future<void> resetPassword(ResetPasswordRequest request) async {
     resetPasswordCallCount++;
-    if (error case final error?) throw error;
+    lastResetPasswordRequest = request;
+    final actionError = resetPasswordError ?? error;
+    if (actionError != null) {
+      throw actionError;
+    }
   }
 
   @override

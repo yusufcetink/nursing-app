@@ -5,6 +5,7 @@ import 'package:asli_app/features/quiz/data/quiz_repository.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_answer.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_submission_result.dart';
+import 'package:asli_app/features/analytics/application/activity_tracker.dart';
 
 typedef QuizSelection = ({String moduleId, String lessonId});
 
@@ -21,9 +22,35 @@ final class QuizController extends Notifier<QuizSessionState> {
   QuizController(this.selection);
 
   final QuizSelection selection;
+  Duration _startedAt = Duration.zero;
+  final Set<String> _reportedAnswers = {};
+  ActivityContext get _activityContext => ActivityContext(
+    moduleId: selection.moduleId,
+    lessonId: selection.lessonId,
+  );
 
   @override
-  QuizSessionState build() => QuizSessionState.initial();
+  QuizSessionState build() {
+    _startedAt = ref
+        .read(activityTrackerProvider)
+        .activeScreenDuration('quiz', _activityContext);
+    final quiz = ref.read(quizForLessonProvider(selection.lessonId)).value;
+    ref.read(activityTrackerProvider)
+      ..updateContext(
+        ActivityContext(
+          moduleId: selection.moduleId,
+          lessonId: selection.lessonId,
+          quizId: quiz?.id,
+        ),
+      )
+      ..track(
+        'quiz_start',
+        moduleId: selection.moduleId,
+        lessonId: selection.lessonId,
+        quizId: quiz?.id,
+      );
+    return QuizSessionState.initial();
+  }
 
   void selectOption(String optionId) {
     if (state.isCompleted || state.isSubmitting) return;
@@ -40,6 +67,17 @@ final class QuizController extends Notifier<QuizSessionState> {
     }
 
     final question = quiz.questions[state.currentQuestionIndex];
+    if (_reportedAnswers.add(question.id)) {
+      ref
+          .read(activityTrackerProvider)
+          .track(
+            'quiz_answer',
+            moduleId: selection.moduleId,
+            lessonId: selection.lessonId,
+            quizId: quiz.id,
+            questionId: question.id,
+          );
+    }
     final answers = [
       ...state.answers,
       QuizAnswer(questionId: question.id, selectedOptionId: selectedOptionId),
@@ -54,6 +92,7 @@ final class QuizController extends Notifier<QuizSessionState> {
         isCompleted: false,
         isSubmitting: false,
       );
+
       return;
     }
 
@@ -79,6 +118,21 @@ final class QuizController extends Notifier<QuizSessionState> {
       ref
         ..invalidate(quizHistoryProvider)
         ..invalidate(profileOverviewProvider);
+      ref
+          .read(activityTrackerProvider)
+          .track(
+            'quiz_complete',
+            moduleId: selection.moduleId,
+            lessonId: selection.lessonId,
+            quizId: quiz.id,
+            durationSeconds:
+                (ref
+                            .read(activityTrackerProvider)
+                            .activeScreenDuration('quiz', _activityContext) -
+                        _startedAt)
+                    .inSeconds,
+            metadata: {'scorePercentage': result.successPercentage.toString()},
+          );
     } catch (error) {
       state = QuizSessionState(
         currentQuestionIndex: state.currentQuestionIndex,

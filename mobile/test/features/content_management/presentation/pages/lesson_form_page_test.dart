@@ -1,3 +1,5 @@
+import '../../../../helpers/fake_activity_repository.dart';
+
 import 'package:asli_app/features/content_management/data/content_management_repository.dart';
 import 'package:asli_app/features/content_management/presentation/pages/lesson_form_page.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +15,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
           contentManagementRepositoryProvider.overrideWithValue(
             FakeContentManagementRepository(),
           ),

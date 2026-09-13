@@ -41,7 +41,7 @@ abstract final class AppTypography {
       ),
       bodyLarge: base.bodyLarge?.copyWith(height: 1.5),
       bodyMedium: base.bodyMedium?.copyWith(height: 1.45),
-      bodySmall: base.bodySmall?.copyWith(height: 1.4),
+      bodySmall: base.bodySmall?.copyWith(fontSize: 14, height: 1.4),
       labelLarge: base.labelLarge?.copyWith(
         fontSize: 15,
         fontWeight: FontWeight.w700,

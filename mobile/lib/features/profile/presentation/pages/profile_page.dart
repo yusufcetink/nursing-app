@@ -271,7 +271,6 @@ class _ProfileContent extends ConsumerWidget {
                 );
                 return;
               }
-              ref.read(progressControllerProvider.notifier).reset();
               context.goNamed(AppRoutes.login);
             },
             icon: const Icon(Icons.logout_rounded),

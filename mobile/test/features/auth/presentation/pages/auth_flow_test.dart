@@ -1,16 +1,23 @@
+import '../../../../helpers/fake_activity_repository.dart';
+
+import 'dart:async';
+
 import '../../../../helpers/ui_test_helpers.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:asli_app/app/app.dart';
 import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/auth/domain/models/authenticated_user.dart';
 import 'package:asli_app/features/auth/domain/models/user_role.dart';
+import 'package:asli_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:asli_app/features/content_management/data/content_management_repository.dart';
 import 'package:asli_app/features/content_management/presentation/pages/lesson_form_page.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
+import 'package:asli_app/features/home/presentation/pages/home_page.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
 
@@ -25,6 +32,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
           contentManagementRepositoryProvider.overrideWithValue(
             FakeContentManagementRepository(),
           ),
@@ -45,12 +55,22 @@ void main() {
   testWidgets('login, şifre sıfırlama ve kayıt akışları çalışır', (
     tester,
   ) async {
-    final repository = FakeAuthRepository();
+    final loginGate = Completer<void>();
+    final repository = FakeAuthRepository(loginGate: loginGate.future);
+    final container = ProviderContainer(
+      overrides: [
+        activityRepositoryProvider.overrideWithValue(FakeActivityRepository()),
+        authRepositoryProvider.overrideWithValue(repository),
+        educationRepositoryProvider.overrideWithValue(
+          FakeEducationRepository(),
+        ),
+        progressRepositoryProvider.overrideWithValue(FakeProgressRepository()),
+        profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [authRepositoryProvider.overrideWithValue(repository)],
-        child: const App(),
-      ),
+      UncontrolledProviderScope(container: container, child: const App()),
     );
     await tester.pumpAndSettle();
 
@@ -92,17 +112,23 @@ void main() {
     await tester.ensureVisible(find.text('Şifreyi Güncelle'));
     await tester.tap(find.text('Şifreyi Güncelle'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
     expect(repository.resetPasswordCallCount, 1);
-    expect(
-      find.text('Şifreniz güncellendi. Giriş yapabilirsiniz.'),
-      findsOneWidget,
-    );
-    final returnToLoginButton = find.text('Giriş ekranına dön');
-    await tester.ensureVisible(returnToLoginButton);
-    await tester.pump(const Duration(seconds: 5));
+    expect(repository.loginCallCount, 1);
+    expect(find.text('Şifreniz güncellendi. Giriş yapılıyor…'), findsOneWidget);
+    expect(find.text('Giriş ekranına dön'), findsNothing);
+    expect(repository.lastLoginRequest?.email, 'student@example.com');
+    expect(repository.lastLoginRequest?.password, 'SecurePass1!');
+
+    loginGate.complete();
     await tester.pumpAndSettle();
-    await tester.tap(returnToLoginButton);
+    expect(find.byType(HomePage), findsOneWidget);
+    expect(
+      GoRouter.of(tester.element(find.byType(HomePage))).canPop(),
+      isFalse,
+    );
+
+    await container.read(authControllerProvider.notifier).logout();
+    container.read(appRouterProvider).go(AppRoutes.loginPath);
     await tester.pumpAndSettle();
     final openRegisterButton = find.text('Hesabınız yok mu? Kayıt Ol');
     await tester.ensureVisible(openRegisterButton);
@@ -170,6 +196,7 @@ void main() {
   ) async {
     final container = ProviderContainer(
       overrides: [
+        activityRepositoryProvider.overrideWithValue(FakeActivityRepository()),
         authRepositoryProvider.overrideWithValue(
           FakeAuthRepository(restoredUser: FakeAuthRepository.user),
         ),
@@ -205,11 +232,74 @@ void main() {
     expect(find.text('ayse@example.com'), findsOneWidget);
   });
 
+  testWidgets(
+    'reset sonrası otomatik login hatasında mesajla login ekranına döner',
+    (tester) async {
+      const loginError = AuthException('Otomatik giriş başarısız.');
+      final repository = FakeAuthRepository(loginError: loginError);
+      final container = ProviderContainer(
+        overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
+          authRepositoryProvider.overrideWithValue(repository),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(container: container, child: const App()),
+      );
+      await tester.pumpAndSettle();
+
+      container
+          .read(appRouterProvider)
+          .go('${AppRoutes.resetPasswordPath}?email=student%40example.com');
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('reset_password_code_field')),
+        '123456',
+      );
+      await tester.enterText(
+        find.byKey(const Key('reset_password_new_password_field')),
+        'SecurePass1!',
+      );
+      await tester.enterText(
+        find.byKey(const Key('reset_password_confirmation_field')),
+        'SecurePass1!',
+      );
+      await tester.ensureVisible(find.text('Şifreyi Güncelle'));
+      await tester.tap(find.text('Şifreyi Güncelle'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(repository.resetPasswordCallCount, 1);
+      expect(repository.loginCallCount, 1);
+      expect(repository.lastLoginRequest?.email, 'student@example.com');
+      expect(repository.lastLoginRequest?.password, 'SecurePass1!');
+      expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsOneWidget);
+      expect(
+        find.text(
+          'Şifreniz güncellendi, yeni şifrenizle giriş yapabilirsiniz.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text(loginError.message), findsNothing);
+      expect(
+        GoRouter.of(tester.element(find.byKey(const Key('login_email_field'))))
+            .canPop(),
+        isFalse,
+      );
+    },
+  );
+
   testWidgets('girişsiz kullanıcı protected route erişiminde login görür', (
     tester,
   ) async {
     final container = ProviderContainer(
       overrides: [
+        activityRepositoryProvider.overrideWithValue(FakeActivityRepository()),
         authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
       ],
     );
@@ -241,6 +331,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
           authRepositoryProvider.overrideWithValue(
             FakeAuthRepository(restoredUser: editor),
           ),

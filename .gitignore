@@ -57,6 +57,9 @@ appsettings.*.local.json
 secrets.json
 *.pfx
 *.p12
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase-service-account*.json
 
 # Local databases
 *.db

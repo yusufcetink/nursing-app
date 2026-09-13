@@ -8,6 +8,8 @@ import 'package:asli_app/features/quiz/domain/models/quiz.dart';
 import 'package:asli_app/features/quiz/presentation/controllers/quiz_controller.dart';
 import 'package:asli_app/features/quiz/presentation/providers/quiz_next_lesson_provider.dart';
 import 'package:asli_app/shared/widgets/learning_design.dart';
+import 'package:asli_app/shared/widgets/learning_progress_display.dart';
+import 'package:asli_app/features/quiz/presentation/widgets/quiz_feedback_panel.dart';
 
 class QuizResultPage extends ConsumerWidget {
   const QuizResultPage({
@@ -49,126 +51,128 @@ class QuizResultPage extends ConsumerWidget {
           ],
         ),
         body: LearningBody(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
-            LearningPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: .85, end: 1),
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 650),
-                      curve: Curves.easeOutBack,
-                      builder: (context, scale, child) =>
-                          Transform.scale(scale: scale, child: child),
-                      child: const LearningArtScene(
-                        artwork: LearningArtwork.medal,
-                        size: 180,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: LearningPill(
-                      'BİR ADIM DAHA İLERİ',
-                      icon: Icons.auto_awesome,
-                      color: scheme.surface,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    session.successPercentage >= 80
-                        ? 'Güzel iş!'
-                        : 'Her deneme bir adım.',
-                    style: theme.textTheme.displaySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Bir quiz daha tamamladın.\nBilgin adım adım büyüyor.',
-                    style: theme.textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  Semantics(
-                    liveRegion: true,
-                    label: 'Başarı oranı yüzde ${session.successPercentage}',
-                    excludeSemantics: true,
-                    child: Text(
-                      '%${session.successPercentage}',
-                      style: theme.textTheme.displayMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Text(
-                    'başarı oranı',
-                    style: theme.textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  LearningProgress(
-                    value: session.successPercentage / 100,
-                    label: 'Başarı oranı',
-                  ),
-                ],
+            Text(
+              quiz.title,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: scheme.primary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: LearningProgressRing(
+                value: session.result == null
+                    ? null
+                    : session.successPercentage / 100,
+                total:
+                    session.result?.totalQuestionCount ?? quiz.questions.length,
+                label: 'Başarı oranı',
               ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: LearningStat(
-                    value: '${session.correctCount}',
-                    label: 'Doğru',
-                  ),
-                ),
-                Expanded(
-                  child: LearningStat(
-                    value: '${session.incorrectCount}',
-                    label: 'Tekrar',
-                  ),
-                ),
-                Expanded(
-                  child: LearningStat(
-                    value:
-                        '${session.result?.totalQuestionCount ?? quiz.questions.length}',
-                    label: 'Toplam soru',
-                  ),
-                ),
-              ],
+            Text(
+              'başarı oranı',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              session.result == null
+                  ? 'Sonuç yüklenemedi'
+                  : session.successPercentage >= 80
+                  ? 'Güzel ilerliyorsun!'
+                  : 'Her deneme bir adım.',
+              style: theme.textTheme.headlineMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Bilgin adım adım büyüyor.',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            LearningPanel(
-              color: scheme.secondaryContainer,
-              padding: const EdgeInsets.all(20),
-              child: Column(
+            Semantics(
+              liveRegion: true,
+              label: session.result == null
+                  ? 'Sonuç bilgisi alınamadı'
+                  : 'Başarı oranı yüzde ${session.successPercentage}. ${session.correctCount} doğru, ${session.incorrectCount} yanlış.',
+              excludeSemantics: true,
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.task_alt_rounded,
-                    color: scheme.onSecondaryContainer,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    quiz.title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: scheme.onSecondaryContainer,
+                  Expanded(
+                    child: LearningStat(
+                      value: session.result == null
+                          ? '—'
+                          : '${session.correctCount}',
+                      label: 'Doğru',
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    session.incorrectCount == 0
-                        ? 'Tüm soruları doğru yanıtladın. Bu emeğinle gurur duy.'
-                        : '${session.incorrectCount} soruda gelişme alanın var. Her deneme öğrendiklerini pekiştirmek için bir fırsat.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSecondaryContainer,
+                  Expanded(
+                    child: LearningStat(
+                      value: session.result == null
+                          ? '—'
+                          : '${session.incorrectCount}',
+                      label: 'Yanlış',
+                    ),
+                  ),
+                  Expanded(
+                    child: LearningStat(
+                      value: session.result == null
+                          ? '—'
+                          : '${session.result!.totalQuestionCount}',
+                      label: 'Soru',
                     ),
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 24),
+            if (session.correctCount > 0)
+              QuizFeedbackPanel(
+                key: ValueKey('correct_${session.result?.attemptId}'),
+                correct: true,
+                title: '${session.correctCount} doğru yanıt',
+                message: 'Güzel yakaladın. Öğrendiklerin güçleniyor.',
+              ),
+            if (session.incorrectCount > 0) ...[
+              const SizedBox(height: 12),
+              QuizFeedbackPanel(
+                key: ValueKey('incorrect_${session.result?.attemptId}'),
+                correct: false,
+                title: 'Birlikte pekiştirelim',
+                message:
+                    '${session.incorrectCount} yanlış yanıtın var. Ders içeriğini yeniden inceleyerek bilgini pekiştirebilirsin.',
+              ),
+            ],
+            nextLesson.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (lesson) => lesson == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Divider(),
+                          const SizedBox(height: 18),
+                          Text(
+                            'SIRADAKİ DERS',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(lesson.title, style: theme.textTheme.titleLarge),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),

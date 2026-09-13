@@ -26,13 +26,19 @@ final class ApiClient {
       this.dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) async {
-            if (!options.headers.containsKey('Authorization')) {
-              final token = await configuredTokenStorage.read();
-              if (token != null && token.trim().isNotEmpty) {
-                options.headers['Authorization'] = 'Bearer $token';
+            try {
+              if (!options.headers.containsKey('Authorization')) {
+                final token = await configuredTokenStorage.read();
+                if (token != null && token.trim().isNotEmpty) {
+                  options.headers['Authorization'] = 'Bearer $token';
+                }
               }
+              handler.next(options);
+            } on Object catch (error) {
+              handler.reject(
+                DioException(requestOptions: options, error: error),
+              );
             }
-            handler.next(options);
           },
         ),
       );

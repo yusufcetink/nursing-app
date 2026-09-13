@@ -2,9 +2,11 @@ using System.Text;
 using System.Text.Json.Serialization;
 using AsliApp.Api.Administration;
 using AsliApp.Api.Authentication;
+using AsliApp.Api.Analytics;
 using AsliApp.Api.Email;
 using AsliApp.Api.Education;
 using AsliApp.Api.Storage;
+using AsliApp.Api.Notifications;
 using AsliApp.Domain.Users;
 using AsliApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -115,6 +117,20 @@ builder.Services.AddScoped<AdminUserService>();
 builder.Services.AddScoped<IPasswordHasher<EmailVerificationCode>, PasswordHasher<EmailVerificationCode>>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<EducationService>();
+builder.Services.AddScoped<ActivityService>();
+builder.Services.AddScoped<AdminAnalyticsService>();
+builder.Services.AddScoped<DeviceRegistrationService>();
+builder.Services.AddScoped<NotificationTrackingService>();
+builder.Services.AddScoped<InactivityReminderService>();
+builder.Services.Configure<PushNotificationOptions>(
+    builder.Configuration.GetSection(PushNotificationOptions.SectionName));
+builder.Services.Configure<InactivityReminderOptions>(
+    builder.Configuration.GetSection(InactivityReminderOptions.SectionName));
+builder.Services.AddSingleton<IPushNotificationSender, FirebasePushNotificationSender>();
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<InactivityReminderWorker>();
+}
 builder.Services.Configure<GmailSmtpOptions>(
     builder.Configuration.GetSection(GmailSmtpOptions.SectionName));
 builder.Services.AddScoped<IEmailSender, GmailSmtpEmailSender>();

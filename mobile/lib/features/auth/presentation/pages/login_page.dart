@@ -9,7 +9,9 @@ import 'package:asli_app/features/auth/presentation/widgets/auth_page_layout.dar
 import 'package:asli_app/shared/widgets/learning_design.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({this.message, super.key});
+
+  final String? message;
 
   @override
   ConsumerState<LoginPage> createState() => _LoginPageState();
@@ -20,6 +22,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _passwordVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final message = widget.message;
+    if (message == null) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
 
   @override
   void dispose() {

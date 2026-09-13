@@ -38,6 +38,15 @@ abstract final class AppTheme {
 
     return baseTheme.copyWith(
       textTheme: textTheme,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colorScheme.surface,
+        modalBackgroundColor: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        clipBehavior: Clip.antiAlias,
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: scaffoldBackground,
         foregroundColor: colorScheme.onSurface,
@@ -89,7 +98,7 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: const Size(48, 44),
+          minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           shape: mediumShape,
           textStyle: textTheme.labelLarge,

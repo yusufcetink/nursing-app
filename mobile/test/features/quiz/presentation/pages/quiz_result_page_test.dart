@@ -1,3 +1,5 @@
+import '../../../../helpers/fake_activity_repository.dart';
+
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +27,7 @@ Future<ProviderContainer> showResult(
   final container = ProviderContainer(
     retry: (_, _) => null,
     overrides: [
+      activityRepositoryProvider.overrideWithValue(FakeActivityRepository()),
       authRepositoryProvider.overrideWithValue(
         FakeAuthRepository(restoredUser: FakeAuthRepository.user),
       ),

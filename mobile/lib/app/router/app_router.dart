@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:asli_app/app/shell/app_shell.dart';
 import 'package:asli_app/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:asli_app/features/analytics/application/activity_tracker.dart';
 import 'package:asli_app/features/auth/presentation/pages/email_verification_page.dart';
 import 'package:asli_app/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:asli_app/features/auth/presentation/pages/login_page.dart';
@@ -23,6 +24,7 @@ import 'package:asli_app/features/profile/presentation/pages/quiz_history_page.d
 import 'package:asli_app/features/profile/presentation/pages/quiz_result_detail_page.dart';
 import 'package:asli_app/features/quiz/presentation/pages/quiz_page.dart';
 import 'package:asli_app/features/user_management/presentation/pages/user_management_page.dart';
+import 'package:asli_app/features/user_management/presentation/pages/user_activity_page.dart';
 
 abstract final class AppRoutes {
   static const startup = 'startup';
@@ -47,6 +49,9 @@ abstract final class AppRoutes {
   static const quizResultDetailPath = '/profile/quiz-history/:attemptId';
   static const userManagement = 'user-management';
   static const userManagementPath = '/profile/users';
+  static const userActivity = 'user-activity';
+  static const userActivityPath = '/profile/users/:userId/analytics';
+  static const userIdParameter = 'userId';
   static const attemptIdParameter = 'attemptId';
   static const educationModule = 'education-module';
   static const educationModulePath = '/education/:moduleId';
@@ -87,11 +92,12 @@ abstract final class AppRoutes {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refresh = _AuthRouterRefresh();
+  final tracker = ref.watch(activityTrackerProvider);
   ref
     ..onDispose(refresh.dispose)
     ..listen(authControllerProvider, (_, _) => refresh.notify());
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: AppRoutes.startupPath,
     refreshListenable: refresh,
     redirect: (context, state) {
@@ -127,7 +133,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.loginPath,
         name: AppRoutes.login,
-        builder: (context, state) => const LoginPage(),
+        builder: (context, state) => LoginPage(
+          message: state.extra is String ? state.extra as String : null,
+        ),
       ),
       GoRoute(
         path: AppRoutes.registerPath,
@@ -287,6 +295,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const UserManagementPage(),
               ),
               GoRoute(
+                path: AppRoutes.userActivityPath,
+                name: AppRoutes.userActivity,
+                builder: (context, state) => UserActivityPage(
+                  userId: state.pathParameters[AppRoutes.userIdParameter]!,
+                ),
+              ),
+              GoRoute(
                 path: AppRoutes.quizResultDetailPath,
                 name: AppRoutes.quizResultDetail,
                 builder: (context, state) => QuizResultDetailPage(
@@ -300,6 +315,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  void reportScreen() {
+    if (router.routerDelegate.currentConfiguration.isEmpty) return;
+    final state = router.state;
+    if (_authPaths.contains(state.matchedLocation)) return;
+    tracker.screenChanged(
+      state.name,
+      context: ActivityContext(
+        moduleId: state.pathParameters[AppRoutes.moduleIdParameter],
+        lessonId: state.pathParameters[AppRoutes.lessonIdParameter],
+      ),
+    );
+  }
+
+  router.routerDelegate.addListener(reportScreen);
+  ref.onDispose(() {
+    router.routerDelegate.removeListener(reportScreen);
+    router.dispose();
+  });
+  return router;
 });
 
 const _authPaths = {

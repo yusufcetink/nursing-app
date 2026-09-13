@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/auth/data/models/auth_api_models.dart';
 import 'package:asli_app/features/auth/domain/models/authenticated_user.dart';
+import 'package:asli_app/features/notifications/application/push_notification_service.dart';
+import 'package:asli_app/features/analytics/application/activity_tracker.dart';
+import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
 
 final authControllerProvider =
     AsyncNotifierProvider<AuthController, AuthenticatedUser?>(
@@ -102,7 +105,10 @@ final class AuthController extends AsyncNotifier<AuthenticatedUser?> {
     final previous = state;
     _lastActionError = null;
     try {
+      await ref.read(activityTrackerProvider).endSession();
+      await ref.read(pushNotificationServiceProvider).deactivate();
       await ref.read(authRepositoryProvider).logout();
+      ref.read(progressControllerProvider.notifier).reset();
       state = const AsyncData(null);
       return true;
     } catch (error) {

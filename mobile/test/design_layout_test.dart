@@ -1,3 +1,4 @@
+import 'helpers/fake_activity_repository.dart';
 import 'helpers/ui_test_helpers.dart';
 
 import 'dart:io';
@@ -56,6 +57,9 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final container = ProviderContainer(
         overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
           authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
           educationRepositoryProvider.overrideWithValue(
             FakeEducationRepository(),

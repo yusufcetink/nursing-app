@@ -22,6 +22,98 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("AsliApp.Domain.Analytics.AppSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ActiveDurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("EndedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("LastActivityAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "LastActivityAtUtc");
+
+                    b.ToTable("AppSessions");
+                });
+
+            modelBuilder.Entity("AsliApp.Domain.Analytics.UserActivityEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClientEventId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid?>("LessonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("MetadataJson")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid?>("ModuleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("QuestionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("QuizId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ScreenName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Target")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientEventId")
+                        .IsUnique();
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("UserId", "OccurredAtUtc");
+
+                    b.HasIndex("UserId", "ScreenName", "OccurredAtUtc");
+
+                    b.ToTable("UserActivityEvents");
+                });
+
             modelBuilder.Entity("AsliApp.Domain.Education.EducationModule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -393,6 +485,86 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                     b.ToTable("QuizQuestions");
                 });
 
+            modelBuilder.Entity("AsliApp.Domain.Notifications.PushNotificationLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NotificationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset?>("OpenedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("SentAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("WasDispatched")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "NotificationType", "SentAtUtc");
+
+                    b.ToTable("PushNotificationLogs");
+                });
+
+            modelBuilder.Entity("AsliApp.Domain.Notifications.UserDevice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DeviceToken")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.Property<string>("InstallationId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("LastUpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("NotificationsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset>("RegisteredAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceToken")
+                        .IsUnique()
+                        .HasFilter("[DeviceToken] <> N''");
+
+                    b.HasIndex("InstallationId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("UserDevices");
+                });
+
             modelBuilder.Entity("AsliApp.Domain.Users.EmailVerificationCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -680,6 +852,36 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("AsliApp.Domain.Analytics.AppSession", b =>
+                {
+                    b.HasOne("AsliApp.Domain.Users.User", "User")
+                        .WithMany("AppSessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AsliApp.Domain.Analytics.UserActivityEvent", b =>
+                {
+                    b.HasOne("AsliApp.Domain.Analytics.AppSession", "Session")
+                        .WithMany("Events")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AsliApp.Domain.Users.User", "User")
+                        .WithMany("ActivityEvents")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("AsliApp.Domain.Education.Lesson", b =>
                 {
                     b.HasOne("AsliApp.Domain.Education.EducationModule", "EducationModule")
@@ -818,6 +1020,28 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                     b.Navigation("Quiz");
                 });
 
+            modelBuilder.Entity("AsliApp.Domain.Notifications.PushNotificationLog", b =>
+                {
+                    b.HasOne("AsliApp.Domain.Users.User", "User")
+                        .WithMany("NotificationLogs")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AsliApp.Domain.Notifications.UserDevice", b =>
+                {
+                    b.HasOne("AsliApp.Domain.Users.User", "User")
+                        .WithMany("Devices")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("AsliApp.Domain.Users.EmailVerificationCode", b =>
                 {
                     b.HasOne("AsliApp.Domain.Users.User", "User")
@@ -880,6 +1104,11 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AsliApp.Domain.Analytics.AppSession", b =>
+                {
+                    b.Navigation("Events");
+                });
+
             modelBuilder.Entity("AsliApp.Domain.Education.EducationModule", b =>
                 {
                     b.Navigation("Lessons");
@@ -920,9 +1149,17 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("AsliApp.Domain.Users.User", b =>
                 {
+                    b.Navigation("ActivityEvents");
+
+                    b.Navigation("AppSessions");
+
+                    b.Navigation("Devices");
+
                     b.Navigation("EmailVerificationCodes");
 
                     b.Navigation("LessonProgress");
+
+                    b.Navigation("NotificationLogs");
 
                     b.Navigation("QuizAttempts");
                 });

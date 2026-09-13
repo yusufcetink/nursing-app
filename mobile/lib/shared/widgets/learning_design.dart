@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:asli_app/app/theme/app_radius.dart';
 import 'package:asli_app/app/theme/app_spacing.dart';
+import 'package:asli_app/features/analytics/application/activity_tracker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:asli_app/shared/widgets/learning_motion.dart';
 
 /// The decorative artwork is separate from live, accessible Flutter controls.
 enum LearningArtwork { book, medal, shield, heart }
@@ -119,9 +122,7 @@ class LearningProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
     tween: Tween(begin: 0, end: value?.clamp(0, 1) ?? 0),
-    duration: MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 500),
+    duration: LearningMotion.duration(context, LearningMotion.progress),
     curve: Curves.easeOutCubic,
     builder: (context, progress, _) => LinearProgressIndicator(
       value: value == null ? null : progress,
@@ -258,7 +259,7 @@ class LearningPill extends StatelessWidget {
   }
 }
 
-class LearningAction extends StatelessWidget {
+class LearningAction extends ConsumerWidget {
   const LearningAction({
     required this.label,
     required this.onPressed,
@@ -272,8 +273,15 @@ class LearningAction extends StatelessWidget {
   final ButtonStyle? style;
 
   @override
-  Widget build(BuildContext context) => FilledButton(
-    onPressed: busy ? null : onPressed,
+  Widget build(BuildContext context, WidgetRef ref) => FilledButton(
+    onPressed: busy || onPressed == null
+        ? null
+        : () {
+            ref
+                .read(activityTrackerProvider)
+                .track('button_click', target: label);
+            onPressed!();
+          },
     style: style,
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

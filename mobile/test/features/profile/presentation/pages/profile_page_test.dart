@@ -1,3 +1,4 @@
+import '../../../../helpers/fake_activity_repository.dart';
 import '../../../../helpers/ui_test_helpers.dart';
 
 import 'package:flutter/material.dart';
@@ -33,6 +34,9 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              activityRepositoryProvider.overrideWithValue(
+                FakeActivityRepository(),
+              ),
               authRepositoryProvider.overrideWithValue(
                 FakeAuthRepository(loginUser: user),
               ),
@@ -81,6 +85,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
           authRepositoryProvider.overrideWithValue(authRepository),
           educationRepositoryProvider.overrideWithValue(
             FakeEducationRepository(),
@@ -119,8 +126,8 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('home_module_nursing-fundamentals')));
     await tester.pumpAndSettle();
-    await tester.reveal(find.text('Dersler'), 200);
-    expect(find.text('Dersler'), findsOneWidget);
+    await tester.reveal(find.text('Öğrenme yolculuğun'), 200);
+    expect(find.text('Öğrenme yolculuğun'), findsOneWidget);
 
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();
@@ -152,8 +159,8 @@ void main() {
 
     await tester.tap(find.text('Eğitim'));
     await tester.pumpAndSettle();
-    await tester.reveal(find.text('Dersler'), 200);
-    expect(find.text('Dersler'), findsOneWidget);
+    await tester.reveal(find.text('Öğrenme yolculuğun'), 200);
+    expect(find.text('Öğrenme yolculuğun'), findsOneWidget);
 
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();
@@ -163,10 +170,17 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.reveal(find.text('Çıkış Yap'), 200);
-    await tester.tap(find.text('Çıkış Yap'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Çıkış Yap'));
+    for (
+      var attempt = 0;
+      attempt < 300 && authRepository.logoutCallCount == 0;
+      attempt++
+    ) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
     await tester.pumpAndSettle();
 
-    expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsOneWidget);
+    expect(find.byKey(const Key('login_email_field')), findsOneWidget);
     final clearedState = container
         .read(progressControllerProvider)
         .requireValue;
