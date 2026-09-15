@@ -117,9 +117,9 @@ class _ModuleFormState extends ConsumerState<_ModuleForm> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
             AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.md,
+            AppSpacing.page,
             96,
           ),
           child: Form(

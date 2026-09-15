@@ -7,6 +7,7 @@ abstract final class AppSpacing {
   static const xl = 32.0;
   static const xxl = 40.0;
   static const section = 48.0;
+  static const page = 20.0;
 
   static const wideScreenBreakpoint = 700.0;
   static const compactContentWidth = 480.0;

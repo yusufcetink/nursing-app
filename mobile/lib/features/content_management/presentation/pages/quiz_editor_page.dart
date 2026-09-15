@@ -243,9 +243,9 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
             ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
+          AppSpacing.page,
           AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
+          AppSpacing.page,
           96,
         ),
         children: [

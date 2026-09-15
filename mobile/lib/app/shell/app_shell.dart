@@ -21,11 +21,11 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Material(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: scheme.surface,
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
             child: Row(
               children: [
                 for (final destination in destinations)
@@ -49,27 +49,26 @@ class AppShell extends ConsumerWidget {
                                 ? Duration.zero
                                 : const Duration(milliseconds: 180),
                             padding: const EdgeInsets.symmetric(
-                              vertical: 10,
+                              vertical: 6,
                               horizontal: 8,
                             ),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(24),
-                              color:
-                                  navigationShell.currentIndex ==
-                                      destination.branch
-                                  ? scheme.primaryContainer
-                                  : Colors.transparent,
+                              color: Colors.transparent,
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  destination.icon,
+                                  navigationShell.currentIndex == 0 &&
+                                          destination.branch == 0
+                                      ? Icons.auto_stories_rounded
+                                      : destination.icon,
                                   size: 26,
                                   color:
                                       navigationShell.currentIndex ==
                                           destination.branch
-                                      ? scheme.onPrimaryContainer
+                                      ? scheme.primary
                                       : scheme.onSurfaceVariant,
                                 ),
                                 const SizedBox(height: 3),
@@ -80,7 +79,7 @@ class AppShell extends ConsumerWidget {
                                         color:
                                             navigationShell.currentIndex ==
                                                 destination.branch
-                                            ? scheme.onPrimaryContainer
+                                            ? scheme.primary
                                             : scheme.onSurfaceVariant,
                                       ),
                                 ),

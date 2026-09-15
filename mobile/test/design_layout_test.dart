@@ -174,8 +174,10 @@ void main() {
       controller.selectOption('care-1');
       await tester.pumpAndSettle();
       await inspect('05-quiz');
+      await tester.runAsync(controller.checkAnswer);
       await controller.submitAndContinue();
       controller.selectOption('advocacy-2');
+      await tester.runAsync(controller.checkAnswer);
       await controller.submitAndContinue();
       await tester.pumpAndSettle();
       await inspect('06-result');

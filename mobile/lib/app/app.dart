@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/app/theme/app_theme.dart';
+import 'package:asli_app/app/theme/theme_mode_controller.dart';
 import 'package:asli_app/features/analytics/application/activity_tracker.dart';
 import 'package:asli_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:asli_app/features/notifications/application/push_notification_service.dart';
+import 'package:asli_app/features/notifications/application/local_inactivity_reminder_service.dart';
 
 class App extends ConsumerStatefulWidget {
   const App({super.key});
@@ -27,6 +29,9 @@ class _AppState extends ConsumerState<App> {
       'TestWidgetsFlutterBinding',
     );
     WidgetsBinding.instance.addObserver(_tracker);
+    if (_servicesEnabled) {
+      unawaited(ref.read(localInactivityReminderServiceProvider).start());
+    }
     ref.listenManual(authControllerProvider, (previous, next) {
       if (next.isLoading || next.hasError) return;
       final authenticated = next.hasValue && next.value != null;
@@ -34,6 +39,9 @@ class _AppState extends ConsumerState<App> {
         _tracker.startSession();
         final router = ref.read(appRouterProvider);
         if (_servicesEnabled) {
+          ref
+              .read(localInactivityReminderServiceProvider)
+              .flushPendingOpenedEvent();
           unawaited(
             ref
                 .read(pushNotificationServiceProvider)
@@ -55,13 +63,14 @@ class _AppState extends ConsumerState<App> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeControllerProvider);
     return MaterialApp.router(
       title: 'Aslı App',
       debugShowCheckedModeBanner: false,
       routerConfig: ref.watch(appRouterProvider),
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
     );
   }
 }

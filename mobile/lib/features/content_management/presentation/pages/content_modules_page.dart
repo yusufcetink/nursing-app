@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/app/theme/app_spacing.dart';
+import 'package:asli_app/app/theme/app_radius.dart';
+import 'package:asli_app/features/content_management/presentation/widgets/publication_status.dart';
 import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/features/content_management/domain/models/content_models.dart';
 import 'package:asli_app/features/content_management/presentation/providers/content_management_providers.dart';
@@ -36,9 +38,9 @@ class ContentModulesPage extends ConsumerWidget {
                 onRefresh: () => ref.refresh(contentModulesProvider.future),
                 child: ListView.separated(
                   padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
                     AppSpacing.md,
-                    AppSpacing.md,
-                    AppSpacing.md,
+                    AppSpacing.page,
                     96,
                   ),
                   itemCount: items.length,
@@ -62,7 +64,7 @@ class _ContentModuleCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.panel),
         onTap: () => context.pushNamed(
           AppRoutes.contentModule,
           pathParameters: {AppRoutes.contentModuleIdParameter: module.id},
@@ -72,29 +74,33 @@ class _ContentModuleCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      module.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+                  Text(
+                    module.title,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  IconButton(
-                    tooltip: 'Modülü düzenle',
-                    onPressed: () => context.pushNamed(
-                      AppRoutes.contentModuleEdit,
-                      pathParameters: {
-                        AppRoutes.contentModuleIdParameter: module.id,
-                      },
-                    ),
-                    icon: const Icon(Icons.edit_outlined),
-                  ),
-                  IconButton(
-                    key: Key('delete_module_${module.id}'),
-                    tooltip: 'Modülü sil',
-                    onPressed: () => _delete(context, ref),
-                    icon: const Icon(Icons.delete_outline),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        tooltip: 'Modülü düzenle',
+                        onPressed: () => context.pushNamed(
+                          AppRoutes.contentModuleEdit,
+                          pathParameters: {
+                            AppRoutes.contentModuleIdParameter: module.id,
+                          },
+                        ),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                      IconButton(
+                        key: Key('delete_module_${module.id}'),
+                        tooltip: 'Modülü sil',
+                        onPressed: () => _delete(context, ref),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -108,15 +114,7 @@ class _ContentModuleCard extends ConsumerWidget {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.xs,
                 children: [
-                  Chip(
-                    avatar: Icon(
-                      module.isPublished
-                          ? Icons.public_rounded
-                          : Icons.visibility_off_outlined,
-                      size: 18,
-                    ),
-                    label: Text(module.isPublished ? 'Yayında' : 'Taslak'),
-                  ),
+                  PublicationStatus(isPublished: module.isPublished),
                   Chip(label: Text('${module.lessonCount} ders')),
                   Chip(label: Text('Sıra ${module.order}')),
                 ],

@@ -53,7 +53,7 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: const EdgeInsets.all(AppSpacing.page),
                   child: TextField(
                     key: const Key('user_search_field'),
                     controller: _searchController,
@@ -78,12 +78,14 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
                           ref.invalidate(managedUsersProvider(_search)),
                     ),
                     data: (items) => items.isEmpty
-                        ? const Center(child: Text('Kullanıcı bulunamadı.'))
+                        ? const EmptyContentView(
+                            message: 'Kullanıcı bulunamadı.',
+                          )
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.md,
+                              AppSpacing.page,
                               0,
-                              AppSpacing.md,
+                              AppSpacing.page,
                               AppSpacing.lg,
                             ),
                             itemCount: items.length,
@@ -145,7 +147,7 @@ class _UserCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(user.fullName, style: Theme.of(context).textTheme.titleMedium),
+          Text(user.fullName, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.xxs),
           Text(user.email),
           Align(
@@ -158,6 +160,8 @@ class _UserCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           DropdownButtonFormField<UserRole>(
+            isExpanded: true,
+            itemHeight: null,
             key: Key('role_${user.id}'),
             initialValue: user.role,
             decoration: const InputDecoration(labelText: 'Rol'),

@@ -3,6 +3,7 @@ import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/features/user_management/data/user_activity_repository.dart';
 import 'package:asli_app/features/user_management/domain/models/user_activity_analytics.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
+import 'package:asli_app/shared/widgets/learning_design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -52,8 +53,7 @@ class _UserActivityPageState extends ConsumerState<UserActivityPage> {
           message: networkErrorMessage(error),
           onRetry: () => ref.invalidate(userActivityProvider(_range)),
         ),
-        data: (data) => ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+        data: (data) => LearningBody(
           children: [
             Text(
               data.displayName,
@@ -94,17 +94,15 @@ class _UserActivityPageState extends ConsumerState<UserActivityPage> {
               'Quiz süreleri ve sonuçları',
               style: Theme.of(context).textTheme.titleLarge,
             ),
+            if (data.quizzes.isEmpty)
+              const EmptyContentView(message: 'Bu aralıkta quiz verisi yok.'),
             for (final quiz in data.quizzes)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(quiz.title),
                 subtitle: Text(
-                  '${quiz.attemptCount} deneme · ${_duration(quiz.durationSeconds)}',
-                ),
-                trailing: Text(
-                  quiz.averageScore == null
-                      ? '—'
-                      : 'Ort. %${quiz.averageScore!.round()}',
+                  '${quiz.attemptCount} deneme · ${_duration(quiz.durationSeconds)}\n'
+                  '${quiz.averageScore == null ? "Ortalama başarı: —" : "Ort. %${quiz.averageScore!.round()}"}',
                 ),
               ),
             const SizedBox(height: AppSpacing.lg),
@@ -112,6 +110,10 @@ class _UserActivityPageState extends ConsumerState<UserActivityPage> {
               'Önemli event timeline',
               style: Theme.of(context).textTheme.titleLarge,
             ),
+            if (data.timeline.isEmpty)
+              const EmptyContentView(
+                message: 'Bu aralıkta aktivite kaydı yok.',
+              ),
             for (final event in data.timeline)
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -121,9 +123,9 @@ class _UserActivityPageState extends ConsumerState<UserActivityPage> {
                   [
                     event.screenName,
                     event.target,
+                    _dateTime(event.occurredAtUtc.toLocal()),
                   ].whereType<String>().join(' · '),
                 ),
-                trailing: Text(_dateTime(event.occurredAtUtc.toLocal())),
               ),
           ],
         ),
@@ -175,7 +177,7 @@ class _Stat extends StatelessWidget {
         children: [
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: AppSpacing.xxs),
-          Text(value, style: Theme.of(context).textTheme.titleMedium),
+          Text(value, style: Theme.of(context).textTheme.titleLarge),
         ],
       ),
     ),
@@ -202,7 +204,7 @@ class _DurationSection extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(item.name ?? item.key),
-            trailing: Text(_duration(item.durationSeconds)),
+            subtitle: Text(_duration(item.durationSeconds)),
           ),
       ],
     ),

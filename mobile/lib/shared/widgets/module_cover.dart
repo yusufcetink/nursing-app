@@ -41,9 +41,15 @@ enum NursingCover {
 }
 
 class ModuleCover extends StatelessWidget {
-  const ModuleCover({required this.title, this.aspectRatio = 1.5, super.key});
+  const ModuleCover({
+    required this.title,
+    this.aspectRatio = 1.5,
+    this.alignment = Alignment.center,
+    super.key,
+  });
   final String title;
   final double aspectRatio;
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +62,7 @@ class ModuleCover extends StatelessWidget {
             : Image.asset(
                 asset,
                 fit: BoxFit.cover,
+                alignment: alignment,
                 cacheWidth: 960,
                 filterQuality: FilterQuality.medium,
                 errorBuilder: (_, _, _) => const _CoverFallback(),

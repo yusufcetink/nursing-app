@@ -134,6 +134,32 @@ public sealed class EducationService(
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<QuizAnswerCheckResponse?> CheckQuizAnswerAsync(
+        Guid quizId,
+        Guid questionId,
+        Guid optionId,
+        CancellationToken cancellationToken)
+    {
+        var options = await dbContext.Quizzes
+            .AsNoTracking()
+            .Where(quiz => quiz.Id == quizId && quiz.IsPublished && !quiz.IsDeleted &&
+                quiz.Lesson.IsPublished && !quiz.Lesson.IsDeleted &&
+                quiz.Lesson.EducationModule.IsPublished && !quiz.Lesson.EducationModule.IsDeleted)
+            .SelectMany(quiz => quiz.Questions.Where(question =>
+                question.Id == questionId && !question.IsDeleted &&
+                question.Options.Any(option => option.Id == optionId)))
+            .SelectMany(question => question.Options)
+            .Select(option => new { option.Id, option.IsCorrect })
+            .ToListAsync(cancellationToken);
+        var selected = options.SingleOrDefault(option => option.Id == optionId);
+        var correct = options.Where(option => option.IsCorrect).ToList();
+        if (selected is null || correct.Count != 1)
+        {
+            return null;
+        }
+        return new QuizAnswerCheckResponse(selected.IsCorrect, correct[0].Id);
+    }
+
     public async Task<QuizSubmissionOutcome> SubmitLessonQuizAsync(
         Guid userId,
         Guid lessonId,

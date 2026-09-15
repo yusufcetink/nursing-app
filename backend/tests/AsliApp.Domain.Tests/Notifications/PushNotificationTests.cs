@@ -4,8 +4,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AsliApp.Api.Authentication;
-using AsliApp.Api.Notifications;
-using AsliApp.Domain.Analytics;
 using AsliApp.Domain.Notifications;
 using AsliApp.Domain.Tests.Authentication;
 using AsliApp.Domain.Users;
@@ -13,9 +11,7 @@ using AsliApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace AsliApp.Domain.Tests.Notifications;
 
@@ -46,6 +42,18 @@ public sealed class PushNotificationTests
         Assert.Equal(HttpStatusCode.Unauthorized, register.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, deactivate.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, opened.StatusCode);
+    }
+
+    [Fact]
+    public void BackendDoesNotRegisterAnInactivityPushWorker()
+    {
+        using var factory = new AuthApiFactory();
+        _ = factory.CreateClient();
+
+        var hostedServices = factory.Services.GetServices<IHostedService>();
+
+        Assert.DoesNotContain(hostedServices, service =>
+            service.GetType().Name.Contains("Inactivity", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -115,149 +123,6 @@ public sealed class PushNotificationTests
     }
 
     [Fact]
-    public async Task ReminderHonorsInactivityThresholdAndSuccessfulSendCooldown()
-    {
-        using var factory = new AuthApiFactory();
-        _ = factory.CreateClient();
-        var now = new DateTimeOffset(2026, 9, 13, 9, 0, 0, TimeSpan.Zero);
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var dueUser = AddInactiveUser(db, now.AddHours(-48), "due-token");
-        var recentUser = AddInactiveUser(db, now.AddHours(-47).AddMinutes(-59), "recent-token");
-        await db.SaveChangesAsync();
-        var sender = new FakePushSender();
-        var clock = new FixedTimeProvider(now);
-        var service = new InactivityReminderService(
-            db,
-            sender,
-            Options.Create(new InactivityReminderOptions { AfterHours = 48, CooldownHours = 48 }),
-            scope.ServiceProvider.GetRequiredService<IHostEnvironment>(),
-            clock);
-
-        Assert.Equal(1, await service.SendDueAsync(CancellationToken.None));
-        Assert.Equal(0, await service.SendDueAsync(CancellationToken.None));
-        Assert.Single(sender.Messages);
-        Assert.Equal("due-token", Assert.Single(sender.Messages[0].Tokens));
-        Assert.Equal("Aslı App seni bekliyor 👋", sender.Messages[0].Message.Title);
-        Assert.True(Guid.TryParse(sender.Messages[0].Message.Data["notificationId"], out var notificationId));
-        var log = await db.PushNotificationLogs.SingleAsync();
-        Assert.Equal(notificationId, log.Id);
-        Assert.Equal(dueUser.Id, log.UserId);
-        Assert.True(log.WasDispatched);
-        var sentEvent = await db.UserActivityEvents.SingleAsync();
-        Assert.Equal(ActivityEventType.NotificationSent, sentEvent.EventType);
-        Assert.Equal(notificationId, sentEvent.ClientEventId);
-        Assert.Equal(now.AddHours(-48), (await db.AppSessions.SingleAsync(
-            item => item.UserId == dueUser.Id)).LastActivityAtUtc);
-
-        var recentDevice = await db.UserDevices.SingleAsync(item => item.UserId == recentUser.Id);
-        recentDevice.IsActive = false;
-        await db.SaveChangesAsync();
-        clock.UtcNow = now.AddHours(47).AddMinutes(59);
-        Assert.Equal(0, await service.SendDueAsync(CancellationToken.None));
-        clock.UtcNow = now.AddHours(48);
-        Assert.Equal(1, await service.SendDueAsync(CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task DevelopmentMinuteOverridesControlThresholdAndCooldown()
-    {
-        using var factory = new AuthApiFactory();
-        _ = factory.CreateClient();
-        var now = new DateTimeOffset(2026, 9, 13, 9, 0, 0, TimeSpan.Zero);
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var dueUser = AddInactiveUser(db, now.AddMinutes(-2), "development-due-token");
-        var recentUser = AddInactiveUser(db, now.AddMinutes(-2).AddSeconds(1), "development-recent-token");
-        await db.SaveChangesAsync();
-        var sender = new FakePushSender();
-        var clock = new FixedTimeProvider(now);
-        var service = new InactivityReminderService(
-            db,
-            sender,
-            Options.Create(new InactivityReminderOptions
-            {
-                AfterHours = 24,
-                CooldownHours = 48,
-                DevelopmentAfterMinutes = 2,
-                DevelopmentCooldownMinutes = 3,
-            }),
-            new TestHostEnvironment(Environments.Development),
-            clock);
-
-        Assert.Equal(1, await service.SendDueAsync(CancellationToken.None));
-        Assert.Equal("development-due-token", Assert.Single(sender.Messages[0].Tokens));
-        Assert.Single(await db.UserActivityEvents.Where(
-            item => item.UserId == dueUser.Id && item.EventType == ActivityEventType.NotificationSent).ToListAsync());
-        Assert.Equal(now.AddMinutes(-2), (await db.AppSessions.SingleAsync(
-            item => item.UserId == dueUser.Id)).LastActivityAtUtc);
-
-        var recentDevice = await db.UserDevices.SingleAsync(item => item.UserId == recentUser.Id);
-        recentDevice.IsActive = false;
-        await db.SaveChangesAsync();
-        clock.UtcNow = now.AddMinutes(2).AddSeconds(59);
-        Assert.Equal(0, await service.SendDueAsync(CancellationToken.None));
-        clock.UtcNow = now.AddMinutes(3);
-        Assert.Equal(1, await service.SendDueAsync(CancellationToken.None));
-        Assert.Equal(2, await db.UserActivityEvents.CountAsync(
-            item => item.UserId == dueUser.Id && item.EventType == ActivityEventType.NotificationSent));
-    }
-
-    [Fact]
-    public async Task ProductionIgnoresDevelopmentMinuteOverrides()
-    {
-        using var factory = new AuthApiFactory();
-        _ = factory.CreateClient();
-        var now = new DateTimeOffset(2026, 9, 13, 9, 0, 0, TimeSpan.Zero);
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        _ = AddInactiveUser(db, now.AddMinutes(-10), "production-token");
-        await db.SaveChangesAsync();
-        var sender = new FakePushSender();
-        var service = new InactivityReminderService(
-            db,
-            sender,
-            Options.Create(new InactivityReminderOptions
-            {
-                AfterHours = 24,
-                CooldownHours = 48,
-                DevelopmentAfterMinutes = 2,
-                DevelopmentCooldownMinutes = 2,
-            }),
-            new TestHostEnvironment(Environments.Production),
-            new FixedTimeProvider(now));
-
-        Assert.Equal(0, await service.SendDueAsync(CancellationToken.None));
-        Assert.Empty(sender.Messages);
-        Assert.Empty(await db.PushNotificationLogs.ToListAsync());
-    }
-
-    [Fact]
-    public async Task FailedSendDoesNotStartCooldown()
-    {
-        using var factory = new AuthApiFactory();
-        _ = factory.CreateClient();
-        var now = new DateTimeOffset(2026, 9, 13, 9, 0, 0, TimeSpan.Zero);
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        _ = AddInactiveUser(db, now.AddDays(-3), "retry-token");
-        await db.SaveChangesAsync();
-        var sender = new FakePushSender { Result = false };
-        var service = new InactivityReminderService(
-            db,
-            sender,
-            Options.Create(new InactivityReminderOptions { AfterHours = 48, CooldownHours = 48 }),
-            scope.ServiceProvider.GetRequiredService<IHostEnvironment>(),
-            new FixedTimeProvider(now));
-
-        Assert.Equal(0, await service.SendDueAsync(CancellationToken.None));
-        Assert.Equal(0, await service.SendDueAsync(CancellationToken.None));
-        Assert.Equal(2, sender.Messages.Count);
-        Assert.All(await db.PushNotificationLogs.ToListAsync(), item => Assert.False(item.WasDispatched));
-        Assert.Empty(await db.UserActivityEvents.ToListAsync());
-    }
-
-    [Fact]
     public async Task NotificationOpenIsRecordedOnlyForItsAuthenticatedOwner()
     {
         using var factory = new AuthApiFactory();
@@ -272,7 +137,7 @@ public sealed class PushNotificationTests
             {
                 Id = notificationId,
                 UserId = owner.User.Id,
-                NotificationType = InactivityReminderService.NotificationType,
+                NotificationType = "server_push",
                 SentAtUtc = DateTimeOffset.UtcNow,
                 WasDispatched = true,
             });
@@ -294,42 +159,6 @@ public sealed class PushNotificationTests
         using var finalScope = factory.Services.CreateScope();
         Assert.NotNull((await finalScope.ServiceProvider.GetRequiredService<AppDbContext>()
             .PushNotificationLogs.SingleAsync()).OpenedAtUtc);
-    }
-
-    private static User AddInactiveUser(AppDbContext db, DateTimeOffset lastActivityAtUtc, string token)
-    {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            UserName = $"inactive-{Guid.NewGuid():N}@example.com",
-            Email = $"inactive-{Guid.NewGuid():N}@example.com",
-            FirstName = "Inactive",
-            LastName = "User",
-            EmailConfirmed = true,
-            CreatedAtUtc = lastActivityAtUtc.AddDays(-1),
-        };
-        db.Users.Add(user);
-        db.AppSessions.Add(new AppSession
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            StartedAtUtc = lastActivityAtUtc.AddMinutes(-5),
-            LastActivityAtUtc = lastActivityAtUtc,
-            ActiveDurationSeconds = 60,
-        });
-        db.UserDevices.Add(new UserDevice
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            InstallationId = Guid.NewGuid().ToString(),
-            DeviceToken = token,
-            Platform = "android",
-            NotificationsEnabled = true,
-            IsActive = true,
-            RegisteredAtUtc = lastActivityAtUtc,
-            LastUpdatedAtUtc = lastActivityAtUtc,
-        });
-        return user;
     }
 
     private static async Task RegisterAsync(HttpClient client, string accessToken, string installationId, string token)
@@ -369,32 +198,4 @@ public sealed class PushNotificationTests
         return options;
     }
 
-    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
-    {
-        public DateTimeOffset UtcNow { get; set; } = utcNow;
-        public override DateTimeOffset GetUtcNow() => UtcNow;
-    }
-
-    private sealed class FakePushSender : IPushNotificationSender
-    {
-        public bool Result { get; init; } = true;
-        public List<(IReadOnlyCollection<string> Tokens, PushMessage Message)> Messages { get; } = [];
-
-        public Task<bool> SendAsync(
-            IReadOnlyCollection<string> deviceTokens,
-            PushMessage message,
-            CancellationToken cancellationToken = default)
-        {
-            Messages.Add((deviceTokens, message));
-            return Task.FromResult(Result);
-        }
-    }
-
-    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = environmentName;
-        public string ApplicationName { get; set; } = "AsliApp.Tests";
-        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
-    }
 }

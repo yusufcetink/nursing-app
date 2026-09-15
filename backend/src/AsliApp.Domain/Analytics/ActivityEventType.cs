@@ -16,6 +16,7 @@ public enum ActivityEventType
     VideoPlay,
     VideoPause,
     VideoComplete,
+    // Retained for persisted enum compatibility; the backend no longer creates it.
     NotificationSent,
     NotificationOpened,
 }

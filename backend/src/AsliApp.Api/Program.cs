@@ -121,16 +121,9 @@ builder.Services.AddScoped<ActivityService>();
 builder.Services.AddScoped<AdminAnalyticsService>();
 builder.Services.AddScoped<DeviceRegistrationService>();
 builder.Services.AddScoped<NotificationTrackingService>();
-builder.Services.AddScoped<InactivityReminderService>();
 builder.Services.Configure<PushNotificationOptions>(
     builder.Configuration.GetSection(PushNotificationOptions.SectionName));
-builder.Services.Configure<InactivityReminderOptions>(
-    builder.Configuration.GetSection(InactivityReminderOptions.SectionName));
 builder.Services.AddSingleton<IPushNotificationSender, FirebasePushNotificationSender>();
-if (!builder.Environment.IsEnvironment("Testing"))
-{
-    builder.Services.AddHostedService<InactivityReminderWorker>();
-}
 builder.Services.Configure<GmailSmtpOptions>(
     builder.Configuration.GetSection(GmailSmtpOptions.SectionName));
 builder.Services.AddScoped<IEmailSender, GmailSmtpEmailSender>();

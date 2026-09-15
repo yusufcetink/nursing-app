@@ -54,9 +54,10 @@ abstract final class AppTheme {
         elevation: AppElevation.none,
         scrolledUnderElevation: AppElevation.none,
         centerTitle: false,
-        titleSpacing: AppSpacing.lg,
+        titleSpacing: AppSpacing.page,
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
         ),
       ),
       cardTheme: CardThemeData(
@@ -67,7 +68,7 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderRadius: BorderRadius.circular(AppRadius.panel),
           side: BorderSide(
             color: colorScheme.outlineVariant.withValues(alpha: 0.55),
           ),
@@ -86,7 +87,7 @@ abstract final class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size(64, 52),
+          minimumSize: const Size(64, 56),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.sm,

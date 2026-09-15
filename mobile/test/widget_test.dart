@@ -53,12 +53,12 @@ void main() {
     await tester.tap(find.text('Giriş Yap'));
     await tester.pumpAndSettle();
 
-    await tester.reveal(find.text('Eğitim Modülleri'), 200);
-    expect(find.text('Eğitim Modülleri'), findsOneWidget);
+    await tester.reveal(find.text('Eğitim modülleri'), 200);
+    expect(find.text('Eğitim modülleri'), findsOneWidget);
     expect(find.text('Hemşireliğin Temelleri'), findsWidgets);
     await tester.reveal(find.text('0 / 3 ders'), 200);
     expect(find.text('0 / 3 ders'), findsOneWidget);
-    expect(find.text('Başlanmadı'), findsOneWidget);
+    expect(find.textContaining('Başla', findRichText: true), findsOneWidget);
 
     await tester.reveal(
       find.byKey(const Key('home_module_nursing-fundamentals')),
@@ -84,7 +84,7 @@ void main() {
       find.text('Hemşirelik uygulamasındaki temel rol ve sorumluluklar.'),
       findsOneWidget,
     );
-    expect(find.text('Tahmini süre: 8 dakika'), findsOneWidget);
+    expect(find.text('8 dk'), findsOneWidget);
     expect(find.text('Bakım Verme Rolü'), findsOneWidget);
     await tester.reveal(find.text('Eğitim ve Savunuculuk'), 200);
     expect(find.text('Eğitim ve Savunuculuk'), findsOneWidget);
@@ -109,6 +109,8 @@ void main() {
 
     await tester.tap(find.text('Bakım kararlarını yalnızca ekip adına vermek'));
     await tester.pump();
+    await tester.tap(find.text('Kontrol Et'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Sonraki Soru'));
     await tester.pump();
 
@@ -124,6 +126,8 @@ void main() {
     await tester.reveal(correctAnswer, 150);
     await tester.tap(correctAnswer);
     await tester.pump();
+    await tester.tap(find.text('Kontrol Et'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Quizi Bitir'));
     await tester.pumpAndSettle();
 

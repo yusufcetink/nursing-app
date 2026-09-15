@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:asli_app/shared/widgets/learning_motion.dart';
 
-/// Feedback for server-confirmed results only. The current contract supplies
-/// aggregate counts, not answer-level correctness or explanations.
+/// Feedback for server-confirmed answers and final results.
 class QuizFeedbackPanel extends StatelessWidget {
   const QuizFeedbackPanel({
     required this.correct,

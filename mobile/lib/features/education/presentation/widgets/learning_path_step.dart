@@ -37,122 +37,173 @@ class LearningPathStep extends StatelessWidget {
       LessonStepStatus.unknown => 'İlerleme bekleniyor',
     };
     final accent = completed ? scheme.tertiary : scheme.primary;
+    final title = Text(
+      lesson.title,
+      style: theme.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+        height: 1.3,
+      ),
+    );
+    final statusText = Text(
+      label,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: completed || current ? accent : scheme.onSurfaceVariant,
+        fontWeight: completed || current ? FontWeight.w600 : FontWeight.w400,
+      ),
+    );
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            width: 40,
-            child: Column(
-              children: [
-                Container(
-                  height: 10,
-                  width: 2,
-                  color: index == 0
-                      ? Colors.transparent
-                      : scheme.outlineVariant,
-                ),
-                ExcludeSemantics(
-                  child: AnimatedContainer(
-                    duration: LearningMotion.duration(
-                      context,
-                      LearningMotion.correct,
-                    ),
-                    width: 40,
-                    height: 40,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: completed
-                          ? scheme.tertiaryContainer
-                          : current
-                          ? scheme.primary
-                          : scheme.surface,
-                      border: Border.all(
-                        color: completed || current
-                            ? accent
-                            : scheme.outlineVariant,
-                        width: 2,
+            width: 44,
+            child: CustomPaint(
+              painter: _PathConnector(
+                color: completed ? scheme.tertiary : scheme.outline,
+                dashed: !completed,
+                last: last,
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 13),
+                  ExcludeSemantics(
+                    child: AnimatedContainer(
+                      duration: LearningMotion.duration(
+                        context,
+                        LearningMotion.correct,
                       ),
-                    ),
-                    child: completed || current || locked
-                        ? Icon(
-                            completed
-                                ? Icons.check_rounded
-                                : locked
-                                ? Icons.lock_outline
-                                : Icons.play_arrow_rounded,
-                            color: current
-                                ? scheme.onPrimary
-                                : completed
-                                ? scheme.onTertiaryContainer
-                                : scheme.onSurfaceVariant,
-                            size: 22,
-                          )
-                        : Text(
-                            '${index + 1}',
-                            style: theme.textTheme.labelLarge,
-                          ),
-                  ),
-                ),
-                if (!last)
-                  Expanded(
-                    child: Center(
-                      child: Container(
-                        width: 2,
+                      width: current
+                          ? 44
+                          : completed
+                          ? 28
+                          : 36,
+                      height: current
+                          ? 44
+                          : completed
+                          ? 28
+                          : 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
                         color: completed
                             ? scheme.tertiary
-                            : scheme.outlineVariant,
+                            : current
+                            ? scheme.primary
+                            : theme.scaffoldBackgroundColor,
+                        border: Border.all(
+                          color: completed || current
+                              ? accent
+                              : scheme.outlineVariant,
+                        ),
+                      ),
+                      child: Icon(
+                        completed
+                            ? Icons.check_rounded
+                            : current
+                            ? Icons.play_arrow_rounded
+                            : locked
+                            ? Icons.lock_outline_rounded
+                            : Icons.play_arrow_outlined,
+                        size: current ? 28 : 20,
+                        color: completed
+                            ? scheme.onTertiary
+                            : current
+                            ? scheme.onPrimary
+                            : scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: EdgeInsets.only(bottom: current ? 14 : 4),
               child: Material(
-                color: current ? scheme.primaryContainer : Colors.transparent,
-                borderRadius: BorderRadius.circular(22),
+                color: current
+                    ? theme.brightness == Brightness.dark
+                          ? scheme.surface
+                          : scheme.primaryContainer
+                    : Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: current && theme.brightness == Brightness.dark
+                        ? scheme.outlineVariant
+                        : Colors.transparent,
+                  ),
+                ),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: locked ? null : onOpen,
                   child: Padding(
-                    padding: EdgeInsets.all(current ? 16 : 10),
+                    padding: EdgeInsets.fromLTRB(
+                      current ? 10 : 6,
+                      12,
+                      current ? 10 : 0,
+                      current ? 10 : 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          label,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: completed
-                                ? scheme.tertiary
-                                : current
-                                ? scheme.primary
-                                : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(lesson.title, style: theme.textTheme.titleMedium),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${lesson.estimatedDurationMinutes} dk',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                '${index + 1}'.padLeft(2, '0'),
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: current
+                                      ? scheme.primary
+                                      : scheme.onSurfaceVariant,
+                                  fontWeight: current
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (current) ...[
+                                    statusText,
+                                    const SizedBox(height: 4),
+                                  ],
+                                  title,
+                                  const SizedBox(height: 4),
+                                  if (current)
+                                    Text(
+                                      'Sıradaki adımın hazır.',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                    )
+                                  else
+                                    statusText,
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         if (current) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            lesson.description,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           LearningAction(
                             label: 'Derse devam et',
                             onPressed: onOpen,
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(0, 48),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 6,
+                              ),
+                              shape: const StadiumBorder(),
+                            ),
                           ),
                         ],
                       ],
@@ -166,4 +217,45 @@ class LearningPathStep extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Drawn behind the nodes, so long titles can grow without breaking the path.
+class _PathConnector extends CustomPainter {
+  const _PathConnector({
+    required this.color,
+    required this.dashed,
+    required this.last,
+  });
+  final Color color;
+  final bool dashed;
+  final bool last;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: .65)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final bottom = last ? 26.0 : size.height;
+    if (dashed) {
+      for (double y = 0; y < bottom; y += 10) {
+        canvas.drawLine(
+          Offset(22, y),
+          Offset(22, (y + 5).clamp(0, bottom)),
+          paint,
+        );
+      }
+    } else {
+      canvas.drawPath(
+        Path()
+          ..moveTo(22, 0)
+          ..cubicTo(30, bottom * .35, 14, bottom * .65, 22, bottom),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_PathConnector old) =>
+      old.color != color || old.dashed != dashed || old.last != last;
 }

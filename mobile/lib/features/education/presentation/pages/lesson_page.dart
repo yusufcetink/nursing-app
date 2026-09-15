@@ -14,6 +14,7 @@ import 'package:asli_app/core/network/api_client.dart';
 import 'package:asli_app/features/education/domain/models/lesson.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
 import 'package:asli_app/features/analytics/application/activity_tracker.dart';
+import 'package:asli_app/features/education/presentation/widgets/lesson_detail_header.dart';
 
 class LessonPage extends ConsumerWidget {
   const LessonPage({required this.moduleId, required this.lessonId, super.key});
@@ -143,57 +144,11 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Öğrenme zamanı')),
+      appBar: AppBar(title: const Text('Aslı App'), centerTitle: true),
       body: LearningBody(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         children: [
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              LearningPill('DERS ${lesson.order.toString().padLeft(2, '0')}'),
-              if (isCompleted)
-                LearningPill(
-                  'Tamamlandı',
-                  icon: Icons.check_rounded,
-                  color: scheme.tertiaryContainer,
-                  foreground: scheme.onTertiaryContainer,
-                ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(lesson.title, style: theme.textTheme.displaySmall),
-          const SizedBox(height: 12),
-          Text(
-            lesson.description,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 20),
-          LearningPanel(
-            padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Kendi ritminde öğren.',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tahmini süre: ${lesson.estimatedDurationMinutes} dakika',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                const LearningArt(size: 96),
-              ],
-            ),
-          ),
+          LessonDetailHeader(lesson: lesson),
           const SizedBox(height: 28),
           Row(
             children: [
@@ -201,14 +156,14 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
                 'ANLATIM',
                 style: theme.textTheme.labelSmall?.copyWith(
                   letterSpacing: 1.8,
-                  color: scheme.primary,
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(width: 16),
               const Expanded(child: Divider()),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           for (final block in lesson.blocks) ...[
             if (block.blockType == LessonContentBlockType.heading)
               Padding(
@@ -221,7 +176,10 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
             else if (block.blockType == LessonContentBlockType.text)
               SelectableText(
                 block.textContent ?? '',
-                style: theme.textTheme.bodyLarge?.copyWith(height: 1.7),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  height: 1.55,
+                  color: scheme.onSurfaceVariant,
+                ),
               )
             else if (block.blockType == LessonContentBlockType.image &&
                 block.media != null)
@@ -232,26 +190,44 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
             const SizedBox(height: 18),
           ],
           const SizedBox(height: 16),
-          LearningPanel(
-            color: scheme.secondaryContainer,
+          Container(
             padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: scheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(18),
+            ),
             child: Row(
               children: [
                 Icon(
                   isCompleted
                       ? Icons.task_alt_rounded
-                      : Icons.lightbulb_outline_rounded,
+                      : Icons.check_circle_outline_rounded,
                   color: scheme.onSecondaryContainer,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    isCompleted
-                        ? 'Bir adım daha attın. Öğrendiklerini pekiştir.'
-                        : 'Hazır olduğunda bu adımı tamamlayabilirsin.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSecondaryContainer,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isCompleted
+                            ? 'Bir adım daha attın.'
+                            : 'Hazır olduğunda',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: scheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isCompleted
+                            ? 'Öğrendiklerini pekiştir.'
+                            : 'Bu adımı tamamlayarak ilerleyebilirsin.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -259,6 +235,7 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
           ),
           const SizedBox(height: 20),
           LearningAction(
+            style: FilledButton.styleFrom(shape: const StadiumBorder()),
             busy: _saving,
             label: !isCompleted
                 ? 'Dersi Tamamla'
@@ -339,7 +316,29 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final scheme = Theme.of(context).colorScheme;
+    final playButton = IconButton.filled(
+      tooltip: controller?.value.isPlaying == true ? 'Duraklat' : 'Oynat',
+      onPressed: controller == null ? null : _togglePlayback,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(56, 56),
+        backgroundColor: scheme.inverseSurface.withValues(alpha: .9),
+        foregroundColor: scheme.onInverseSurface,
+      ),
+      icon: Icon(
+        controller?.value.isPlaying == true
+            ? Icons.pause_rounded
+            : Icons.play_arrow_rounded,
+        size: 32,
+      ),
+    );
     return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .5)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,72 +354,78 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
               child: Center(child: CircularProgressIndicator()),
             )
           else ...[
-            AspectRatio(
-              aspectRatio: controller.value.aspectRatio > 0
-                  ? controller.value.aspectRatio
-                  : 16 / 9,
-              child: VideoPlayer(controller),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                AspectRatio(
+                  aspectRatio: controller.value.aspectRatio > 0
+                      ? controller.value.aspectRatio
+                      : 16 / 9,
+                  child: VideoPlayer(controller),
+                ),
+                playButton,
+              ],
             ),
             VideoProgressIndicator(
               controller,
               allowScrubbing: true,
               padding: EdgeInsets.zero,
+              colors: VideoProgressColors(
+                playedColor: scheme.primary,
+                bufferedColor: scheme.primary.withValues(alpha: .25),
+                backgroundColor: scheme.outlineVariant,
+              ),
             ),
           ],
           ListTile(
             title: Text(widget.media.originalFileName),
-            leading: IconButton(
-              tooltip: controller?.value.isPlaying == true
-                  ? 'Duraklat'
-                  : 'Oynat',
-              onPressed: controller == null
-                  ? null
-                  : () async {
-                      if (controller.value.isPlaying) {
-                        await controller.pause();
-                        ref
-                            .read(activityTrackerProvider)
-                            .track(
-                              'video_pause',
-                              target: widget.media.id,
-                              lessonId: widget.media.lessonId,
-                              metadata: {
-                                'positionSeconds': controller
-                                    .value
-                                    .position
-                                    .inSeconds
-                                    .toString(),
-                              },
-                            );
-                      } else {
-                        await controller.play();
-                        ref
-                            .read(activityTrackerProvider)
-                            .track(
-                              'video_play',
-                              target: widget.media.id,
-                              lessonId: widget.media.lessonId,
-                              metadata: {
-                                'positionSeconds': controller
-                                    .value
-                                    .position
-                                    .inSeconds
-                                    .toString(),
-                              },
-                            );
-                      }
-                      if (mounted) setState(() {});
-                    },
-              icon: Icon(
-                controller?.value.isPlaying == true
-                    ? Icons.pause_rounded
-                    : Icons.play_arrow_rounded,
-              ),
-            ),
+            subtitle: controller == null
+                ? null
+                : ValueListenableBuilder<VideoPlayerValue>(
+                    valueListenable: controller,
+                    builder: (context, value, _) => Text(
+                      '${_videoTime(value.position)} / ${_videoTime(value.duration)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
           ),
         ],
       ),
     );
+  }
+
+  String _videoTime(Duration value) =>
+      '${value.inMinutes.toString().padLeft(2, '0')}:${(value.inSeconds % 60).toString().padLeft(2, '0')}';
+
+  Future<void> _togglePlayback() async {
+    final controller = _controller;
+    if (controller == null) return;
+    if (controller.value.isPlaying) {
+      await controller.pause();
+      ref
+          .read(activityTrackerProvider)
+          .track(
+            'video_pause',
+            target: widget.media.id,
+            lessonId: widget.media.lessonId,
+            metadata: {
+              'positionSeconds': controller.value.position.inSeconds.toString(),
+            },
+          );
+    } else {
+      await controller.play();
+      ref
+          .read(activityTrackerProvider)
+          .track(
+            'video_play',
+            target: widget.media.id,
+            lessonId: widget.media.lessonId,
+            metadata: {
+              'positionSeconds': controller.value.position.inSeconds.toString(),
+            },
+          );
+    }
+    if (mounted) setState(() {});
   }
 
   void _videoChanged() {
@@ -461,6 +466,15 @@ class _LessonImageState extends ConsumerState<_LessonImage> {
 
   @override
   Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: BorderSide(
+        color: Theme.of(context).colorScheme.outlineVariant
+            .withValues(alpha: .5),
+      ),
+    ),
     clipBehavior: Clip.antiAlias,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,

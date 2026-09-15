@@ -12,11 +12,67 @@ import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
 import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../helpers/fake_auth_repository.dart';
 import '../../../../helpers/fake_learning_repositories.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('profil görünüm seçicisi tema modunu değiştirir', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          activityRepositoryProvider.overrideWithValue(
+            FakeActivityRepository(),
+          ),
+          authRepositoryProvider.overrideWithValue(
+            FakeAuthRepository(restoredUser: FakeAuthRepository.user),
+          ),
+          educationRepositoryProvider.overrideWithValue(
+            FakeEducationRepository(),
+          ),
+          progressRepositoryProvider.overrideWithValue(
+            FakeProgressRepository(),
+          ),
+          profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        ],
+        child: const App(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Profil'));
+    await tester.pumpAndSettle();
+    await tester.reveal(find.text('Görünüm'), 200);
+
+    expect(find.byKey(const Key('theme_mode_selector')), findsOneWidget);
+    await tester.tap(find.text('Koyu'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.dark,
+    );
+    expect(
+      Theme.of(tester.element(find.text('Görünüm'))).brightness,
+      Brightness.dark,
+    );
+    await tester.tap(find.text('Açık'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.light,
+    );
+    await tester.tap(find.text('Sistem'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.system,
+    );
+  });
+
   for (final testCase in [
     (role: UserRole.admin, shouldSeeLink: true),
     (role: UserRole.contentEditor, shouldSeeLink: false),
@@ -119,7 +175,7 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.text('Profil')),
     );
-    await tester.reveal(find.text('Eğitim Modülleri'), 200);
+    await tester.reveal(find.text('Eğitim modülleri'), 200);
     await tester.reveal(
       find.byKey(const Key('home_module_nursing-fundamentals')),
       200,

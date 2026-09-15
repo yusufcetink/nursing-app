@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/app/theme/app_spacing.dart';
+import 'package:asli_app/features/content_management/presentation/widgets/publication_status.dart';
 import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/features/content_management/domain/models/content_models.dart';
 import 'package:asli_app/features/content_management/presentation/providers/content_management_providers.dart';
@@ -49,9 +50,9 @@ class ContentModuleDetailPage extends ConsumerWidget {
           onRefresh: () => ref.refresh(contentModuleProvider(moduleId).future),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
               AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
+              AppSpacing.page,
               96,
             ),
             children: [
@@ -64,9 +65,7 @@ class ContentModuleDetailPage extends ConsumerWidget {
               const SizedBox(height: AppSpacing.sm),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Chip(
-                  label: Text(item.isPublished ? 'Yayında' : 'Taslak'),
-                ),
+                child: PublicationStatus(isPublished: item.isPublished),
               ),
               const SizedBox(height: AppSpacing.lg),
               Text('Dersler', style: Theme.of(context).textTheme.titleLarge),
@@ -102,14 +101,20 @@ class _LessonCard extends ConsumerWidget {
     return Card(
       child: ListTile(
         title: Text(lesson.title),
-        subtitle: Text(
-          '${lesson.isPublished ? 'Yayında' : 'Taslak'} · '
-          '${lesson.estimatedDurationMinutes} dk · Sıra ${lesson.order}',
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PublicationStatus(isPublished: lesson.isPublished),
+            Text(
+              '${lesson.estimatedDurationMinutes} dk · Sıra ${lesson.order}',
+            ),
+          ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.edit_outlined),
+            if (MediaQuery.textScalerOf(context).scale(1) <= 1.4)
+              const Icon(Icons.edit_outlined),
             IconButton(
               key: Key('delete_lesson_${lesson.id}'),
               tooltip: 'Dersi sil',

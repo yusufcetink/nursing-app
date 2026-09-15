@@ -835,6 +835,96 @@ public sealed class EducationEndpointsTests : IClassFixture<Authentication.AuthA
         return form;
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CheckAnswerReturnsFeedbackWithoutPersistingUntilFinalSubmit(bool correct)
+    {
+        var content = await SeedContentAsync();
+        var userId = await CreateUserAsync();
+        using var client = CreateClient("Student", userId);
+        var quiz = (await client.GetFromJsonAsync<StudentQuizResponse>(
+            $"/api/education/lessons/{content.LessonId}/quiz"))!;
+        var optionId = correct ? content.CorrectOptionId : content.IncorrectOptionId;
+        var response = await client.PostAsJsonAsync(
+            $"/api/education/quizzes/{quiz.Id}/questions/{content.QuestionId}/check",
+            new QuizAnswerCheckRequest(optionId));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<QuizAnswerCheckResponse>();
+        Assert.Equal(new QuizAnswerCheckResponse(correct, content.CorrectOptionId), result);
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await db.QuizAttempts.AnyAsync(attempt => attempt.UserId == userId));
+
+        var submitted = await client.PostAsJsonAsync(
+            $"/api/education/lessons/{content.LessonId}/quiz/submit",
+            new QuizSubmissionRequest([new QuizAnswerRequest(content.QuestionId, optionId)]));
+        Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
+        var final = (await submitted.Content.ReadFromJsonAsync<QuizSubmissionResponse>())!;
+        Assert.Equal(correct ? 1 : 0, final.CorrectCount);
+        var attempt = await db.QuizAttempts.Include(item => item.Answers)
+            .SingleAsync(item => item.UserId == userId);
+        Assert.Equal(optionId, Assert.Single(attempt.Answers).SelectedOptionId);
+        var history = await client.GetFromJsonAsync<List<QuizHistoryItemResponse>>("/api/profile/quiz-history");
+        Assert.Equal(attempt.Id, Assert.Single(history!).AttemptId);
+        var getJson = await client.GetStringAsync($"/api/education/lessons/{content.LessonId}/quiz");
+        Assert.DoesNotContain("isCorrect", getJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("correctOptionId", getJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("option")]
+    [InlineData("question")]
+    [InlineData("quiz")]
+    [InlineData("emptyOption")]
+    [InlineData("quizDraft")]
+    [InlineData("lessonDraft")]
+    [InlineData("moduleDraft")]
+    [InlineData("quizDeleted")]
+    [InlineData("lessonDeleted")]
+    [InlineData("moduleDeleted")]
+    [InlineData("questionDeleted")]
+    public async Task CheckAnswerRejectsInaccessibleOrUnrelatedContent(string scenario)
+    {
+        var content = await SeedContentAsync();
+        var other = await SeedContentAsync();
+        using var client = CreateClient("Student");
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var quiz = await db.Quizzes.Include(item => item.Lesson).ThenInclude(item => item.EducationModule)
+            .Include(item => item.Questions).SingleAsync(item => item.LessonId == content.LessonId);
+        switch (scenario)
+        {
+            case "quizDraft": quiz.IsPublished = false; break;
+            case "lessonDraft": quiz.Lesson.IsPublished = false; break;
+            case "moduleDraft": quiz.Lesson.EducationModule.IsPublished = false; break;
+            case "quizDeleted": quiz.IsDeleted = true; break;
+            case "lessonDeleted": quiz.Lesson.IsDeleted = true; break;
+            case "moduleDeleted": quiz.Lesson.EducationModule.IsDeleted = true; break;
+            case "questionDeleted": quiz.Questions.Single().IsDeleted = true; break;
+        }
+        await db.SaveChangesAsync();
+        var quizId = scenario == "quiz" ? Guid.NewGuid() : quiz.Id;
+        var questionId = scenario == "question" ? other.QuestionId : content.QuestionId;
+        var optionId = scenario == "option" ? other.CorrectOptionId
+            : scenario == "emptyOption" ? Guid.Empty : content.CorrectOptionId;
+        var response = await client.PostAsJsonAsync(
+            $"/api/education/quizzes/{quizId}/questions/{questionId}/check",
+            new QuizAnswerCheckRequest(optionId));
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.DoesNotContain("correctOptionId", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task CheckAnswerRequiresAuthentication()
+    {
+        using var client = _factory.CreateClient();
+        var response = await client.PostAsJsonAsync(
+            $"/api/education/quizzes/{Guid.NewGuid()}/questions/{Guid.NewGuid()}/check",
+            new QuizAnswerCheckRequest(Guid.NewGuid()));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     private async Task<SeededContent> SeedContentAsync()
     {
         using var scope = _factory.Services.CreateScope();

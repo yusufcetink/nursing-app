@@ -205,7 +205,7 @@ class LearningPanel extends StatelessWidget {
     padding: padding,
     decoration: BoxDecoration(
       color: color ?? Theme.of(context).colorScheme.primaryContainer,
-      borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+      borderRadius: BorderRadius.circular(AppRadius.panel),
     ),
     child: child,
   );
@@ -305,7 +305,12 @@ class LearningAction extends ConsumerWidget {
 class LearningBody extends StatelessWidget {
   const LearningBody({
     required this.children,
-    this.padding = const EdgeInsets.fromLTRB(24, 12, 24, 32),
+    this.padding = const EdgeInsets.fromLTRB(
+      AppSpacing.page,
+      12,
+      AppSpacing.page,
+      32,
+    ),
     super.key,
   });
   final List<Widget> children;

@@ -312,9 +312,9 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
             AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.md,
+            AppSpacing.page,
             96,
           ),
           child: Form(

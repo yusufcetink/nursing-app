@@ -5,6 +5,7 @@ import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/features/quiz/data/models/quiz_api_models.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_answer.dart';
+import 'package:asli_app/features/quiz/domain/models/quiz_answer_check.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_submission_result.dart';
 
 final quizRepositoryProvider = Provider<QuizRepository>((ref) {
@@ -13,6 +14,12 @@ final quizRepositoryProvider = Provider<QuizRepository>((ref) {
 
 abstract interface class QuizRepository {
   Future<Quiz> getLessonQuiz(String lessonId);
+
+  Future<QuizAnswerCheck> checkAnswer(
+    String quizId,
+    String questionId,
+    String optionId,
+  );
 
   Future<QuizSubmissionResult> submitLessonQuiz(
     String lessonId,
@@ -24,6 +31,37 @@ final class DioQuizRepository implements QuizRepository {
   const DioQuizRepository(this._apiClient);
 
   final ApiClient _apiClient;
+
+  @override
+  Future<QuizAnswerCheck> checkAnswer(
+    String quizId,
+    String questionId,
+    String optionId,
+  ) async {
+    try {
+      final response = await _apiClient.dio.post<Map<String, dynamic>>(
+        '/api/education/quizzes/$quizId/questions/$questionId/check',
+        data: {'optionId': optionId},
+      );
+      final data = response.data;
+      if (data == null ||
+          data['isCorrect'] is! bool ||
+          data['correctOptionId'] is! String ||
+          (data['correctOptionId'] as String).isEmpty) {
+        throw const FormatException();
+      }
+      return QuizAnswerCheck(
+        isCorrect: data['isCorrect'] as bool,
+        correctOptionId: data['correctOptionId'] as String,
+      );
+    } on DioException catch (error) {
+      throw mapNetworkException(error);
+    } on FormatException {
+      throw const NetworkException('Yanıt kontrol edilemedi. Yeniden deneyin.');
+    } on TypeError {
+      throw const NetworkException('Sunucudan geçersiz yanıt kontrolü alındı.');
+    }
+  }
 
   @override
   Future<Quiz> getLessonQuiz(String lessonId) async {

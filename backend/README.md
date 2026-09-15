@@ -60,7 +60,7 @@ Environment variable equivalents are `AdminBootstrap__Email` and
 
 Restore the local EF tool with `dotnet tool restore` before creating future migrations.
 
-## Analytics and inactivity notifications
+## Analytics and push notifications
 
 Authenticated clients send small idempotent batches to `POST /api/activity/events/batch`.
 Admin-only analytics endpoints live under `/api/admin/analytics`; Student and
@@ -69,32 +69,16 @@ usage measurement. The API only persists the metadata keys `source`, `result`,
 `positionSeconds`, `scorePercentage`, and `platform`; passwords, JWTs, email/form
 contents, verification/reset codes, and arbitrary raw text must never be sent.
 
-Inactivity reminders use these environment variables:
+Server-driven push notifications use these environment variables:
 
 ```powershell
-$env:InactivityReminder__AfterHours = "24"
-$env:InactivityReminder__CooldownHours = "48"
-$env:InactivityReminder__CheckIntervalMinutes = "60"
 $env:PushNotifications__Enabled = "true"
 $env:PushNotifications__FirebaseCredentialPath = "C:\secrets\firebase-service-account.json"
 ```
 
-For a fast local Development run, keep the production hour settings unchanged and
-set minute overrides with user-secrets:
-
-```powershell
-dotnet user-secrets set "InactivityReminder:DevelopmentAfterMinutes" "2" --project src/AsliApp.Api
-dotnet user-secrets set "InactivityReminder:DevelopmentCooldownMinutes" "2" --project src/AsliApp.Api
-dotnet user-secrets set "InactivityReminder:CheckIntervalMinutes" "1" --project src/AsliApp.Api
-dotnet user-secrets set "PushNotifications:Enabled" "true" --project src/AsliApp.Api
-dotnet user-secrets set "PushNotifications:FirebaseCredentialPath" "C:\secrets\firebase-service-account.json" --project src/AsliApp.Api
-```
-
-The minute overrides are read only when the host environment is `Development`.
-
 Alternatively, supply service-account JSON through the secret
 `PushNotifications__FirebaseCredentialJson`. Never place either credential form in
-source control. Push is disabled by default. Every inactivity attempt is recorded in
-`PushNotificationLogs`; only successful dispatches start the user-level cooldown and
-create a `notification_sent` analytics event. Notification opens continue to update the
-same push log and create `notification_opened` through the mobile analytics queue.
+source control. Push is disabled by default. Device registration, Firebase sending,
+and notification-open acknowledgement remain available for future server-driven push.
+The 24-hour inactivity reminder is scheduled locally by the mobile app and does not
+query analytics activity or user devices on the backend.

@@ -214,16 +214,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.reveal(find.text('Eğitim Modülleri'), 200);
-    expect(find.text('Eğitim Modülleri'), findsOneWidget);
+    await tester.reveal(find.text('Eğitim modülleri'), 200);
+    expect(find.text('Eğitim modülleri'), findsOneWidget);
     expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsNothing);
     expect(find.text('İçerik'), findsNothing);
 
     container.read(appRouterProvider).go(AppRoutes.loginPath);
     await tester.pumpAndSettle();
 
-    await tester.reveal(find.text('Eğitim Modülleri'), 200);
-    expect(find.text('Eğitim Modülleri'), findsOneWidget);
+    await tester.reveal(find.text('Eğitim modülleri'), 200);
+    expect(find.text('Eğitim modülleri'), findsOneWidget);
     expect(find.text('Bilgin büyüsün.\nGüvenin artsın.'), findsNothing);
 
     await tester.tap(find.text('Profil'));

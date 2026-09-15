@@ -66,6 +66,22 @@ public sealed class EducationController(EducationService educationService) : Con
         return quiz is null ? NotFound() : Ok(quiz);
     }
 
+    [HttpPost("quizzes/{quizId:guid}/questions/{questionId:guid}/check")]
+    public async Task<ActionResult<QuizAnswerCheckResponse>> CheckQuizAnswer(
+        Guid quizId,
+        Guid questionId,
+        QuizAnswerCheckRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(User.FindFirstValue("sub"), out _))
+        {
+            return Unauthorized();
+        }
+        var response = await educationService.CheckQuizAnswerAsync(
+            quizId, questionId, request.OptionId, cancellationToken);
+        return response is null ? NotFound() : Ok(response);
+    }
+
     [HttpPost("lessons/{id:guid}/quiz/submit")]
     public async Task<ActionResult<QuizSubmissionResponse>> SubmitLessonQuiz(
         Guid id,

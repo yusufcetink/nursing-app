@@ -206,9 +206,9 @@ class _QuestionFormState extends ConsumerState<_QuestionForm> {
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
               AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
+              AppSpacing.page,
               96,
             ),
             children: [

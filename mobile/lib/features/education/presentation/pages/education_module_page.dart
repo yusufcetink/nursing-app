@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:asli_app/app/router/app_router.dart';
+import 'package:asli_app/app/theme/app_radius.dart';
+import 'package:asli_app/app/theme/app_spacing.dart';
 import 'package:asli_app/features/education/domain/models/education_module.dart';
 import 'package:asli_app/features/education/presentation/providers/education_modules_provider.dart';
 import 'package:asli_app/features/education/presentation/widgets/learning_path_step.dart';
@@ -10,7 +12,6 @@ import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
 import 'package:asli_app/shared/widgets/learning_design.dart';
 import 'package:asli_app/shared/widgets/module_cover.dart';
-import 'package:asli_app/shared/widgets/learning_progress_display.dart';
 
 class EducationModulePage extends ConsumerWidget {
   const EducationModulePage({required this.moduleId, super.key});
@@ -53,38 +54,68 @@ class _ModuleContent extends ConsumerWidget {
       },
     );
     return Scaffold(
-      appBar: AppBar(title: const Text('Öğrenme rotası')),
+      appBar: AppBar(title: const Text('Aslı App'), centerTitle: true),
       body: LearningBody(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.page,
+          8,
+          AppSpacing.page,
+          24,
+        ),
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: ModuleCover(title: module.title, aspectRatio: 1.85),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'MODÜL ${module.order.toString().padLeft(2, '0')}',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: scheme.primary,
-              letterSpacing: 1.4,
+            borderRadius: BorderRadius.circular(AppRadius.medium),
+            child: ModuleCover(
+              title: module.title,
+              aspectRatio: 1.95,
+              alignment: Alignment.topCenter,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(module.title, style: theme.textTheme.headlineMedium),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
+          Text(
+            module.title,
+            style: theme.textTheme.displaySmall?.copyWith(
+              fontSize: 38,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1.1,
+              height: 1.12,
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
             module.description,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: scheme.onSurfaceVariant,
+            style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onSurface),
+          ),
+          const SizedBox(height: 14),
+          if (known && module.lessonCount > 0)
+            ExcludeSemantics(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 20,
+                runSpacing: 10,
+                children: [
+                  for (var i = 0; i < module.lessonCount; i++)
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: i < (progress * module.lessonCount).round()
+                            ? scheme.tertiary
+                            : scheme.onSurface.withValues(alpha: .12),
+                      ),
+                      child: i < (progress * module.lessonCount).round()
+                          ? Icon(
+                              Icons.check_rounded,
+                              size: 20,
+                              color: scheme.onTertiary,
+                            )
+                          : null,
+                    ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          LearningSegments(
-            value: known ? progress : null,
-            total: module.lessonCount,
-            label: 'Modül ilerlemesi',
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             !known
                 ? progressState.hasError
@@ -92,6 +123,7 @@ class _ModuleContent extends ConsumerWidget {
                       : 'İlerlemen yükleniyor…'
                 : '${(progress * module.lessonCount).round()} / ${module.lessonCount} ders tamamlandı',
             style: theme.textTheme.bodyMedium,
+            textAlign: TextAlign.center,
           ),
           if (known && module.lessonCount > 0 && progress == 1)
             Padding(
@@ -108,11 +140,11 @@ class _ModuleContent extends ConsumerWidget {
               onPressed: () => ref.invalidate(progressControllerProvider),
               child: const Text('Yeniden dene'),
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           const Divider(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           Text('Öğrenme yolculuğun', style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 20),
+          const SizedBox(height: 6),
           if (module.lessons.isEmpty)
             const EmptyContentView(message: 'Bu modüle henüz ders eklenmemiş.'),
           for (final (index, lesson) in module.lessons.indexed)

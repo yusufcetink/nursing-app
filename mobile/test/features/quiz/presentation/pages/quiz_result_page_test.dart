@@ -66,14 +66,31 @@ Future<ProviderContainer> showResult(
         .notifier,
   );
   controller.selectOption('care-1');
+  await tester.runAsync(controller.checkAnswer);
   await controller.submitAndContinue();
   controller.selectOption('advocacy-2');
+  await tester.runAsync(controller.checkAnswer);
   await controller.submitAndContinue();
   await tester.pump();
   return container;
 }
 
 void main() {
+  testWidgets('sıradaki ders primary CTA quiz/result döngüsü oluşturmaz', (
+    tester,
+  ) async {
+    final container = await showResult(tester, lessonId: testLessons.first.id);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sıradaki Derse Geç'));
+    await tester.pumpAndSettle();
+    final router = container.read(appRouterProvider);
+    expect(router.state.uri.path, contains(testLessons[1].id));
+    expect(find.text('Quiz Sonucu'), findsNothing);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Quiz Sonucu'), findsNothing);
+  });
+
   testWidgets('son ders ana sayfaya gider ve geri quiz açılmaz', (
     tester,
   ) async {

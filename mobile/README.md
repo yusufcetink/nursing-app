@@ -48,3 +48,13 @@ At runtime the app requests permission, registers the Firebase Installation ID a
 token for the authenticated user, refreshes registration on token rotation, deactivates
 the association on logout, and records `notification_opened` before navigating to an
 allow-listed route.
+
+The inactivity reminder is a device-local notification. Every app launch or foreground
+resets its single pending reminder to 24 hours later, independently of login state. For
+a quick development build test, override the delay in minutes:
+
+```powershell
+flutter run --dart-define=INACTIVITY_REMINDER_MINUTES=2
+```
+
+Release builds always use 24 hours and ignore this development override.

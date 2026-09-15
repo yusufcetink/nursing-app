@@ -5,17 +5,13 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using AsliApp.Api.Analytics;
 using AsliApp.Api.Authentication;
-using AsliApp.Api.Notifications;
 using AsliApp.Domain.Analytics;
-using AsliApp.Domain.Notifications;
 using AsliApp.Domain.Users;
 using AsliApp.Domain.Tests.Authentication;
 using AsliApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace AsliApp.Domain.Tests.Analytics;
 
@@ -174,48 +170,6 @@ public sealed class ActivityAnalyticsTests
         }
     }
 
-    [Fact]
-    public async Task InactivityReminderHonorsCooldown()
-    {
-        using var factory = new AuthApiFactory();
-        _ = factory.CreateClient();
-        Guid userId;
-        using (var seedScope = factory.Services.CreateScope())
-        {
-            var db = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
-            userId = Guid.NewGuid();
-            db.Users.Add(new User
-            {
-                Id = userId, UserName = $"inactive-{userId}@example.com", Email = $"inactive-{userId}@example.com",
-                FirstName = "Inactive", LastName = "User", EmailConfirmed = true, CreatedAtUtc = DateTimeOffset.UtcNow,
-            });
-            db.AppSessions.Add(new AppSession
-            {
-                Id = Guid.NewGuid(), UserId = userId, StartedAtUtc = DateTimeOffset.UtcNow.AddDays(-4),
-                LastActivityAtUtc = DateTimeOffset.UtcNow.AddDays(-3), ActiveDurationSeconds = 10,
-            });
-            db.UserDevices.Add(new UserDevice
-            {
-                Id = Guid.NewGuid(), UserId = userId, InstallationId = Guid.NewGuid().ToString(), DeviceToken = "token",
-                Platform = "android", NotificationsEnabled = true, IsActive = true,
-                RegisteredAtUtc = DateTimeOffset.UtcNow, LastUpdatedAtUtc = DateTimeOffset.UtcNow,
-            });
-            await db.SaveChangesAsync();
-        }
-
-        var sender = new FakePushSender();
-        using var scope = factory.Services.CreateScope();
-        var service = new InactivityReminderService(
-            scope.ServiceProvider.GetRequiredService<AppDbContext>(), sender,
-            Options.Create(new InactivityReminderOptions { AfterHours = 48, CooldownHours = 48 }),
-            scope.ServiceProvider.GetRequiredService<IHostEnvironment>(),
-            TimeProvider.System);
-
-        Assert.Equal(1, await service.SendDueAsync(CancellationToken.None));
-        Assert.Equal(0, await service.SendDueAsync(CancellationToken.None));
-        Assert.Equal(1, sender.SendCount);
-    }
-
     private static async Task<LoginResponse> CreateAndLoginAsync(AuthApiFactory factory, HttpClient client, UserRole role)
     {
         using var scope = factory.Services.CreateScope();
@@ -240,14 +194,4 @@ public sealed class ActivityAnalyticsTests
         return options;
     }
 
-    private sealed class FakePushSender : IPushNotificationSender
-    {
-        public int SendCount { get; private set; }
-
-        public Task<bool> SendAsync(IReadOnlyCollection<string> deviceTokens, PushMessage message, CancellationToken cancellationToken = default)
-        {
-            SendCount++;
-            return Task.FromResult(true);
-        }
-    }
 }

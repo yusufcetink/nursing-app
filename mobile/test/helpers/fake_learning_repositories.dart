@@ -4,6 +4,7 @@ import 'package:asli_app/features/education/domain/models/lesson.dart';
 import 'package:asli_app/features/quiz/data/quiz_repository.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_answer.dart';
+import 'package:asli_app/features/quiz/domain/models/quiz_answer_check.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_question.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_submission_result.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
@@ -166,6 +167,31 @@ final class FakeEducationRepository implements EducationRepository {
 }
 
 final class FakeQuizRepository implements QuizRepository {
+  int checkCalls = 0;
+  int submitCalls = 0;
+  bool failCheck = false;
+  bool failSubmit = false;
+
+  @override
+  Future<QuizAnswerCheck> checkAnswer(
+    String quizId,
+    String questionId,
+    String optionId,
+  ) async {
+    checkCalls++;
+    if (failCheck) throw Exception('check failed');
+    final question = testQuiz.questions.firstWhere(
+      (item) => item.id == questionId,
+    );
+    final correct = question.options.firstWhere(
+      (option) => option.id == 'care-1' || option.id == 'advocacy-2',
+    );
+    return QuizAnswerCheck(
+      isCorrect: optionId == correct.id,
+      correctOptionId: correct.id,
+    );
+  }
+
   @override
   Future<Quiz> getLessonQuiz(String lessonId) async => testQuiz;
 
@@ -174,6 +200,8 @@ final class FakeQuizRepository implements QuizRepository {
     String lessonId,
     List<QuizAnswer> answers,
   ) async {
+    submitCalls++;
+    if (failSubmit) throw Exception('submit failed');
     final correct = answers.where((answer) {
       return answer.selectedOptionId == 'care-1' ||
           answer.selectedOptionId == 'advocacy-2';

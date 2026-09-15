@@ -171,6 +171,11 @@ void main() {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
+      await tester.tap(find.text('Kontrol Et'));
+      await waitFor(
+        () =>
+            container.read(quizControllerProvider(selection)).feedbackComplete,
+      );
       await tester.tap(
         find.text(
           index == quiz.questions.length - 1 ? 'Quizi Bitir' : 'Sonraki Soru',
