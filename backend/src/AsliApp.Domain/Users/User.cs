@@ -14,6 +14,7 @@ public sealed class User : IdentityUser<Guid>
     public ICollection<QuizAttempt> QuizAttempts { get; set; } = [];
     public ICollection<LessonProgress> LessonProgress { get; set; } = [];
     public ICollection<EmailVerificationCode> EmailVerificationCodes { get; set; } = [];
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public ICollection<UserActivityEvent> ActivityEvents { get; set; } = [];
     public ICollection<AppSession> AppSessions { get; set; } = [];
     public ICollection<UserDevice> Devices { get; set; } = [];

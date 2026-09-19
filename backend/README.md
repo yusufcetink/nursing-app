@@ -13,7 +13,7 @@ Configure SQL Server outside source control, for example with the `ConnectionStr
 
 Configure the JWT signing key with the `Jwt__Key` environment variable. It must be at least 32 bytes. The issuer, audience, and token lifetime have non-secret defaults in `appsettings.json` and can also be overridden through configuration.
 
-Lesson media files are stored outside the application and source directories. Development uses `C:\AsliAppStorage`; production defaults to `D:\AsliAppStorage`. Override the location and upload limit when needed:
+Lesson media files are stored outside the application and source directories. Development uses `C:\AsliAppStorage`; production has no machine-specific default and requires an explicit external path:
 
 ```powershell
 $env:FileStorage__RootPath = "D:\AsliAppStorage"
@@ -21,6 +21,10 @@ $env:FileStorage__MaxFileSizeBytes = "26214400"
 ```
 
 Grant the application pool or service account read/write access to the configured directory. The database stores only relative keys such as `images/<guid>.png` and `videos/<guid>.mp4`.
+
+Production also requires an explicit host allow-list, for example
+`AllowedHosts=api.example.com`. Keep schema migrations as a separate deployment step;
+the API does not create or migrate the production database during startup.
 
 For local Gmail SMTP delivery, configure the sender address and a Gmail app password with user-secrets:
 

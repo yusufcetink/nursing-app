@@ -11,7 +11,17 @@ public sealed record RegisterRequest(
 
 public sealed record LoginRequest(
     [Required, EmailAddress, MaxLength(256)] string Email,
-    [Required, MaxLength(128)] string Password);
+    [Required, MaxLength(128)] string Password,
+    bool RememberMe = false,
+    [MaxLength(200)] string? DeviceId = null);
+
+public sealed record RefreshRequest(
+    [Required, MaxLength(512)] string RefreshToken,
+    [Required, MaxLength(200)] string DeviceId);
+
+public sealed record LogoutRequest(
+    [MaxLength(512)] string? RefreshToken,
+    [MaxLength(200)] string? DeviceId);
 
 public sealed record EmailRequest(
     [Required, EmailAddress, MaxLength(256)] string Email);
@@ -35,6 +45,8 @@ public sealed record UserResponse(
 public sealed record LoginResponse(
     string AccessToken,
     DateTimeOffset ExpiresAtUtc,
+    string? RefreshToken,
+    DateTimeOffset? RefreshTokenExpiresAtUtc,
     UserResponse User);
 
 public sealed record AuthErrorResponse(IReadOnlyList<string> Errors);

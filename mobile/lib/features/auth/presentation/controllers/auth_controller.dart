@@ -29,11 +29,21 @@ final class AuthController extends AsyncNotifier<AuthenticatedUser?> {
     );
   }
 
-  Future<bool> login({required String email, required String password}) {
+  Future<bool> login({
+    required String email,
+    required String password,
+    bool rememberMe = true,
+  }) {
     return _authenticate(
       () => ref
           .read(authRepositoryProvider)
-          .login(LoginRequest(email: email.trim(), password: password)),
+          .login(
+            LoginRequest(
+              email: email.trim(),
+              password: password,
+              rememberMe: rememberMe,
+            ),
+          ),
     );
   }
 

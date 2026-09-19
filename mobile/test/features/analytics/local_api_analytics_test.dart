@@ -284,11 +284,19 @@ void main() {
 class _MemoryTokenStorage implements TokenStorage {
   String? _token;
   @override
-  Future<void> write(String token) async => _token = token;
+  Future<String?> readAccessToken() async => _token;
   @override
-  Future<String?> read() async => _token;
+  Future<String?> readRefreshToken() async => null;
   @override
-  Future<void> delete() async {
+  Future<String> getDeviceId() async => 'test-device';
+  @override
+  Future<void> writeTokens({
+    required String accessToken,
+    required String? refreshToken,
+    required bool persist,
+  }) async => _token = accessToken;
+  @override
+  Future<void> deleteTokens() async {
     _token = null;
   }
 }

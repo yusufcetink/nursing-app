@@ -20,6 +20,14 @@ using System.Security.Cryptography;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var allowedHosts = builder.Configuration["AllowedHosts"];
+if (builder.Environment.IsProduction() &&
+    (string.IsNullOrWhiteSpace(allowedHosts) || allowedHosts == "*"))
+{
+    throw new InvalidOperationException(
+        "AllowedHosts must be explicitly configured for Production.");
+}
+
 var fileStorageOptions = builder.Configuration
     .GetRequiredSection(FileStorageOptions.SectionName)
     .Get<FileStorageOptions>()
@@ -34,6 +42,11 @@ builder.Services.AddSingleton(Options.Create(fileStorageOptions));
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Database connection string is missing. Configure ConnectionStrings__DefaultConnection.");
+}
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDataProtection();
@@ -53,6 +66,9 @@ var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
 var jwtKey = jwtSection[nameof(JwtOptions.Key)];
 var jwtIssuer = jwtSection[nameof(JwtOptions.Issuer)];
 var jwtAudience = jwtSection[nameof(JwtOptions.Audience)];
+var jwtExpirationMinutes = jwtSection.GetValue<int>(nameof(JwtOptions.ExpirationMinutes));
+var refreshTokenExpirationDays = jwtSection.GetValue<int>(
+    nameof(JwtOptions.RefreshTokenExpirationDays));
 if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
 {
     throw new InvalidOperationException(
@@ -62,6 +78,12 @@ if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32
 if (string.IsNullOrWhiteSpace(jwtIssuer) || string.IsNullOrWhiteSpace(jwtAudience))
 {
     throw new InvalidOperationException("JWT issuer and audience must be configured.");
+}
+
+if (jwtExpirationMinutes <= 0 || refreshTokenExpirationDays <= 0)
+{
+    throw new InvalidOperationException(
+        "JWT access and refresh token lifetimes must be greater than zero.");
 }
 
 builder.Services.Configure<JwtOptions>(jwtSection);
@@ -130,6 +152,7 @@ builder.Services.AddScoped<IEmailSender, GmailSmtpEmailSender>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
@@ -138,6 +161,10 @@ await AdminBootstrapper.BootstrapAsync(app.Services, app.Configuration);
 if (app.Environment.IsDevelopment())
 {
     await DevelopmentEducationSeeder.SeedAsync(app.Services);
+}
+else
+{
+    app.UseExceptionHandler();
 }
 
 app.UseAuthentication();

@@ -22,6 +22,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<QuizAttemptAnswer> QuizAttemptAnswers => Set<QuizAttemptAnswer>();
     public DbSet<LessonProgress> LessonProgress => Set<LessonProgress>();
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<UserActivityEvent> UserActivityEvents => Set<UserActivityEvent>();
     public DbSet<AppSession> AppSessions => Set<AppSession>();
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
@@ -60,6 +61,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasOne(code => code.User)
                 .WithMany(user => user.EmailVerificationCodes)
                 .HasForeignKey(code => code.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(token => token.Id);
+            entity.Property(token => token.DeviceId).HasMaxLength(200).IsRequired();
+            entity.Property(token => token.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(token => token.SecurityStampHash).HasMaxLength(64).IsRequired();
+            entity.Property(token => token.RowVersion).IsRowVersion();
+            entity.HasIndex(token => token.TokenHash).IsUnique();
+            entity.HasIndex(token => new { token.UserId, token.DeviceId, token.RevokedAtUtc });
+            entity.HasOne(token => token.User)
+                .WithMany(user => user.RefreshTokens)
+                .HasForeignKey(token => token.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

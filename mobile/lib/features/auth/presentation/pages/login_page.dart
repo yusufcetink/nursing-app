@@ -22,6 +22,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _passwordVisible = false;
+  bool _rememberMe = true;
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         .login(
           email: _emailController.text,
           password: _passwordController.text,
+          rememberMe: _rememberMe,
         );
     if (!mounted) {
       return;
@@ -119,12 +121,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               validator: AuthValidators.password,
               onFieldSubmitted: (_) => _submit(),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => context.goNamed(AppRoutes.forgotPassword),
-                child: const Text('Şifremi unuttum'),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: CheckboxListTile(
+                    key: const Key('login_remember_me'),
+                    value: _rememberMe,
+                    onChanged: isLoading
+                        ? null
+                        : (value) =>
+                              setState(() => _rememberMe = value ?? true),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('Beni Hatırla'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.goNamed(AppRoutes.forgotPassword),
+                  child: const Text('Şifremi unuttum'),
+                ),
+              ],
             ),
             LearningAction(
               label: 'Giriş Yap',

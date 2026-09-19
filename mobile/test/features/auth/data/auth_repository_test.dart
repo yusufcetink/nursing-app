@@ -45,7 +45,7 @@ void main() {
     );
 
     expect(adapter.requests.single.path, '/api/auth/register');
-    expect(storage.token, isNull);
+    expect(storage.accessToken, isNull);
   });
 
   test('401 yanıtını anlaşılır login hatasına dönüştürür', () async {
@@ -66,6 +66,7 @@ void main() {
         const LoginRequest(
           email: 'student@example.com',
           password: 'WrongPass1!',
+          rememberMe: true,
         ),
       ),
       throwsA(
@@ -135,7 +136,7 @@ void main() {
         adapter.requests.single.headers['Authorization'],
         'Bearer stored-jwt-token',
       );
-      expect(storage.token, 'stored-jwt-token');
+      expect(storage.accessToken, 'stored-jwt-token');
     },
   );
 
@@ -149,34 +150,177 @@ void main() {
     final user = await repository.restoreSession();
 
     expect(user, isNull);
-    expect(storage.token, isNull);
+    expect(storage.accessToken, isNull);
   });
+
+  test('remember true tokenları kalıcı yazar ve parolayı saklamaz', () async {
+    final adapter = _SequenceAdapter([_JsonResponse(200, _loginResponse())]);
+    final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+      ..httpClientAdapter = adapter;
+    final storage = _MemoryTokenStorage();
+    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+
+    await repository.login(
+      const LoginRequest(
+        email: 'student@example.com',
+        password: 'SecurePass1!',
+        rememberMe: true,
+      ),
+    );
+
+    expect(adapter.requests.single.data['rememberMe'], isTrue);
+    expect(adapter.requests.single.data['deviceId'], 'test-device');
+    expect(storage.accessToken, 'new-access-token');
+    expect(storage.refreshToken, 'new-refresh-token');
+    expect(storage.persisted, isTrue);
+    expect(storage.storedValues, isNot(containsValue('SecurePass1!')));
+  });
+
+  test('remember false access tokenı yalnızca geçici tutar', () async {
+    final adapter = _SequenceAdapter([
+      _JsonResponse(200, _loginResponse(refreshToken: null)),
+    ]);
+    final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+      ..httpClientAdapter = adapter;
+    final storage = _MemoryTokenStorage();
+    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+
+    await repository.login(
+      const LoginRequest(
+        email: 'student@example.com',
+        password: 'SecurePass1!',
+        rememberMe: false,
+      ),
+    );
+
+    expect(storage.accessToken, 'new-access-token');
+    expect(storage.refreshToken, isNull);
+    expect(storage.persisted, isFalse);
+  });
+
+  test(
+    'expired access token valid refresh ile döndürülür ve rotate edilir',
+    () async {
+      final adapter = _SequenceAdapter([
+        _JsonResponse(401, const {}),
+        _JsonResponse(200, _loginResponse()),
+      ]);
+      final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+        ..httpClientAdapter = adapter;
+      final storage = _MemoryTokenStorage('expired-access', 'old-refresh');
+      final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+
+      final user = await repository.restoreSession();
+
+      expect(user?.email, 'ayse@example.com');
+      expect(adapter.requests.map((request) => request.path), [
+        '/api/auth/me',
+        '/api/auth/refresh',
+      ]);
+      expect(adapter.requests.last.data['refreshToken'], 'old-refresh');
+      expect(storage.accessToken, 'new-access-token');
+      expect(storage.refreshToken, 'new-refresh-token');
+    },
+  );
+
+  test('revoked refresh token storageı temizler ve login ister', () async {
+    final adapter = _SequenceAdapter([
+      _JsonResponse(401, const {}),
+      _JsonResponse(401, const {}),
+    ]);
+    final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+      ..httpClientAdapter = adapter;
+    final storage = _MemoryTokenStorage('expired-access', 'revoked-refresh');
+    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+
+    expect(await repository.restoreSession(), isNull);
+    expect(storage.accessToken, isNull);
+    expect(storage.refreshToken, isNull);
+  });
+
+  test(
+    'logout refresh tokenı revoke eder ve local tokenları temizler',
+    () async {
+      final adapter = _SequenceAdapter([_JsonResponse(204, const {})]);
+      final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+        ..httpClientAdapter = adapter;
+      final storage = _MemoryTokenStorage('access', 'refresh');
+      final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+
+      await repository.logout();
+
+      expect(adapter.requests.single.path, '/api/auth/logout');
+      expect(adapter.requests.single.data['refreshToken'], 'refresh');
+      expect(storage.accessToken, isNull);
+      expect(storage.refreshToken, isNull);
+    },
+  );
 }
 
 final class _MemoryTokenStorage implements TokenStorage {
-  _MemoryTokenStorage([this.token]);
+  _MemoryTokenStorage([this.accessToken, this.refreshToken]);
 
-  String? token;
+  String? accessToken;
+  String? refreshToken;
+  bool? persisted;
+  final Map<String, String> storedValues = {};
 
   @override
-  Future<void> delete() async {
-    token = null;
+  Future<void> deleteTokens() async {
+    accessToken = null;
+    refreshToken = null;
+    storedValues.clear();
   }
 
   @override
-  Future<String?> read() async => token;
+  Future<String?> readAccessToken() async => accessToken;
 
   @override
-  Future<void> write(String token) async {
-    this.token = token;
+  Future<String?> readRefreshToken() async => refreshToken;
+
+  @override
+  Future<String> getDeviceId() async => 'test-device';
+
+  @override
+  Future<void> writeTokens({
+    required String accessToken,
+    required String? refreshToken,
+    required bool persist,
+  }) async {
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
+    persisted = persist;
+    storedValues.clear();
+    if (persist) {
+      storedValues['accessToken'] = accessToken;
+      if (refreshToken != null) storedValues['refreshToken'] = refreshToken;
+    }
   }
 }
+
+Map<String, Object?> _loginResponse({
+  String? refreshToken = 'new-refresh-token',
+}) => {
+  'accessToken': 'new-access-token',
+  'expiresAtUtc': '2026-09-19T12:00:00Z',
+  'refreshToken': refreshToken,
+  'refreshTokenExpiresAtUtc': refreshToken == null
+      ? null
+      : '2026-10-19T12:00:00Z',
+  'user': {
+    'id': '4fa2f657-d064-4565-9f7a-dd35454df1ab',
+    'firstName': 'Ayşe',
+    'lastName': 'Yılmaz',
+    'email': 'ayse@example.com',
+    'roles': ['Student'],
+  },
+};
 
 final class _JsonResponse {
   const _JsonResponse(this.statusCode, this.body);
 
   final int statusCode;
-  final Map<String, Object> body;
+  final Map<String, Object?> body;
 }
 
 final class _SequenceAdapter implements HttpClientAdapter {

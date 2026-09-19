@@ -29,11 +29,20 @@ import '../../helpers/ui_test_helpers.dart';
 
 class _UnavailableMediaToken implements TokenStorage {
   @override
-  Future<String?> read() async => throw StateError('Media unavailable');
+  Future<String?> readAccessToken() async =>
+      throw StateError('Media unavailable');
   @override
-  Future<void> write(String token) async {}
+  Future<String?> readRefreshToken() async => null;
   @override
-  Future<void> delete() async {}
+  Future<String> getDeviceId() async => 'test-device';
+  @override
+  Future<void> writeTokens({
+    required String accessToken,
+    required String? refreshToken,
+    required bool persist,
+  }) async {}
+  @override
+  Future<void> deleteTokens() async {}
 }
 
 class _MediaLessonRepository implements EducationRepository {

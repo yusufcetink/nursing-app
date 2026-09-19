@@ -74,6 +74,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final rememberMe = tester.widget<CheckboxListTile>(
+      find.byKey(const Key('login_remember_me')),
+    );
+    expect(rememberMe.value, isTrue);
+    await tester.ensureVisible(find.byKey(const Key('login_remember_me')));
+    await tester.tap(find.byKey(const Key('login_remember_me')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<CheckboxListTile>(
+            find.byKey(const Key('login_remember_me')),
+          )
+          .value,
+      isFalse,
+    );
+    await tester.tap(find.byKey(const Key('login_remember_me')));
+    await tester.pump();
+
     await tester.ensureVisible(find.text('Giriş Yap'));
     await tester.tap(find.text('Giriş Yap'));
     await tester.pump();

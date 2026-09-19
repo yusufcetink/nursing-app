@@ -23,12 +23,34 @@ final class RegisterRequest {
 }
 
 final class LoginRequest {
-  const LoginRequest({required this.email, required this.password});
+  const LoginRequest({
+    required this.email,
+    required this.password,
+    required this.rememberMe,
+  });
 
   final String email;
   final String password;
+  final bool rememberMe;
 
-  Map<String, Object> toJson() => {'email': email, 'password': password};
+  Map<String, Object> toJson({required String deviceId}) => {
+    'email': email,
+    'password': password,
+    'rememberMe': rememberMe,
+    'deviceId': deviceId,
+  };
+}
+
+final class RefreshRequest {
+  const RefreshRequest({required this.refreshToken, required this.deviceId});
+
+  final String refreshToken;
+  final String deviceId;
+
+  Map<String, Object> toJson() => {
+    'refreshToken': refreshToken,
+    'deviceId': deviceId,
+  };
 }
 
 final class EmailRequest {
@@ -70,6 +92,7 @@ final class LoginResponse {
   const LoginResponse({
     required this.accessToken,
     required this.expiresAtUtc,
+    required this.refreshToken,
     required this.user,
   });
 
@@ -77,6 +100,7 @@ final class LoginResponse {
     return LoginResponse(
       accessToken: json['accessToken'] as String,
       expiresAtUtc: DateTime.parse(json['expiresAtUtc'] as String).toUtc(),
+      refreshToken: json['refreshToken'] as String?,
       user: UserResponse.fromJson(
         Map<String, dynamic>.from(json['user'] as Map),
       ),
@@ -85,6 +109,7 @@ final class LoginResponse {
 
   final String accessToken;
   final DateTime expiresAtUtc;
+  final String? refreshToken;
   final UserResponse user;
 }
 

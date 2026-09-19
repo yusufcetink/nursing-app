@@ -12,17 +12,47 @@ abstract final class AppConfig {
   );
 
   static String get apiBaseUrl {
-    if (_configuredApiBaseUrl.isNotEmpty) {
-      return _configuredApiBaseUrl;
-    }
-    if (kReleaseMode) {
+    return resolveApiBaseUrl(
+      configuredUrl: _configuredApiBaseUrl,
+      releaseMode: kReleaseMode,
+      platform: defaultTargetPlatform,
+    );
+  }
+}
+
+String resolveApiBaseUrl({
+  required String configuredUrl,
+  required bool releaseMode,
+  required TargetPlatform platform,
+}) {
+  final value = configuredUrl.trim();
+  if (value.isEmpty) {
+    if (releaseMode) {
       throw StateError('API_BASE_URL must be configured for release builds.');
     }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5218';
-    }
-    return 'http://127.0.0.1:5218';
+    return platform == TargetPlatform.android
+        ? 'http://10.0.2.2:5218'
+        : 'http://127.0.0.1:5218';
   }
+
+  final uri = Uri.tryParse(value);
+  if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+    throw StateError('API_BASE_URL must be an absolute URL.');
+  }
+
+  final host = uri.host.toLowerCase();
+  final isLoopback =
+      host == 'localhost' ||
+      host == '127.0.0.1' ||
+      host == '::1' ||
+      host == '10.0.2.2';
+  if (releaseMode && (uri.scheme.toLowerCase() != 'https' || isLoopback)) {
+    throw StateError(
+      'Release API_BASE_URL must use HTTPS and cannot target a loopback host.',
+    );
+  }
+
+  return value;
 }
 
 Duration resolveInactivityReminderDelay({

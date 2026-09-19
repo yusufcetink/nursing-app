@@ -155,6 +155,67 @@ public sealed class AuthEndpointsTests : IClassFixture<AuthApiFactory>
             await unknownResponse.Content.ReadAsStringAsync());
     }
 
+    [Fact]
+    public async Task RefreshRotatesTokenAndLogoutRevokesCurrentToken()
+    {
+        var email = $"refresh-{Guid.NewGuid():N}@example.com";
+        const string password = "SecurePass1!";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Refresh",
+                LastName = "Endpoint",
+                Email = email,
+                UserName = email,
+                EmailConfirmed = true,
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+            };
+            Assert.True((await userManager.CreateAsync(user, password)).Succeeded);
+            Assert.True((await userManager.AddToRoleAsync(user, UserRole.Student.ToString())).Succeeded);
+        }
+
+        var loginResponse = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest(email, password, RememberMe: true, DeviceId: "endpoint-device"));
+        var login = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>(JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        Assert.NotNull(login?.RefreshToken);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var storedToken = await dbContext.RefreshTokens.SingleAsync(token =>
+                token.UserId == login!.User.Id);
+            Assert.DoesNotContain(login.RefreshToken, storedToken.TokenHash);
+        }
+
+        var refreshResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshRequest(login!.RefreshToken!, "endpoint-device"));
+        var refreshed = await refreshResponse.Content.ReadFromJsonAsync<LoginResponse>(JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, refreshResponse.StatusCode);
+        Assert.NotNull(refreshed?.RefreshToken);
+        Assert.NotEqual(login.RefreshToken, refreshed.RefreshToken);
+
+        var replayResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshRequest(login.RefreshToken, "endpoint-device"));
+        Assert.Equal(HttpStatusCode.Unauthorized, replayResponse.StatusCode);
+
+        var logoutResponse = await _client.PostAsJsonAsync(
+            "/api/auth/logout",
+            new LogoutRequest(refreshed!.RefreshToken, "endpoint-device"));
+        Assert.Equal(HttpStatusCode.NoContent, logoutResponse.StatusCode);
+
+        var revokedResponse = await _client.PostAsJsonAsync(
+            "/api/auth/refresh",
+            new RefreshRequest(refreshed.RefreshToken!, "endpoint-device"));
+        Assert.Equal(HttpStatusCode.Unauthorized, revokedResponse.StatusCode);
+    }
+
     private string CreateExpiredToken()
     {
         var token = new JwtSecurityToken(

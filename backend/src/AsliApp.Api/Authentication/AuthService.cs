@@ -99,11 +99,118 @@ public sealed class AuthService(
                 "Authentication was rejected because an account does not have exactly one application role.");
             return AuthResult<LoginResponse>.Failure("Account authorization is invalid.");
         }
-        var expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(_jwtOptions.ExpirationMinutes);
+        if (request.RememberMe && string.IsNullOrWhiteSpace(request.DeviceId))
+        {
+            return AuthResult<LoginResponse>.Failure("A device identifier is required for remembered sessions.");
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var expiresAtUtc = now.AddMinutes(_jwtOptions.ExpirationMinutes);
         var token = CreateToken(user, identityRoles, expiresAtUtc);
+        string? refreshToken = null;
+        DateTimeOffset? refreshTokenExpiresAtUtc = null;
+        if (request.RememberMe)
+        {
+            var issuedRefreshToken = CreateRefreshToken(user, request.DeviceId!.Trim(), now);
+            refreshToken = issuedRefreshToken.PlainText;
+            refreshTokenExpiresAtUtc = issuedRefreshToken.Entity.ExpiresAtUtc;
+            dbContext.RefreshTokens.Add(issuedRefreshToken.Entity);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         return AuthResult<LoginResponse>.Success(
-            new LoginResponse(token, expiresAtUtc, ToResponse(user, roles)));
+            new LoginResponse(
+                token,
+                expiresAtUtc,
+                refreshToken,
+                refreshTokenExpiresAtUtc,
+                ToResponse(user, roles)));
+    }
+
+    public async Task<AuthResult<LoginResponse>> RefreshAsync(
+        RefreshRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var tokenHash = Hash(request.RefreshToken);
+        var storedToken = await dbContext.RefreshTokens
+            .Include(token => token.User)
+            .SingleOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        if (storedToken is null ||
+            storedToken.RevokedAtUtc is not null ||
+            storedToken.ExpiresAtUtc <= now ||
+            !string.Equals(storedToken.DeviceId, request.DeviceId.Trim(), StringComparison.Ordinal))
+        {
+            return InvalidRefreshToken();
+        }
+
+        var user = storedToken.User;
+        var currentStamp = await userManager.GetSecurityStampAsync(user);
+        if (string.IsNullOrEmpty(currentStamp) ||
+            !FixedTimeHashEquals(storedToken.SecurityStampHash, Hash(currentStamp)))
+        {
+            storedToken.RevokedAtUtc = now;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return InvalidRefreshToken();
+        }
+
+        var identityRoles = await userManager.GetRolesAsync(user);
+        var roles = ParseRoles(identityRoles);
+        if (identityRoles.Count != 1 || roles.Length != 1)
+        {
+            storedToken.RevokedAtUtc = now;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            logger.LogError(
+                "Refresh was rejected because an account does not have exactly one application role.");
+            return InvalidRefreshToken();
+        }
+
+        var replacement = CreateRefreshToken(user, storedToken.DeviceId, now);
+        storedToken.RevokedAtUtc = now;
+        storedToken.ReplacedByTokenId = replacement.Entity.Id;
+        dbContext.RefreshTokens.Add(replacement.Entity);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return InvalidRefreshToken();
+        }
+
+        var accessTokenExpiresAtUtc = now.AddMinutes(_jwtOptions.ExpirationMinutes);
+        return AuthResult<LoginResponse>.Success(
+            new LoginResponse(
+                CreateToken(user, identityRoles, accessTokenExpiresAtUtc),
+                accessTokenExpiresAtUtc,
+                replacement.PlainText,
+                replacement.Entity.ExpiresAtUtc,
+                ToResponse(user, roles)));
+    }
+
+    public async Task LogoutAsync(
+        LogoutRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.RefreshToken) ||
+            string.IsNullOrWhiteSpace(request.DeviceId))
+        {
+            return;
+        }
+
+        var tokenHash = Hash(request.RefreshToken);
+        var storedToken = await dbContext.RefreshTokens.SingleOrDefaultAsync(
+            token => token.TokenHash == tokenHash,
+            cancellationToken);
+        if (storedToken is null || storedToken.RevokedAtUtc is not null ||
+            !string.Equals(storedToken.DeviceId, request.DeviceId.Trim(), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        storedToken.RevokedAtUtc = timeProvider.GetUtcNow();
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<AuthResult<AuthOperationResponse>> VerifyEmailAsync(
@@ -542,6 +649,39 @@ public sealed class AuthService(
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    private IssuedRefreshToken CreateRefreshToken(
+        User user,
+        string deviceId,
+        DateTimeOffset createdAtUtc)
+    {
+        var plainText = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(64));
+        return new IssuedRefreshToken(
+            plainText,
+            new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                DeviceId = deviceId,
+                TokenHash = Hash(plainText),
+                SecurityStampHash = Hash(user.SecurityStamp ?? string.Empty),
+                CreatedAtUtc = createdAtUtc,
+                ExpiresAtUtc = createdAtUtc.AddDays(_jwtOptions.RefreshTokenExpirationDays),
+            });
+    }
+
+    private static string Hash(string value) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    private static bool FixedTimeHashEquals(string left, string right) =>
+        CryptographicOperations.FixedTimeEquals(
+            Convert.FromHexString(left),
+            Convert.FromHexString(right));
+
+    private static AuthResult<LoginResponse> InvalidRefreshToken() =>
+        AuthResult<LoginResponse>.Failure("Refresh token is invalid or expired.");
+
+    private sealed record IssuedRefreshToken(string PlainText, RefreshToken Entity);
 
     private static UserRole[] ParseRoles(IEnumerable<string> identityRoles) =>
         identityRoles

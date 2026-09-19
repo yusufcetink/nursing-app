@@ -39,14 +39,20 @@ final class DioAuthRepository implements AuthRepository {
   @override
   Future<AuthenticatedUser?> restoreSession() async {
     try {
-      final token = await _tokenStorage.read();
-      if (token == null || token.trim().isEmpty) {
+      final accessToken = await _tokenStorage.readAccessToken();
+      final refreshToken = await _tokenStorage.readRefreshToken();
+      if ((accessToken == null || accessToken.trim().isEmpty) &&
+          (refreshToken == null || refreshToken.trim().isEmpty)) {
         return null;
+      }
+
+      if (accessToken == null || accessToken.trim().isEmpty) {
+        return await _refreshSession(refreshToken!);
       }
 
       final response = await _apiClient.dio.get<Map<String, dynamic>>(
         '/api/auth/me',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
       final data = response.data;
       if (data == null) {
@@ -55,7 +61,11 @@ final class DioAuthRepository implements AuthRepository {
       return UserResponse.fromJson(data).toDomain();
     } on DioException catch (error) {
       if (error.response?.statusCode == 401) {
-        await _tokenStorage.delete();
+        final refreshToken = await _tokenStorage.readRefreshToken();
+        if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+          return _refreshSession(refreshToken);
+        }
+        await _tokenStorage.deleteTokens();
         return null;
       }
       throw AuthException(_messageFor(error));
@@ -69,16 +79,21 @@ final class DioAuthRepository implements AuthRepository {
   @override
   Future<AuthenticatedUser> login(LoginRequest request) async {
     try {
+      final deviceId = await _tokenStorage.getDeviceId();
       final response = await _apiClient.dio.post<Map<String, dynamic>>(
         '/api/auth/login',
-        data: request.toJson(),
+        data: request.toJson(deviceId: deviceId),
       );
       final data = response.data;
       if (data == null) {
         throw const FormatException('Empty login response.');
       }
       final loginResponse = LoginResponse.fromJson(data);
-      await _tokenStorage.write(loginResponse.accessToken);
+      await _tokenStorage.writeTokens(
+        accessToken: loginResponse.accessToken,
+        refreshToken: loginResponse.refreshToken,
+        persist: request.rememberMe,
+      );
       return loginResponse.user.toDomain();
     } on DioException catch (error) {
       throw AuthException(_messageFor(error));
@@ -127,12 +142,58 @@ final class DioAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {
+    final refreshToken = await _tokenStorage.readRefreshToken();
     try {
-      await _tokenStorage.delete();
+      if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+        final deviceId = await _tokenStorage.getDeviceId();
+        await _apiClient.dio.post<void>(
+          '/api/auth/logout',
+          data: {'refreshToken': refreshToken, 'deviceId': deviceId},
+        );
+      }
+    } on DioException {
+      // Local logout must still complete when the server cannot be reached.
+    }
+
+    try {
+      await _tokenStorage.deleteTokens();
     } catch (_) {
       throw const AuthException(
         'Güvenli oturum bilgisi silinemedi. Lütfen tekrar deneyin.',
       );
+    }
+  }
+
+  Future<AuthenticatedUser?> _refreshSession(String refreshToken) async {
+    try {
+      final deviceId = await _tokenStorage.getDeviceId();
+      final response = await _apiClient.dio.post<Map<String, dynamic>>(
+        '/api/auth/refresh',
+        data: RefreshRequest(
+          refreshToken: refreshToken,
+          deviceId: deviceId,
+        ).toJson(),
+      );
+      final data = response.data;
+      if (data == null) {
+        throw const FormatException('Empty refresh response.');
+      }
+      final refreshed = LoginResponse.fromJson(data);
+      await _tokenStorage.writeTokens(
+        accessToken: refreshed.accessToken,
+        refreshToken: refreshed.refreshToken,
+        persist: true,
+      );
+      return refreshed.user.toDomain();
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 401) {
+        await _tokenStorage.deleteTokens();
+        return null;
+      }
+      throw AuthException(_messageFor(error));
+    } on FormatException {
+      await _tokenStorage.deleteTokens();
+      return null;
     }
   }
 

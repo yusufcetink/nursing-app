@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -51,16 +50,19 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        final fields = tester
-            .widgetList<EditableText>(find.byType(EditableText))
-            .toList();
-        for (final field in fields) {
+        final fields = find.byType(EditableText);
+        final fieldCount = fields.evaluate().length;
+        for (var index = 0; index < fieldCount; index++) {
+          final finder = fields.at(index);
+          final field = tester.widget<EditableText>(finder);
           if (field.keyboardType == TextInputType.number) continue;
-          final finder = find.byWidget(field);
           await tester.ensureVisible(finder);
           await tester.enterText(finder, turkishText);
           await tester.pump();
-          expect(field.controller.text, turkishText);
+          expect(
+            tester.widget<EditableText>(finder).controller.text,
+            turkishText,
+          );
         }
         expect(tester.takeException(), isNull);
       });
@@ -116,8 +118,9 @@ int _glyph(ByteData data, int code) {
     if (u16(table) == 12) {
       for (var j = 0; j < u32(table + 12); j++) {
         final group = table + 16 + j * 12;
-        if (code >= u32(group) && code <= u32(group + 4))
+        if (code >= u32(group) && code <= u32(group + 4)) {
           return u32(group + 8) + code - u32(group);
+        }
       }
     }
     if (u16(table) != 4) continue;

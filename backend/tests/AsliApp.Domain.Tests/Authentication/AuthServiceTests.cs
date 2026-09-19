@@ -71,6 +71,75 @@ public sealed class AuthServiceTests
         Assert.Equal(
             UserRole.Student.ToString(),
             token.Claims.Single(claim => claim.Type == "role").Value);
+        Assert.Null(result.Value.RefreshToken);
+        Assert.Empty(context.DbContext.RefreshTokens);
+    }
+
+    [Fact]
+    public async Task RememberedLoginHashesAndRotatesRefreshTokenThenLogoutRevokesIt()
+    {
+        await using var context = new AuthTestContext();
+        const string email = "remembered@example.com";
+        const string password = "SecurePass1!";
+        await CreateConfirmedUserAsync(context, email);
+
+        var login = await context.AuthService.LoginAsync(
+            new LoginRequest(email, password, RememberMe: true, DeviceId: "device-1"));
+
+        Assert.True(login.Succeeded);
+        Assert.NotNull(login.Value?.RefreshToken);
+        var originalPlainText = login.Value.RefreshToken;
+        var stored = await context.DbContext.RefreshTokens.SingleAsync();
+        Assert.DoesNotContain(originalPlainText, stored.TokenHash);
+        Assert.Equal("device-1", stored.DeviceId);
+        Assert.Equal(context.Clock.GetUtcNow().AddDays(30), stored.ExpiresAtUtc);
+
+        var refreshed = await context.AuthService.RefreshAsync(
+            new RefreshRequest(originalPlainText, "device-1"));
+
+        Assert.True(refreshed.Succeeded);
+        Assert.NotEqual(originalPlainText, refreshed.Value?.RefreshToken);
+        var tokens = await context.DbContext.RefreshTokens
+            .OrderBy(token => token.CreatedAtUtc)
+            .ToListAsync();
+        Assert.Equal(2, tokens.Count);
+        Assert.NotNull(tokens[0].RevokedAtUtc);
+        Assert.Equal(tokens[1].Id, tokens[0].ReplacedByTokenId);
+        Assert.False((await context.AuthService.RefreshAsync(
+            new RefreshRequest(originalPlainText, "device-1"))).Succeeded);
+
+        await context.AuthService.LogoutAsync(
+            new LogoutRequest(refreshed.Value!.RefreshToken, "device-1"));
+
+        Assert.NotNull(tokens[1].RevokedAtUtc);
+        Assert.False((await context.AuthService.RefreshAsync(
+            new RefreshRequest(refreshed.Value.RefreshToken!, "device-1"))).Succeeded);
+    }
+
+    [Fact]
+    public async Task RefreshRejectsExpiredTokenAndSecurityStampChange()
+    {
+        await using var context = new AuthTestContext();
+        const string email = "stamp@example.com";
+        const string password = "SecurePass1!";
+        var user = await CreateConfirmedUserAsync(context, email);
+        var login = await context.AuthService.LoginAsync(
+            new LoginRequest(email, password, RememberMe: true, DeviceId: "device-1"));
+        Assert.NotNull(login.Value?.RefreshToken);
+
+        Assert.True((await context.UserManager.UpdateSecurityStampAsync(user)).Succeeded);
+        var stampResult = await context.AuthService.RefreshAsync(
+            new RefreshRequest(login.Value.RefreshToken, "device-1"));
+
+        Assert.False(stampResult.Succeeded);
+        Assert.NotNull((await context.DbContext.RefreshTokens.SingleAsync()).RevokedAtUtc);
+
+        var secondLogin = await context.AuthService.LoginAsync(
+            new LoginRequest(email, password, RememberMe: true, DeviceId: "device-1"));
+        context.Clock.Advance(TimeSpan.FromDays(30));
+
+        Assert.False((await context.AuthService.RefreshAsync(
+            new RefreshRequest(secondLogin.Value!.RefreshToken!, "device-1"))).Succeeded);
     }
 
     [Fact]

@@ -6,6 +6,17 @@ authentication, profiles, content management, and Admin-only user management.
 Run locally with `flutter pub get` followed by `flutter run`. Use
 `--dart-define=API_BASE_URL=<url>` to override the debug API URL.
 
+Release builds require an HTTPS API URL and reject localhost, `127.0.0.1`, and
+`10.0.2.2`:
+
+```powershell
+flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com
+```
+
+Android production signing is read from the ignored `android/key.properties` file.
+Provide `storeFile`, `storePassword`, `keyAlias`, and `keyPassword`; without that file
+Gradle may create an unsigned release artifact, which must not be deployed.
+
 ## Learning interface
 
 The login, home, module roadmap, lesson, quiz, result, and profile screens share

@@ -28,7 +28,7 @@ final class ApiClient {
           onRequest: (options, handler) async {
             try {
               if (!options.headers.containsKey('Authorization')) {
-                final token = await configuredTokenStorage.read();
+                final token = await configuredTokenStorage.readAccessToken();
                 if (token != null && token.trim().isNotEmpty) {
                   options.headers['Authorization'] = 'Bearer $token';
                 }
@@ -49,7 +49,7 @@ final class ApiClient {
   final TokenStorage? tokenStorage;
 
   Future<Map<String, String>> authorizationHeaders() async {
-    final token = await tokenStorage?.read();
+    final token = await tokenStorage?.readAccessToken();
     return token == null || token.trim().isEmpty
         ? const {}
         : {'Authorization': 'Bearer $token'};

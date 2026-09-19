@@ -40,6 +40,32 @@ public sealed class AuthController(AuthService authService) : ControllerBase
         return Ok(result.Value);
     }
 
+    [HttpPost("refresh")]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<AuthErrorResponse>(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<LoginResponse>> Refresh(
+        RefreshRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await authService.RefreshAsync(request, cancellationToken);
+        if (!result.Succeeded)
+        {
+            return Unauthorized(new AuthErrorResponse(result.Errors));
+        }
+
+        return Ok(result.Value);
+    }
+
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout(
+        LogoutRequest request,
+        CancellationToken cancellationToken)
+    {
+        await authService.LogoutAsync(request, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("verify-email")]
     [ProducesResponseType<AuthOperationResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<AuthErrorResponse>(StatusCodes.Status400BadRequest)]
