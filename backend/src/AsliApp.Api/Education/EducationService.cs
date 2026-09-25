@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 namespace AsliApp.Api.Education;
 
-public sealed class EducationService(
+public sealed partial class EducationService(
     AppDbContext dbContext,
     IFileStorage fileStorage,
     IOptions<FileStorageOptions> fileStorageOptions)
@@ -134,126 +134,6 @@ public sealed class EducationService(
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<QuizAnswerCheckResponse?> CheckQuizAnswerAsync(
-        Guid quizId,
-        Guid questionId,
-        Guid optionId,
-        CancellationToken cancellationToken)
-    {
-        var options = await dbContext.Quizzes
-            .AsNoTracking()
-            .Where(quiz => quiz.Id == quizId && quiz.IsPublished && !quiz.IsDeleted &&
-                quiz.Lesson.IsPublished && !quiz.Lesson.IsDeleted &&
-                quiz.Lesson.EducationModule.IsPublished && !quiz.Lesson.EducationModule.IsDeleted)
-            .SelectMany(quiz => quiz.Questions.Where(question =>
-                question.Id == questionId && !question.IsDeleted &&
-                question.Options.Any(option => option.Id == optionId)))
-            .SelectMany(question => question.Options)
-            .Select(option => new { option.Id, option.IsCorrect })
-            .ToListAsync(cancellationToken);
-        var selected = options.SingleOrDefault(option => option.Id == optionId);
-        var correct = options.Where(option => option.IsCorrect).ToList();
-        if (selected is null || correct.Count != 1)
-        {
-            return null;
-        }
-        return new QuizAnswerCheckResponse(selected.IsCorrect, correct[0].Id);
-    }
-
-    public async Task<QuizSubmissionOutcome> SubmitLessonQuizAsync(
-        Guid userId,
-        Guid lessonId,
-        QuizSubmissionRequest request,
-        CancellationToken cancellationToken)
-    {
-        var quiz = await dbContext.Quizzes
-            .Where(candidate =>
-                candidate.LessonId == lessonId &&
-                candidate.IsPublished &&
-                !candidate.IsDeleted &&
-                candidate.Lesson.IsPublished &&
-                !candidate.Lesson.IsDeleted &&
-                candidate.Lesson.EducationModule.IsPublished &&
-                !candidate.Lesson.EducationModule.IsDeleted)
-            .Include(candidate => candidate.Questions.Where(question => !question.IsDeleted))
-                .ThenInclude(question => question.Options)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (quiz is null)
-        {
-            return QuizSubmissionOutcome.NotFound;
-        }
-
-        var answersByQuestion = request.Answers
-            .GroupBy(answer => answer.QuestionId)
-            .ToDictionary(group => group.Key, group => group.ToList());
-        if (answersByQuestion.Count != quiz.Questions.Count ||
-            answersByQuestion.Values.Any(answers => answers.Count != 1))
-        {
-            return QuizSubmissionOutcome.Invalid;
-        }
-
-        var evaluatedAnswers = new List<(QuizQuestion Question, QuizOption Option)>();
-        var correctCount = 0;
-        foreach (var question in quiz.Questions)
-        {
-            if (!answersByQuestion.TryGetValue(question.Id, out var answers))
-            {
-                return QuizSubmissionOutcome.Invalid;
-            }
-
-            var selectedOption = question.Options.SingleOrDefault(
-                option => option.Id == answers[0].SelectedOptionId);
-            if (selectedOption is null)
-            {
-                return QuizSubmissionOutcome.Invalid;
-            }
-
-            if (selectedOption.IsCorrect)
-            {
-                correctCount++;
-            }
-            evaluatedAnswers.Add((question, selectedOption));
-        }
-
-        var incorrectCount = quiz.Questions.Count - correctCount;
-        var successPercentage = quiz.Questions.Count == 0
-            ? 0
-            : Math.Round(
-                (decimal)correctCount / quiz.Questions.Count * 100,
-                2,
-                MidpointRounding.AwayFromZero);
-        var completedAtUtc = DateTimeOffset.UtcNow;
-        var attempt = new QuizAttempt
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            QuizId = quiz.Id,
-            TotalQuestionCount = quiz.Questions.Count,
-            CorrectCount = correctCount,
-            IncorrectCount = incorrectCount,
-            ScorePercentage = successPercentage,
-            CompletedAtUtc = completedAtUtc,
-            Answers = evaluatedAnswers.Select(evaluated => new QuizAttemptAnswer
-            {
-                Id = Guid.NewGuid(),
-                QuizQuestionId = evaluated.Question.Id,
-                SelectedOptionId = evaluated.Option.Id,
-                IsCorrect = evaluated.Option.IsCorrect,
-            }).ToList(),
-        };
-        dbContext.QuizAttempts.Add(attempt);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return QuizSubmissionOutcome.Success(new QuizSubmissionResponse(
-            attempt.Id,
-            quiz.Id,
-            quiz.Questions.Count,
-            correctCount,
-            incorrectCount,
-            successPercentage,
-            completedAtUtc));
-    }
-
     public async Task<LessonCompletionResponse?> CompleteLessonAsync(
         Guid userId,
         Guid lessonId,
@@ -331,7 +211,7 @@ public sealed class EducationService(
         return await dbContext.QuizAttempts
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(attempt => attempt.UserId == userId)
+            .Where(attempt => attempt.UserId == userId && attempt.CompletedAtUtc != null)
             .OrderByDescending(attempt => attempt.CompletedAtUtc)
             .Select(attempt => new QuizHistoryItemResponse(
                 attempt.Id,
@@ -343,7 +223,7 @@ public sealed class EducationService(
                 attempt.CorrectCount,
                 attempt.IncorrectCount,
                 attempt.ScorePercentage,
-                attempt.CompletedAtUtc))
+                attempt.CompletedAtUtc!.Value))
             .ToListAsync(cancellationToken);
     }
 
@@ -355,7 +235,7 @@ public sealed class EducationService(
         return dbContext.QuizAttempts
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(attempt => attempt.Id == attemptId && attempt.UserId == userId)
+            .Where(attempt => attempt.Id == attemptId && attempt.UserId == userId && attempt.CompletedAtUtc != null)
             .Select(attempt => new QuizHistoryDetailResponse(
                 attempt.Id,
                 attempt.QuizId,
@@ -366,7 +246,7 @@ public sealed class EducationService(
                 attempt.CorrectCount,
                 attempt.IncorrectCount,
                 attempt.ScorePercentage,
-                attempt.CompletedAtUtc))
+                attempt.CompletedAtUtc!.Value))
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -747,6 +627,7 @@ public sealed class EducationService(
                 request.BlockType,
                 true,
                 out var blockType) ||
+            !Enum.IsDefined(blockType) ||
             await dbContext.LessonContentBlocks.AnyAsync(
                 block => block.LessonId == lessonId &&
                     block.Id != blockId &&
@@ -756,7 +637,7 @@ public sealed class EducationService(
             return null;
         }
 
-        if (blockType is LessonContentBlockType.Heading or LessonContentBlockType.Text)
+        if (blockType is not (LessonContentBlockType.Image or LessonContentBlockType.Video))
         {
             var text = request.TextContent?.Trim();
             return string.IsNullOrWhiteSpace(text) || request.MediaId is not null

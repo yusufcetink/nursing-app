@@ -153,6 +153,19 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
               (ContentBlockType.text, 'Metin', Icons.notes),
               (ContentBlockType.image, 'Görsel', Icons.image_outlined),
               (ContentBlockType.video, 'Video', Icons.video_file_outlined),
+              (ContentBlockType.callout, 'Bilgi / dikkat', Icons.info_outline),
+              (
+                ContentBlockType.comparison,
+                'Karşılaştırma',
+                Icons.compare_arrows,
+              ),
+              (
+                ContentBlockType.caseStudy,
+                'Vaka',
+                Icons.person_search_outlined,
+              ),
+              (ContentBlockType.summary, 'Özet', Icons.checklist),
+              (ContentBlockType.recall, 'Mini tekrar', Icons.lightbulb_outline),
             ])
               ListTile(
                 leading: Icon(item.$3),
@@ -164,7 +177,7 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
       ),
     );
     if (type == null || !mounted) return;
-    if (type == ContentBlockType.heading || type == ContentBlockType.text) {
+    if (type != ContentBlockType.image && type != ContentBlockType.video) {
       await _editTextBlock(type: type);
     } else {
       await _addMediaBlock(type);
@@ -179,13 +192,13 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
     final text = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(type == ContentBlockType.heading ? 'Başlık' : 'Metin'),
+        title: Text(_blockLabel(type)),
         content: TextFormField(
           initialValue: block?.textContent,
           onChanged: (value) => textValue = value,
           autofocus: true,
-          minLines: type == ContentBlockType.text ? 4 : 1,
-          maxLines: type == ContentBlockType.text ? 10 : 2,
+          minLines: type == ContentBlockType.heading ? 1 : 4,
+          maxLines: type == ContentBlockType.heading ? 2 : 10,
           decoration: const InputDecoration(labelText: 'İçerik'),
         ),
         actions: [
@@ -435,8 +448,8 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
                       itemBuilder: (context, index) {
                         final block = _blocks[index];
                         final isText =
-                            block.blockType == ContentBlockType.heading ||
-                            block.blockType == ContentBlockType.text;
+                            block.blockType != ContentBlockType.image &&
+                            block.blockType != ContentBlockType.video;
                         return Card(
                           key: ValueKey(block.id),
                           child: ListTile(
@@ -540,6 +553,7 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
     ContentBlockType.text => Icons.notes,
     ContentBlockType.image => Icons.image_outlined,
     ContentBlockType.video => Icons.video_file_outlined,
+    _ => Icons.view_agenda_outlined,
   };
 
   static String _blockLabel(ContentBlockType type) => switch (type) {
@@ -547,5 +561,10 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
     ContentBlockType.text => 'Metin',
     ContentBlockType.image => 'Görsel',
     ContentBlockType.video => 'Video',
+    ContentBlockType.callout => 'Bilgi / dikkat',
+    ContentBlockType.comparison => 'Karşılaştırma',
+    ContentBlockType.caseStudy => 'Vaka',
+    ContentBlockType.summary => 'Özet',
+    ContentBlockType.recall => 'Mini tekrar',
   };
 }

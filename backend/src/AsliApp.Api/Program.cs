@@ -139,6 +139,7 @@ builder.Services.AddScoped<AdminUserService>();
 builder.Services.AddScoped<IPasswordHasher<EmailVerificationCode>, PasswordHasher<EmailVerificationCode>>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<EducationService>();
+builder.Services.AddScoped<LeaderboardService>();
 builder.Services.AddScoped<ActivityService>();
 builder.Services.AddScoped<AdminAnalyticsService>();
 builder.Services.AddScoped<DeviceRegistrationService>();

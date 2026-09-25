@@ -126,12 +126,34 @@ void main() {
         }),
         _JsonResponse(200, {
           'attemptId': 'attempt-id',
-          'quizId': 'quiz-id',
-          'totalQuestionCount': 1,
-          'correctCount': 1,
-          'incorrectCount': 0,
-          'successPercentage': 100.0,
-          'completedAtUtc': '2026-09-05T10:00:00Z',
+          'status': 'Completed',
+          'quiz': {
+            'id': 'quiz-id',
+            'lessonId': 'lesson-id',
+            'title': 'Ders Quizi',
+            'questions': [
+              {
+                'id': 'question-id',
+                'prompt': 'Soru?',
+                'order': 1,
+                'options': [
+                  {'id': 'option-id', 'text': 'Seçenek', 'order': 1},
+                ],
+              },
+            ],
+          },
+          'answers': [
+            {'questionId': 'question-id', 'selectedOptionId': 'option-id'},
+          ],
+          'result': {
+            'attemptId': 'attempt-id',
+            'quizId': 'quiz-id',
+            'totalQuestionCount': 1,
+            'correctCount': 1,
+            'incorrectCount': 0,
+            'successPercentage': 100.0,
+            'completedAtUtc': '2026-09-05T10:00:00Z',
+          },
         }),
       ]);
       final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
@@ -139,9 +161,14 @@ void main() {
       final repository = DioQuizRepository(ApiClient(dio: dio));
 
       final quiz = await repository.getLessonQuiz('lesson-id');
-      final result = await repository.submitLessonQuiz('lesson-id', const [
-        QuizAnswer(questionId: 'question-id', selectedOptionId: 'option-id'),
-      ]);
+      final saved = await repository.saveAnswer(
+        'attempt-id',
+        const QuizAnswer(
+          questionId: 'question-id',
+          selectedOptionId: 'option-id',
+        ),
+      );
+      final result = saved.result!;
 
       expect(quiz.questions.single.options.single.text, 'Seçenek');
       expect(result.correctCount, 1);
@@ -151,7 +178,7 @@ void main() {
       );
       expect(
         adapter.requests.last.path,
-        '/api/education/lessons/lesson-id/quiz/submit',
+        '/api/education/quiz-attempts/attempt-id/answers',
       );
     },
   );

@@ -40,6 +40,8 @@ Future<ProviderContainer> showResult(
       quizForLessonProvider.overrideWith(
         (ref, id) async => Quiz(
           id: testQuiz.id,
+          attemptId: 'new-attempt-id',
+          status: 'InProgress',
           lessonId: id,
           title: testQuiz.title,
           questions: testQuiz.questions,
@@ -66,11 +68,9 @@ Future<ProviderContainer> showResult(
         .notifier,
   );
   controller.selectOption('care-1');
-  await tester.runAsync(controller.checkAnswer);
-  await controller.submitAndContinue();
+  await tester.runAsync(controller.submitAndContinue);
   controller.selectOption('advocacy-2');
-  await tester.runAsync(controller.checkAnswer);
-  await controller.submitAndContinue();
+  await tester.runAsync(controller.submitAndContinue);
   await tester.pump();
   return container;
 }

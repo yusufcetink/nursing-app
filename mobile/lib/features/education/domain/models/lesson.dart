@@ -38,7 +38,17 @@ final class LessonContentBlock {
   final int sortOrder;
 }
 
-enum LessonContentBlockType { heading, text, image, video }
+enum LessonContentBlockType {
+  heading,
+  text,
+  image,
+  video,
+  callout,
+  comparison,
+  caseStudy,
+  summary,
+  recall,
+}
 
 final class LessonMedia {
   const LessonMedia({

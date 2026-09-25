@@ -164,7 +164,17 @@ final class ContentLessonContentBlock {
   final int sortOrder;
 }
 
-enum ContentBlockType { heading, text, image, video }
+enum ContentBlockType {
+  heading,
+  text,
+  image,
+  video,
+  callout,
+  comparison,
+  caseStudy,
+  summary,
+  recall,
+}
 
 final class ContentBlockWriteInput {
   const ContentBlockWriteInput({

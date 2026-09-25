@@ -5,6 +5,7 @@ import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
+import 'package:asli_app/features/quiz/data/quiz_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -32,6 +33,7 @@ void main() {
             FakeProgressRepository(),
           ),
           profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+          quizRepositoryProvider.overrideWithValue(FakeQuizRepository()),
         ],
       );
       addTearDown(container.dispose);

@@ -66,49 +66,6 @@ public sealed class EducationController(EducationService educationService) : Con
         return quiz is null ? NotFound() : Ok(quiz);
     }
 
-    [HttpPost("quizzes/{quizId:guid}/questions/{questionId:guid}/check")]
-    public async Task<ActionResult<QuizAnswerCheckResponse>> CheckQuizAnswer(
-        Guid quizId,
-        Guid questionId,
-        QuizAnswerCheckRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!Guid.TryParse(User.FindFirstValue("sub"), out _))
-        {
-            return Unauthorized();
-        }
-        var response = await educationService.CheckQuizAnswerAsync(
-            quizId, questionId, request.OptionId, cancellationToken);
-        return response is null ? NotFound() : Ok(response);
-    }
-
-    [HttpPost("lessons/{id:guid}/quiz/submit")]
-    public async Task<ActionResult<QuizSubmissionResponse>> SubmitLessonQuiz(
-        Guid id,
-        QuizSubmissionRequest request,
-        CancellationToken cancellationToken)
-    {
-        if (!Guid.TryParse(User.FindFirstValue("sub"), out var userId))
-        {
-            return Unauthorized();
-        }
-        var outcome = await educationService.SubmitLessonQuizAsync(
-            userId,
-            id,
-            request,
-            cancellationToken);
-        return outcome.Status switch
-        {
-            QuizSubmissionStatus.Success => Ok(outcome.Response),
-            QuizSubmissionStatus.NotFound => NotFound(),
-            _ => BadRequest(new ProblemDetails
-            {
-                Title = "Quiz answers are invalid.",
-                Status = StatusCodes.Status400BadRequest,
-            }),
-        };
-    }
-
     [HttpPut("lessons/{id:guid}/progress")]
     public async Task<ActionResult<LessonCompletionResponse>> CompleteLesson(
         Guid id,

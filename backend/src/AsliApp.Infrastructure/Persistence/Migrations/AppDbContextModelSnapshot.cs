@@ -352,7 +352,7 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTimeOffset>("CompletedAtUtc")
+                    b.Property<DateTimeOffset?>("CompletedAtUtc")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<int>("CorrectCount")
@@ -361,6 +361,9 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                     b.Property<int>("IncorrectCount")
                         .HasColumnType("int");
 
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("bit");
+
                     b.Property<Guid>("QuizId")
                         .HasColumnType("uniqueidentifier");
 
@@ -368,17 +371,32 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
 
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<int>("TotalQuestionCount")
                         .HasColumnType("int");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("QuizId");
 
                     b.HasIndex("UserId", "CompletedAtUtc");
+
+                    b.HasIndex("UserId", "QuizId")
+                        .IsUnique()
+                        .HasFilter("[IsArchived] = 0");
 
                     b.ToTable("QuizAttempts");
                 });

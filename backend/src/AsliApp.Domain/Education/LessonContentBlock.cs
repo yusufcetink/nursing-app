@@ -19,4 +19,9 @@ public enum LessonContentBlockType
     Text,
     Image,
     Video,
+    Callout,
+    Comparison,
+    Case,
+    Summary,
+    Recall,
 }

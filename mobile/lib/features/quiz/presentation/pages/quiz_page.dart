@@ -4,7 +4,7 @@ import 'package:asli_app/app/theme/app_spacing.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz.dart';
 import 'package:asli_app/features/quiz/presentation/controllers/quiz_controller.dart';
 import 'package:asli_app/features/quiz/presentation/pages/quiz_result_page.dart';
-import 'package:asli_app/features/quiz/presentation/widgets/quiz_feedback_panel.dart';
+
 import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
 import 'package:asli_app/shared/widgets/learning_design.dart';
@@ -99,9 +99,7 @@ class _QuizContent extends ConsumerWidget {
                           ),
                         ),
                       LinearProgressIndicator(
-                        value:
-                            (session.currentQuestionIndex + 1) /
-                            quiz.questions.length,
+                        value: session.answers.length / quiz.questions.length,
                         semanticsLabel: 'Soru ilerlemesi',
                         minHeight: 12,
                         borderRadius: BorderRadius.circular(20),
@@ -151,16 +149,7 @@ class _QuizContent extends ConsumerWidget {
                           index: index,
                           text: option.text,
                           selected: session.selectedOptionId == option.id,
-                          correct:
-                              session.answerCheck?.correctOptionId == option.id,
-                          incorrect:
-                              session.answerCheck != null &&
-                              session.selectedOptionId == option.id &&
-                              !session.answerCheck!.isCorrect,
-                          onTap:
-                              session.isSubmitting ||
-                                  session.isChecking ||
-                                  session.answerCheck != null
+                          onTap: session.isSubmitting
                               ? null
                               : () => ref
                                     .read(
@@ -194,22 +183,6 @@ class _QuizContent extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (session.answerCheck case final check?) ...[
-                        Semantics(
-                          liveRegion: true,
-                          child: QuizFeedbackPanel(
-                            key: ValueKey('feedback_${question.id}'),
-                            correct: check.isCorrect,
-                            title: check.isCorrect
-                                ? 'Doğru yanıt!'
-                                : 'Birlikte pekiştirelim.',
-                            message: check.isCorrect
-                                ? 'Güzel ilerliyorsun.'
-                                : 'Doğru seçenek işaretlendi.',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
                       if (session.errorMessage != null) ...[
                         Semantics(
                           liveRegion: true,
@@ -226,29 +199,19 @@ class _QuizContent extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(22),
                           ),
                         ),
-                        label: session.answerCheck == null
-                            ? 'Kontrol Et'
-                            : isLast
-                            ? 'Quizi Bitir'
-                            : 'Sonraki Soru',
-                        busy: session.isSubmitting || session.isChecking,
+                        label: isLast
+                            ? 'Cevabı Onayla ve Bitir'
+                            : 'Cevabı Onayla',
+                        busy: session.isSubmitting,
                         onPressed:
                             session.selectedOptionId == null ||
-                                session.isChecking ||
-                                session.isSubmitting ||
-                                (session.answerCheck != null &&
-                                    !session.feedbackComplete)
+                                session.isSubmitting
                             ? null
-                            : () {
-                                final controller = ref.read(
-                                  quizControllerProvider(selection).notifier,
-                                );
-                                if (session.answerCheck == null) {
-                                  controller.checkAnswer();
-                                } else {
-                                  controller.submitAndContinue();
-                                }
-                              },
+                            : () => ref
+                                  .read(
+                                    quizControllerProvider(selection).notifier,
+                                  )
+                                  .submitAndContinue(),
                       ),
                     ],
                   ),
@@ -268,16 +231,14 @@ class _QuizOption extends StatelessWidget {
     required this.text,
     required this.selected,
     required this.onTap,
-    required this.correct,
-    required this.incorrect,
     super.key,
   });
   final int index;
   final String text;
   final bool selected;
   final VoidCallback? onTap;
-  final bool correct;
-  final bool incorrect;
+  final bool correct = false;
+  final bool incorrect = false;
 
   @override
   Widget build(BuildContext context) {

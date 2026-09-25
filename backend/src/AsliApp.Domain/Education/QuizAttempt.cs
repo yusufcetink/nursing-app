@@ -11,7 +11,13 @@ public sealed class QuizAttempt
     public int CorrectCount { get; set; }
     public int IncorrectCount { get; set; }
     public decimal ScorePercentage { get; set; }
-    public DateTimeOffset CompletedAtUtc { get; set; }
+    public DateTimeOffset? CompletedAtUtc { get; set; }
+    public DateTimeOffset StartedAtUtc { get; set; }
+    // Server-only snapshot freezes questions, order and grading at start.
+    public string SnapshotJson { get; set; } = "";
+    public int Version { get; set; }
+    // Only older pre-resume attempts are archived by the upgrade migration.
+    public bool IsArchived { get; set; }
 
     public User User { get; set; } = null!;
     public Quiz Quiz { get; set; } = null!;

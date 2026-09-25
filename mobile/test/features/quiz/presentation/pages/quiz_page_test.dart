@@ -50,6 +50,8 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final quiz = Quiz(
         id: testQuiz.id,
+        attemptId: 'new-attempt-id',
+        status: 'InProgress',
         lessonId: testQuiz.lessonId,
         title: testQuiz.title,
         questions: [
@@ -116,7 +118,7 @@ void main() {
       expect(
         tester
             .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Kontrol Et'),
+              find.widgetWithText(FilledButton, 'Cevabı Onayla'),
             )
             .onPressed,
         isNull,
@@ -141,38 +143,17 @@ void main() {
           image.dispose();
         });
       }
-      await tester.tap(find.text('Kontrol Et'));
-      await tester.pump();
-      expect(container.read(provider).answerCheck?.isCorrect, isTrue);
-      expect(container.read(provider).feedbackComplete, isFalse);
-      expect(
-        tester
-            .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Sonraki Soru'),
-            )
-            .onPressed,
-        isNull,
-      );
+      await tester.tap(find.text('Cevabı Onayla'));
       await tester.pumpAndSettle();
-      expect(find.text('Doğru yanıt!'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Sonraki Soru'));
-      await tester.pumpAndSettle();
+      expect(container.read(provider).currentQuestionIndex, 1);
       expect(container.read(provider).selectedOptionId, isNull);
+      expect(find.text('Doğru yanıt!'), findsNothing);
+      expect(find.text('Soru 2 / 2'), findsOneWidget);
       final second = find.byKey(const ValueKey('quiz_option_advocacy-0'));
       await tester.reveal(second, 140);
       await tester.tap(second);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Kontrol Et'));
-      await tester.pumpAndSettle();
-      expect(container.read(provider).answerCheck?.isCorrect, isFalse);
-      expect(
-        container.read(provider).answerCheck?.correctOptionId,
-        'advocacy-2',
-      );
-      expect(find.text('Birlikte pekiştirelim.'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Quizi Bitir'));
+      await tester.tap(find.text('Cevabı Onayla ve Bitir'));
       await tester.pumpAndSettle();
       expect(container.read(provider).successPercentage, 50);
       expect(container.read(provider).correctCount, 1);

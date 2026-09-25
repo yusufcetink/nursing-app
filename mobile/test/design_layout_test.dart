@@ -161,8 +161,8 @@ void main() {
       await tester.tap(find.text('Hemşirenin Temel Rolleri'));
       await tester.pumpAndSettle();
       await inspect('04-lesson');
-      await tester.reveal(find.text("Quiz'e Geç"), 200);
-      await tester.tap(find.text("Quiz'e Geç"));
+      await tester.reveal(find.text('Quiz’e Başla'), 200);
+      await tester.tap(find.text('Quiz’e Başla'));
       await tester.pumpAndSettle();
       final selection = (
         moduleId: testModule.id,
@@ -174,11 +174,9 @@ void main() {
       controller.selectOption('care-1');
       await tester.pumpAndSettle();
       await inspect('05-quiz');
-      await tester.runAsync(controller.checkAnswer);
-      await controller.submitAndContinue();
+      await tester.runAsync(controller.submitAndContinue);
       controller.selectOption('advocacy-2');
-      await tester.runAsync(controller.checkAnswer);
-      await controller.submitAndContinue();
+      await tester.runAsync(controller.submitAndContinue);
       await tester.pumpAndSettle();
       await inspect('06-result');
       expect(find.text('Sıradaki Derse Geç').hitTestable(), findsOneWidget);

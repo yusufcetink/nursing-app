@@ -7,6 +7,7 @@ import 'package:asli_app/features/education/domain/models/education_module.dart'
 import 'package:asli_app/features/education/presentation/providers/education_modules_provider.dart';
 import 'package:asli_app/features/home/presentation/widgets/home_module_card.dart';
 import 'package:asli_app/features/home/presentation/providers/learning_home_provider.dart';
+import 'package:asli_app/features/leaderboard/presentation/compact_leaderboard_section.dart';
 import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
 import 'package:asli_app/core/network/network_exception.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
@@ -166,6 +167,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               ),
             ),
+            const Divider(),
+            const SizedBox(height: 12),
+            const CompactLeaderboardSection(),
+            const SizedBox(height: 14),
             const Divider(),
             const SizedBox(height: 4),
             Wrap(

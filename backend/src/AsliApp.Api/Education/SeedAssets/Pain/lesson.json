@@ -1,0 +1,488 @@
+{
+  "title": "Ağrı Türleri, Ağrının Değerlendirilmesi ve Hemşirelik Yaklaşımı",
+  "version": 1,
+  "sources": [
+    "https://www.iasp-pain.org/resources/terminology/",
+    "https://www.ncbi.nlm.nih.gov/books/NBK591809/",
+    "https://wongbakerfaces.org/instructions-use/",
+    "https://www.rch.org.au/rchcpg/hospital_clinical_guideline_index/Pain_Assessment_and_Measurement/"
+  ],
+  "blocks": [
+    {
+      "type": "Image",
+      "visual": "hero",
+      "text": "Bir sayıdan fazlası: hastanın anlatımı, işlevi ve bakım hedefi birlikte değerlendirilir."
+    },
+    {
+      "type": "Callout",
+      "text": "İki hasta, aynı işlem, farklı ağrı\nAynı ameliyatı geçiren iki kişi ağrısını 3 ve 8 olarak bildirebilir. Hemşirenin ilk işi bu farkı yargılamak değil, her hastanın deneyimini anlamaktır. Bu derste bir ağrı bildirimini güvenli bir bakım planına dönüştüreceksin."
+    },
+    {
+      "type": "Heading",
+      "text": "1 • Ağrı nedir?"
+    },
+    {
+      "type": "Text",
+      "text": "Ağrı; gerçek veya olası doku hasarıyla ilişkili ya da bu hasara eşlik eden deneyime benzeyen, hoş olmayan duyusal ve duygusal bir yaşantıdır. Yalnızca bir uyaran veya muayene bulgusu değildir."
+    },
+    {
+      "type": "Callout",
+      "text": "Hastanın sözü başlangıç noktasıdır\nAğrı subjektiftir: önceki deneyimler, kaygı, uyku, kültür ve sosyal çevre ağrı yaşantısını etkileyebilir. Kendini ifade edebilen hastanın bildirimi temel alınır. Görünür bir yara olmaması veya konuşamaması, ağrının olmadığı anlamına gelmez."
+    },
+    {
+      "type": "Heading",
+      "text": "2 • Ağrı türleri: üç ayrı soru sor"
+    },
+    {
+      "type": "Text",
+      "text": "Ne kadar süredir var? → Akut / kronik.\nHangi mekanizmayla oluşuyor? → Nosiseptif / nöropatik gibi mekanizmalar.\nNerede hissediliyor? → Yerel, yansıyan veya yayılan ağrı.\nBu sınıflamalar birbirinin alternatifi değildir; aynı ağrı hem akut hem somatik olabilir."
+    },
+    {
+      "type": "Image",
+      "visual": "duration",
+      "text": "Süre, ağrının şiddetiyle aynı şey değildir. Kronik ağrı da şiddetli olabilir."
+    },
+    {
+      "type": "Comparison",
+      "text": "Akut ↔ Kronik\nAKUT: Yeni bir yaralanma, işlem veya hastalıkla başlayabilir; genellikle iyileşme süreciyle azalır. Örnek: ameliyat sonrası kesi ağrısı. Başlangıcı ve yeni değişiklikleri sorgula.\nKRONİK: Üç aydan uzun süren veya tekrarlayan ağrıdır. Uyku, hareket, sosyal yaşam ve duygudurum üzerindeki etkisini değerlendir. Örnek: aylardır süren bel ağrısı.\nKronik ağrısı olan kişide yeni akut bir sorun da gelişebilir."
+    },
+    {
+      "type": "Image",
+      "visual": "mechanisms",
+      "text": "Mekanizma için ipuçları: iyi sınırlanan doku ağrısı, derin organ ağrısı ve sinir sistemi kaynaklı ağrı."
+    },
+    {
+      "type": "Comparison",
+      "text": "Nosiseptif ağrı: somatik ve visseral\nNosiseptif ağrı, sinir dokusu dışındaki gerçek veya tehdit eden doku hasarı nedeniyle nosiseptörlerin etkinleşmesiyle ilişkilidir.\nSOMATİK: Deri, kas, kemik veya eklem kaynaklıdır. Genellikle daha iyi lokalize edilir; sızlama, zonklama veya keskinlik olabilir. Örnek: burkulmuş ayak bileği.\nVİSSERAL: İç organ kaynaklıdır. Derin, baskı veya kramp biçiminde olabilir; yerini göstermek zor olabilir. Bulantı, terleme eşlik edebilir. Örnek: bağırsak spazmı."
+    },
+    {
+      "type": "Callout",
+      "text": "Nöropatik ağrıyı düşündüren ipuçları\nSomatosensoriyel sinir sisteminin hastalığı veya lezyonuyla ilişkili ağrıdır. Yanma, elektrik çarpması, karıncalanma, uyuşma veya hafif dokunmayla ağrı görülebilir. Örnek: diyabete bağlı sinir hasarı olan kişide ayaklarda yanma.\nBu ifadeler tek başına tanı koydurmaz; öykü, muayene ve ekip değerlendirmesi gerekir. Mekanizmalar birlikte bulunabilir; bu dersin dışında nosiplastik ağrı gibi başka mekanizmalar da vardır."
+    },
+    {
+      "type": "Comparison",
+      "text": "Yansıyan ↔ Yayılan\nYANSIYAN (referred): Ağrı, kaynağından farklı bir bölgede algılanır. Örnek: kalp kaynaklı bir sorunda çene veya omuzda ağrı hissedilmesi.\nYAYILAN (radiating): Ağrı başlangıç bölgesinden bir hat boyunca başka bölgelere uzanır. Örnek: belden bacağa doğru uzanan ağrı.\nHastadan başlangıç yerini ve izlediği yolu göstermesini iste. Tek bir ağrı dağılımından kesin tanı çıkarma."
+    },
+    {
+      "type": "Heading",
+      "text": "3 • Ağrıyı değerlendir: önce dinle, sonra yapılandır"
+    },
+    {
+      "type": "Image",
+      "visual": "pqrst",
+      "text": "OPQRST, görüşmeyi düzenler; hastanın kendi sözcüklerine de yer bırakır."
+    },
+    {
+      "type": "Text",
+      "text": "O — Onset / Başlangıç: Ne zaman ve nasıl başladı? O sırada ne yapıyordun?\nP — Provocation / Palliation: Ne artırıyor, ne azaltıyor? Hareket, pozisyon veya dinlenmenin etkisi ne?\nQ — Quality / Karakter: Yanma, batma, baskı, kramp… Nasıl tarif edersin?\nR — Region / Radiation: Nerede? Başka yere uzanıyor veya farklı bir yerde hissediliyor mu?\nS — Severity / Şiddet: Uygun ölçekle ne düzeyde? Uyku, yürüme ve nefes almayı nasıl etkiliyor?\nT — Timing / Zaman: Sürekli mi, aralıklı mı? Ne kadar sürüyor, gün içinde nasıl değişiyor?\nPQRST kullanıldığında başlangıcı T altında da sorgula; OPQRST bunu ayrıca hatırlatır."
+    },
+    {
+      "type": "Image",
+      "visual": "scales",
+      "text": "NRS sayıyı, VAS çizgi üzerindeki konumu kullanır. İkisi de hastanın özbildirimine dayanır."
+    },
+    {
+      "type": "Comparison",
+      "text": "0–10 NRS ↔ VAS\nNUMERIC RATING SCALE (NRS): Sayıları anlamlandırabilen kişiye 0'ın ağrı yok, 10'un hayal edebileceği en şiddetli ağrı olduğunu açıkla; kendi sayısını söylemesini iste.\nVISUAL ANALOG SCALE (VAS): Genellikle 10 cm uzunluğunda, iki ucu ağrı yok ve en şiddetli ağrı ile tanımlanan kesintisiz bir çizgidir. Kişi bir nokta işaretler; uzaklık ölçülür. Görme, anlama ve işaretleyebilme becerilerini dikkate al.\nEkrandaki eğitim çizimi fiziksel bir VAS ölçüm aracı değildir. İzlemde mümkün olduğunca aynı uygun ölçeği ve aynı koşulları kullan."
+    },
+    {
+      "type": "Image",
+      "visual": "faces",
+      "text": "Yüz temelli ölçeklerde seçimi hasta yapar. Bu çizim kullanım mantığını anlatır; klinik ölçek değildir."
+    },
+    {
+      "type": "Callout",
+      "text": "Wong-Baker / FACES nasıl kullanılır?\nYönergeyi anlayabilen ve kendi ağrısını bir yüzle eşleştirebilen kişiden, hissettiği fiziksel ağrıyı en iyi temsil eden yüzü seçmesi istenir. Özellikle çocuklarda veya sayıyla ifade etmekte zorlanan kişilerde uygunluğu değerlendirilir.\nHemşire hastanın yüzünü resimle eşleştirip puan vermez; mutluluk/üzüntü de ölçülmez. Özbildirim yapamayan kişide bu yöntem yerine yaşa ve duruma uygun, kurumca kabul edilen davranışsal araç kullanılır. Klinik uygulamada doğrulanmış ölçeğin özgün yönergesine uy."
+    },
+    {
+      "type": "Callout",
+      "text": "Sessiz hasta da ağrı yaşayabilir\nYüzünü buruşturma, ağrılı bölgeyi koruma, huzursuzluk, inleme, hareketten kaçınma veya davranış değişikliği ipucu olabilir. Yakınlarından kişinin alışılmış davranışlarını öğren.\nNabız ve kan basıncı gibi vital bulgular destekleyicidir; normal olmaları ağrıyı dışlamaz. Tek başlarına ağrının varlığını veya şiddetini belirlemezler."
+    },
+    {
+      "type": "Recall",
+      "text": "Mini tekrar • Ölçek seçimi\nSayıları anlayan yetişkin → NRS düşünülebilir.\nYönergeyi anlayıp kendi ağrısına uygun yüzü seçebilen çocuk → Uygun yüz ölçeği düşünülebilir.\nÖzbildirim yapamayan kişi → Duruma uygun davranışsal ölçek ve kapsamlı değerlendirme.\nKendine sor: Hastanın iletişim, görme ve anlama gereksinimlerini kontrol ettim mi?"
+    },
+    {
+      "type": "Heading",
+      "text": "4 • Hemşirelik yaklaşımı"
+    },
+    {
+      "type": "Image",
+      "visual": "care",
+      "text": "Değerlendirme, girişim, kayıt ve yeniden değerlendirme birbirini tamamlar."
+    },
+    {
+      "type": "Text",
+      "text": "• Hastanın bildirimini ciddiye al; sakin ve açık uçlu sorular sor.\n• Güvenliği değerlendir: ani veya alışılmadık şiddetli ağrı, göğüs ağrısıyla nefes darlığı, yeni nörolojik belirti gibi değişikliklerde kurumun acil değerlendirme sürecini başlat.\n• Hastayla ulaşılabilir bir konfor/işlev hedefi belirle: örneğin daha rahat pozisyon değiştirmek.\n• Bulguları ekip ile paylaş ve bakım planını uygula; girişimin etkisini takip et."
+    },
+    {
+      "type": "Comparison",
+      "text": "Nonfarmakolojik destek seçenekleri\nBEDENSEL KONFOR: Uygun pozisyon, ağrılı alanı güvenli biçimde destekleme ve dinlenme–aktivite dengesini düzenleme.\nGEVŞEME VE DİKKAT: Hastanın isteğine göre yavaş nefes, gevşeme, müzik veya dikkati başka yöne çekme.\nÇEVRE VE İLETİŞİM: Gürültüyü azaltma, işlemi açıklama, mahremiyet ve güven sağlama.\nSıcak/soğuk gibi uygulamalar ancak kurum protokolü, cilt bütünlüğü, duyu ve dolaşım değerlendirmesi uygunsa yapılır. Tercihleri sor; rahatsızlık artarsa uygulamayı durdur ve değerlendir."
+    },
+    {
+      "type": "Summary",
+      "text": "Kaydet → Yeniden değerlendir\nKayıtta tarih/saat, ağrının yeri, başlangıcı, süresi, karakteri, artıran–azaltan etkenler, kullanılan ölçek ve puan, işlevsel etkiler bulunmalı. Hastanın önemli ifadelerini ve gözlenen belirtileri ayırarak yaz.\nUygulanan girişimi, hastanın yanıtını, ekip iletişimini ve yeniden değerlendirme planını ekle. Girişim sonrasında kurum protokolüne ve girişimin beklenen etki süresine uygun zamanda aynı ölçekle tekrar değerlendir. Beklenen iyileşme yoksa veya durum kötüleşirse planı ekiple gözden geçir."
+    },
+    {
+      "type": "Case",
+      "text": "Kayıt örneği • Pozisyon ve gevşeme sonrası\n14.00: Hasta, kesi çevresinde hareketle artan çekilme/sızlama tarif ediyor. İstirahatte NRS 4/10, pozisyon değiştirirken 7/10. Hedefi daha rahat dönmek. Destekli pozisyon ve tercih ettiği gevşeme egzersizi uygulandı; yeniden değerlendirme planlandı.\n14.20: İstirahatte NRS 3/10, aynı hareketle 5/10; hasta daha rahat dönebildiğini belirtti. İzlem ve ekip değerlendirmesi sürdürüldü.\nBu saatler bir eğitim örneğidir; tüm girişimler için sabit zaman kuralı değildir."
+    },
+    {
+      "type": "Heading",
+      "text": "5 • Kısa klinik vakalar"
+    },
+    {
+      "type": "Case",
+      "text": "Vaka 1 • “Tansiyonum normal ama ağrım var”\nAmeliyat sonrası hasta ağrısını 8/10 bildiriyor; vital bulguları olağan. Bildirimi küçümseme. Yeri, başlangıcı, karakteri ve hareketle ilişkisini sorgula; ameliyat alanını ve yeni değişiklikleri değerlendir. Uygun bakım ve ekip iletişiminden sonra tekrar ölç ve kaydet.\nDüşün: Bu hastanın ağrısını yalnızca monitörden anlayabilir miydin?"
+    },
+    {
+      "type": "Case",
+      "text": "Vaka 2 • Yanma ve çarşafın dokunması\nDiyabete bağlı sinir hasarı öyküsü olan kişi, iki ayağında aylardır yanma ve çarşaf değdiğinde ağrı anlatıyor. Kronik süre ve nöropatik özellikler birlikte düşünülür. Duyu, cilt, uyku ve yürüme etkisini değerlendir; bulguları ekiple paylaş.\nDüşün: “Kronik” süreyi, “nöropatik” mekanizmayı anlatır."
+    },
+    {
+      "type": "Case",
+      "text": "Vaka 3 • Sayıyla anlatmak zor\nYönergeyi anlayan çocuk ağrısını sayıyla derecelendiremiyor. Uygun yüz ölçeğinin nasıl kullanılacağını anlat; seçimi kendisinin yapmasını bekle. Ebeveyn gözlemleri destekleyicidir, çocuğun bildiriminin yerine geçmez.\nDüşün: Seçilen yüz fiziksel ağrıyı mı, üzgün olmayı mı anlatıyor?"
+    },
+    {
+      "type": "Heading",
+      "text": "6 • Ders özeti"
+    },
+    {
+      "type": "Image",
+      "visual": "recap",
+      "text": "Dinle • Ayırt et • Ölç • Destekle • Kaydet • Yeniden değerlendir"
+    },
+    {
+      "type": "Summary",
+      "text": "Altı noktayı yanında götür\n1. Ağrı kişisel bir deneyimdir; hastanın bildirimini ciddiye al.\n2. Akut/kronik süreyi; nosiseptif/nöropatik mekanizmayı anlatır.\n3. Somatik ve visseral ağrı nosiseptif ağrının alt türleridir.\n4. OPQRST ile öyküyü tamamla; uygun ölçekle şiddeti ve işlevi değerlendir.\n5. Vital bulgular tek başına yeterli değildir; sözel olmayan belirtileri de izle.\n6. Her girişimin ardından planlı yeniden değerlendirme ve kayıt yap."
+    },
+    {
+      "type": "Recall",
+      "text": "Quiz öncesi kendini yokla\n• Belden bacağa uzanan ağrı ile kaynağından uzakta hissedilen ağrıyı ayırabilir misin?\n• Konuşamayan hastada neden kendi seçimine dayalı FACES kullanmazsın?\n• Ağrı puanı azalsa bile hastanın hareket ve uyku hedefini neden sorarsın?\nYanıt ipuçları: yayılan/yansıyan; özbildirim gereksinimi; bakımın işlevsel etkisi.\nHazırsan 18 soruluk quize geç. Cevap onaylandıktan sonra değiştirilemez; ara verirsen kaldığın yerden devam edersin."
+    }
+  ],
+  "questions": [
+    {
+      "category": "Temel",
+      "prompt": "Ağrı değerlendirmesinde hastanın bildirimi neden temel alınır?",
+      "options": [
+        "Ağrı yalnızca doku hasarının büyüklüğüdür.",
+        "Ağrı kişisel, duyusal ve duygusal bir deneyimdir.",
+        "Ağrı her zaman vital bulgulardan hesaplanır.",
+        "Ağrı yalnızca görünür yaralanmada oluşur."
+      ],
+      "correctIndex": 1,
+      "rationale": "Ağrı subjektiftir; görünür hasar veya normal vital bulgular bildirimi geçersiz kılmaz."
+    },
+    {
+      "category": "Temel",
+      "prompt": "Kronik ağrı için uygun süre tanımı hangisidir?",
+      "options": [
+        "Yalnızca gece başlayan ağrı",
+        "Sadece çok şiddetli olan ağrı",
+        "Üç aydan uzun süren veya tekrarlayan ağrı",
+        "Bir gün içinde tamamen geçen ağrı"
+      ],
+      "correctIndex": 2,
+      "rationale": "Kronik, süreyi anlatır; şiddetin veya günün saatinin adı değildir."
+    },
+    {
+      "category": "Temel",
+      "prompt": "Nosiseptif ağrının somatik alt türü hangi kaynakla ilişkilidir?",
+      "options": [
+        "Deri, kas, kemik veya eklem",
+        "Yalnızca iç organlar",
+        "Yalnızca sinir sistemindeki lezyonlar",
+        "Yalnızca duygudurum değişiklikleri"
+      ],
+      "correctIndex": 0,
+      "rationale": "Somatik ağrı deri ve kas-iskelet dokularıyla; visseral ağrı iç organlarla ilişkilidir."
+    },
+    {
+      "category": "Temel",
+      "prompt": "NRS kullanılırken 0 ve 10 nasıl açıklanır?",
+      "options": [
+        "0 hafif, 10 orta ağrı",
+        "0 mutluluk, 10 üzüntü",
+        "0 normal nabız, 10 yüksek nabız",
+        "0 ağrı yok, 10 hayal edilebilen en şiddetli ağrı"
+      ],
+      "correctIndex": 3,
+      "rationale": "NRS fiziksel ağrı şiddetinin özbildirimine dayanır."
+    },
+    {
+      "category": "Temel",
+      "prompt": "OPQRST yaklaşımında P hangi bilgiyi hatırlatır?",
+      "options": [
+        "Ağrının sadece yerini",
+        "Artıran ve azaltan etkenleri",
+        "Sadece nabız değerini",
+        "Hastanın yalnızca yaşını"
+      ],
+      "correctIndex": 1,
+      "rationale": "P, provocation/palliation: ağrıyı artıran ve azaltan etkenleri kapsar."
+    },
+    {
+      "category": "Ayırt etme",
+      "prompt": "Akut ve kronik ağrı hakkında hangi yorum uygundur?",
+      "options": [
+        "Kronik ağrı her zaman hafiftir.",
+        "Akut ağrı her zaman nöropatiktir.",
+        "Kronik ağrısı olan kişide yeni akut ağrı gelişebilir.",
+        "Üç aydan uzun ağrı artık değerlendirilmez."
+      ],
+      "correctIndex": 2,
+      "rationale": "Süre sınıflaması yeni bir sorunu dışlamaz."
+    },
+    {
+      "category": "Ayırt etme",
+      "prompt": "Visseral ağrıyı somatik ağrıdan ayırmaya yardımcı olan örüntü hangisidir?",
+      "options": [
+        "Derin, yeri zor tarif edilen kramp veya baskı",
+        "Her zaman tek bir parmakla gösterilen yüzeysel kesi",
+        "Her zaman hafif dokunmayla elektriklenme",
+        "Yalnızca eklem hareketinde lokal hassasiyet"
+      ],
+      "correctIndex": 0,
+      "rationale": "Visseral ağrı iç organlardan kaynaklanır; yeri belirsiz ve kramp biçiminde olabilir."
+    },
+    {
+      "category": "Ayırt etme",
+      "prompt": "Sinir hasarı öyküsüyle birlikte yanma, elektriklenme ve uyuşma hangi mekanizmayı düşündürür?",
+      "options": [
+        "Yalnızca somatik nosiseptif",
+        "Yalnızca visseral nosiseptif",
+        "Mutlaka yansıyan ağrı",
+        "Nöropatik ağrı"
+      ],
+      "correctIndex": 3,
+      "rationale": "Bu özellikler nöropatik mekanizma için ipucudur; klinik değerlendirme gerekir."
+    },
+    {
+      "category": "Ayırt etme",
+      "prompt": "Yansıyan (referred) ağrıyı en iyi açıklayan ifade hangisidir?",
+      "options": [
+        "Ağrının aynı yerde uzun süre kalması",
+        "Ağrının kaynağından farklı bir bölgede algılanması",
+        "Ağrının şiddetinin bir sayı ile söylenmesi",
+        "Ağrının yalnızca hareketle artması"
+      ],
+      "correctIndex": 1,
+      "rationale": "Yansıyan ağrı kaynaktan farklı yerde hissedilir; kaynaktan hat boyunca uzanma yayılan ağrıdır."
+    },
+    {
+      "category": "Ayırt etme",
+      "prompt": "VAS ile NRS arasındaki fark hangisidir?",
+      "options": [
+        "VAS hemşirenin yüz gözlemidir, NRS nabız ölçümüdür.",
+        "Her ikisi de yalnızca sözsüz hastalar içindir.",
+        "VAS çizgi üzerindeki konumu, NRS sayısal derecelendirmeyi kullanır.",
+        "VAS ağrının nedenini kesin olarak belirler."
+      ],
+      "correctIndex": 2,
+      "rationale": "Her ikisi özbildirim aracıdır; uygulama ve yanıt biçimleri farklıdır."
+    },
+    {
+      "category": "Ayırt etme",
+      "prompt": "Hasta FACES yönergesini anlayıp seçim yapabiliyorsa doğru uygulama hangisidir?",
+      "options": [
+        "Hasta fiziksel ağrısını en iyi temsil eden yüzü seçer.",
+        "Hemşire hastanın yüzüne en benzeyen resmi seçer.",
+        "Yakını kendi üzüntüsünü gösteren yüzü seçer.",
+        "Hasta en mutlu göründüğü yüzü seçer."
+      ],
+      "correctIndex": 0,
+      "rationale": "Yüz ölçeği ağrının özbildirimidir; dışarıdan yüz benzetmesi veya duygudurum ölçümü değildir."
+    },
+    {
+      "category": "Ayırt etme",
+      "prompt": "Ağrısını sözle ifade edemeyen kişi için en uygun yaklaşım hangisidir?",
+      "options": [
+        "Ağrısı olmadığını kabul etmek",
+        "Yalnızca kan basıncına göre puanlamak",
+        "Her hastaya otomatik olarak NRS 10 yazmak",
+        "Uygun davranışsal araçla gözlemleri ve klinik durumu birlikte değerlendirmek"
+      ],
+      "correctIndex": 3,
+      "rationale": "Gözlemsel değerlendirme kişinin yaşına ve durumuna uygun olmalıdır."
+    },
+    {
+      "category": "Vaka",
+      "prompt": "Ameliyat sonrası hasta ağrısını 8/10 bildiriyor; nabız ve tansiyonu normal. Hemşirenin ilk yaklaşımı ne olmalı?",
+      "options": [
+        "Normal vital bulgular nedeniyle bildirimi reddetmek",
+        "Bildirimi ciddiye alıp ağrı öyküsünü ve klinik durumu değerlendirmek",
+        "Puanı kendiliğinden 2/10 olarak kaydetmek",
+        "Sadece bir sonraki vardiyayı beklemek"
+      ],
+      "correctIndex": 1,
+      "rationale": "Normal vital bulgular ağrıyı dışlamaz; kapsamlı değerlendirme gerekir."
+    },
+    {
+      "category": "Vaka",
+      "prompt": "Hasta ağrının belinden başlayıp bacağının arkasına doğru bir hat boyunca uzandığını anlatıyor. Bu dağılım nasıl adlandırılır?",
+      "options": [
+        "Kronik olduğu kesin",
+        "Yansıyan olduğu kesin",
+        "Yayılan (radiating) ağrı",
+        "Yalnızca visseral ağrı"
+      ],
+      "correctIndex": 2,
+      "rationale": "Başlangıç bölgesinden bir yol izleyerek uzanma yayılan ağrıyı tarif eder; süre bilinmiyor."
+    },
+    {
+      "category": "Vaka",
+      "prompt": "Yönergeyi anlayan çocuk sayıyla puan vermekte zorlanıyor, yüzleri kendi ağrısıyla eşleştirebiliyor. Hangi seçim uygundur?",
+      "options": [
+        "Yönergesine uygun yüz temelli özbildirim ölçeği",
+        "Çocuğun yerine ebeveynin NRS puanı vermesi",
+        "Herhangi bir çizimin klinik ölçek diye kullanılması",
+        "Ağrının yalnızca nabızla değerlendirilmesi"
+      ],
+      "correctIndex": 0,
+      "rationale": "Araç, kişinin anlama ve yanıt verme becerisine uygun seçilir."
+    },
+    {
+      "category": "Vaka",
+      "prompt": "Destekli pozisyon ve gevşeme sonrası hasta biraz rahatladığını söylüyor. Sıradaki uygun işlem hangisidir?",
+      "options": [
+        "İzlemi tamamen sonlandırmak",
+        "İlk puanı son değerlendirme yerine kopyalamak",
+        "Hastanın artık hiç ağrısı olmadığını varsaymak",
+        "Planlanan zamanda aynı uygun ölçekle ve işlev hedefiyle yeniden değerlendirip kaydetmek"
+      ],
+      "correctIndex": 3,
+      "rationale": "Girişimin etkisi özbildirim, işlev ve kayıtla izlenir."
+    },
+    {
+      "category": "Vaka",
+      "prompt": "Hasta yürürken dizinde ağrı olduğunu belirtiyor. Hangi kayıt en yararlıdır?",
+      "options": [
+        "'Ağrısı var' yazmak",
+        "Saat, yer, NRS, hareket etkisi, girişim ve yeniden değerlendirme planını kaydetmek",
+        "Sadece hemşirenin tahmini ağrı puanını yazmak",
+        "Sadece önceki vardiyanın kaydını kopyalamak"
+      ],
+      "correctIndex": 1,
+      "rationale": "Nitelikli kayıt değerlendirme, girişim ve izlemi birbirine bağlar."
+    },
+    {
+      "category": "Vaka",
+      "prompt": "Hasta dinlenmek istiyor ve gürültünün ağrısını artırdığını söylüyor. Güvenli nonfarmakolojik destek hangisidir?",
+      "options": [
+        "Değerlendirmeyi bırakıp yalnızca müzik açmak",
+        "Cilt ve duyu kontrolü olmadan çok sıcak uygulama yapmak",
+        "Tercihini sorup ortamı sakinleştirmek, uygun pozisyon ve gevşemeyi destekleyip etkisini izlemek",
+        "Ağrısını düşünmemesini söyleyip bildirimini önemsememek"
+      ],
+      "correctIndex": 2,
+      "rationale": "Destek bireye uygun seçilir; değerlendirme ve izlemin yerini almaz."
+    }
+  ],
+  "visuals": [
+    {
+      "key": "hero",
+      "title": "Ağrı: bir sayıdan fazlası",
+      "section": "Kısa giriş / kapak",
+      "caption": "Hastanın sözünden güvenli bakıma.",
+      "lines": [
+        "DİNLE • Hastanın kendi anlatımı",
+        "ANLA • Tür, yer, süre ve karakter",
+        "DEĞERLENDİR • Şiddet ve günlük işlev",
+        "İZLE • Girişim sonrası yeniden değerlendirme"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. Show a calm nurse at eye level listening to an adult patient in a bright private care room. Add four connected rounded cards labelled DİNLE, ANLA, DEĞERLENDİR, İZLE. Warm respectful expressions, diverse inclusive characters, no hospital logos. Top title 'Ağrı: bir sayıdan fazlası'. Do not imply pain can be read from facial expression alone."
+    },
+    {
+      "key": "duration",
+      "title": "Akut ve kronik ağrı",
+      "section": "Ağrı türleri / süre",
+      "caption": "Süre ve şiddet farklı boyutlardır.",
+      "lines": [
+        "AKUT • Yeni sorun / iyileşme süreci",
+        "Örnek: ameliyat sonrası kesi ağrısı",
+        "KRONİK • Üç aydan uzun / tekrarlayan",
+        "Örnek: aylardır süren bel ağrısı"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. Two stacked comparison cards: AKUT with a short timeline and healing calendar, KRONİK with a timeline crossing three monthly calendar pages. Labels 'Yeni başlangıç / iyileşme süreci' and 'Üç aydan uzun süren veya tekrarlayan'. Footer 'Kronik ağrı da şiddetli olabilir'. Avoid red danger ranking or implying chronic means permanent."
+    },
+    {
+      "key": "mechanisms",
+      "title": "Mekanizmayı ayırt et",
+      "section": "Ağrı türleri / mekanizma",
+      "caption": "Somatik ve visseral, nosiseptif ağrının alt türleridir.",
+      "lines": [
+        "NOSİSEPTİF → SOMATİK • Deri, kas, kemik",
+        "NOSİSEPTİF → VİSSERAL • İç organlar",
+        "NÖROPATİK • Sinir sistemi hastalığı / lezyonu",
+        "Yanma ve elektriklenme birer ipucudur"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. Accurate branching diagram. Root 'Ağrı mekanizmaları' with two branches: 'Nosiseptif' splits into 'Somatik: deri, kas, kemik, eklem' and 'Visseral: iç organlar'; separate branch 'Nöropatik: somatosensoriyel sinir sistemi hastalığı / lezyonu'. Use friendly simplified arm, organ silhouette and nerve line icons. Footer 'Mekanizmalar birlikte bulunabilir; bu şema tüm mekanizmaları kapsamaz'."
+    },
+    {
+      "key": "pqrst",
+      "title": "OPQRST ile sor",
+      "section": "Ağrıyı değerlendirme / görüşme",
+      "caption": "Kısa sorular, kapsamlı öykü.",
+      "lines": [
+        "O • Ne zaman, nasıl başladı?",
+        "P • Ne artırır, ne azaltır?   Q • Nasıl bir ağrı?",
+        "R • Nerede, nereye uzanıyor?",
+        "S • Şiddeti ve işlev etkisi?   T • Süresi, sıklığı?"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. Six connected vertical rounded nodes with letter badges O P Q R S T and large questions: 'Ne zaman başladı?', 'Ne artırır / azaltır?', 'Nasıl tarif edersin?', 'Nerede / nereye uzanır?', 'Şiddeti ve işlev etkisi?', 'Ne kadar sürer / ne sıklıkta?'. Use clock, arrows, speech bubble, location pin, numeric scale and calendar icons. No branching diagnostic decisions."
+    },
+    {
+      "key": "scales",
+      "title": "NRS ve VAS",
+      "section": "Ağrıyı değerlendirme / ölçekler",
+      "caption": "Ölçeği anlat; yanıtı hastadan al.",
+      "lines": [
+        "NRS • 0  1  2  3  4  5  6  7  8  9  10",
+        "0: Ağrı yok   •   10: En şiddetli ağrı",
+        "VAS • Kesintisiz çizgide bir nokta seçilir",
+        "Eğitim çizimi; fiziksel ölçüm aracı değildir"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. Upper panel accurate NRS with all eleven equally spaced integers 0 through 10, neutral colors without severity bins, anchors 'Ağrı yok' and 'Hayal edilebilen en şiddetli ağrı'. Lower panel VAS as an ungraduated horizontal line with endpoint labels only and one example marker. Show footnote 'VAS klinikte genellikle 10 cm; bu ekran çizimi ölçüm aracı değildir'. Do not add numbers along VAS line."
+    },
+    {
+      "key": "faces",
+      "title": "Yüz ölçeğinde seçimi hasta yapar",
+      "section": "Ağrıyı değerlendirme / FACES",
+      "caption": "Fiziksel ağrının özbildirimi; duygu veya yüz benzetme testi değil.",
+      "lines": [
+        "1 • Yönergeyi hastaya açıkla",
+        "2 • Kendi fiziksel ağrısını temsil eden yüzü seçsin",
+        "3 • Hemşire hastanın yerine yüz seçmez",
+        "Bu görsel doğrulanmış klinik ölçek değildir"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. Educational scene of a child understanding directions and pointing to a generic card held by a nurse. Show only three abstract, unnumbered face symbols in a small thought bubble as conceptual decoration. Do not reproduce Wong-Baker proprietary faces, six-face layout, scoring anchors or any standardized scale. Main text 'Seçimi hasta yapar'. Bottom 'Kullanım mantığı örneği; klinik ölçek değildir'. No implication this artwork can be used to score pain."
+    },
+    {
+      "key": "care",
+      "title": "Bakım döngüsünü tamamla",
+      "section": "Hemşirelik yaklaşımı",
+      "caption": "Her girişimin etkisini kontrol et.",
+      "lines": [
+        "DEĞERLENDİR • OPQRST + uygun ölçek",
+        "PLANLA / UYGULA • Hastayla konfor hedefi",
+        "KAYDET • Bulgu, girişim ve izlem planı",
+        "YENİDEN DEĞERLENDİR • Etki ve işlev"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. A clear circular four-step care process with clockwise arrows: 'Değerlendir', 'Planla ve uygula', 'Kaydet', 'Yeniden değerlendir'. Center nurse and patient collaboratively discussing a comfort goal. Icons speech bubble, supported pillow, clipboard and repeat arrow. Side note 'İzlem zamanı: kurum protokolü ve girişimin beklenen etkisi' without fixed timing or treatment doses."
+    },
+    {
+      "key": "recap",
+      "title": "Ağrı bakımında altı anahtar",
+      "section": "Ders özeti",
+      "caption": "Dinle, ayırt et, ölç, destekle, kaydet, yeniden değerlendir.",
+      "lines": [
+        "DİNLE + AYIRT ET • Bildirim, süre, mekanizma",
+        "ÖLÇ • Uygun ölçek + günlük işlev",
+        "DESTEKLE + KAYDET • Kişiye uygun bakım",
+        "YENİDEN DEĞERLENDİR • Etkiyi izle"
+      ],
+      "prompt": "Create a modern, clean educational medical infographic for nursing students, 1080×900 portrait-friendly composition, flat vector illustration, muted teal, coral and indigo accents on warm off-white, generous whitespace, accessible contrast, large Turkish labels, readable on a mobile screen. No photographs, wounds, blood, needles, frightening imagery, prescriptions or medication doses. Aslı App is the only brand. Mobile recap poster with six equal rounded tiles in two columns: 'Dinle', 'Ayırt et', 'Ölç', 'Destekle', 'Kaydet', 'Yeniden değerlendir'. Distinct simple icons ear, branching paths, ruler, cushion, notebook, circular arrow. Large footer 'Normal vital bulgular ağrıyı dışlamaz'. A quiet inclusive nurse illustration at bottom, no grade or score implication."
+    }
+  ]
+}

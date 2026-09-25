@@ -17,6 +17,8 @@ public static class DevelopmentEducationSeeder
     {
         await using var scope = services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await PainLessonSeed.SeedAsync(dbContext,
+            scope.ServiceProvider.GetRequiredService<AsliApp.Api.Storage.IFileStorage>(), cancellationToken);
         if (await dbContext.EducationModules.AnyAsync(
                 module => module.Id == ModuleId,
                 cancellationToken))

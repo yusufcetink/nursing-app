@@ -15,6 +15,8 @@ import 'package:asli_app/features/education/domain/models/lesson.dart';
 import 'package:asli_app/shared/widgets/content_state_view.dart';
 import 'package:asli_app/features/analytics/application/activity_tracker.dart';
 import 'package:asli_app/features/education/presentation/widgets/lesson_detail_header.dart';
+import 'package:asli_app/features/education/presentation/widgets/lesson_content_card.dart';
+import 'package:asli_app/features/quiz/presentation/widgets/lesson_quiz_card.dart';
 
 class LessonPage extends ConsumerWidget {
   const LessonPage({required this.moduleId, required this.lessonId, super.key});
@@ -183,10 +185,12 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
               )
             else if (block.blockType == LessonContentBlockType.image &&
                 block.media != null)
-              _LessonImage(media: block.media!)
+              _LessonImage(media: block.media!, caption: block.textContent)
             else if (block.blockType == LessonContentBlockType.video &&
                 block.media != null)
-              _LessonVideoPlayer(media: block.media!),
+              _LessonVideoPlayer(media: block.media!)
+            else
+              LessonContentCard(block: block),
             const SizedBox(height: 18),
           ],
           const SizedBox(height: 16),
@@ -234,29 +238,15 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
             ),
           ),
           const SizedBox(height: 20),
+          if (lesson.quizId != null) ...[
+            LessonQuizCard(moduleId: widget.moduleId, lessonId: lesson.id),
+            const SizedBox(height: 16),
+          ],
           LearningAction(
             style: FilledButton.styleFrom(shape: const StadiumBorder()),
             busy: _saving,
-            label: !isCompleted
-                ? 'Dersi Tamamla'
-                : lesson.quizId == null
-                ? 'Ders tamamlandı'
-                : "Quiz'e Geç",
-            onPressed: isCompleted && lesson.quizId == null
-                ? null
-                : () {
-                    if (isCompleted) {
-                      context.pushNamed(
-                        AppRoutes.quiz,
-                        pathParameters: {
-                          AppRoutes.moduleIdParameter: widget.moduleId,
-                          AppRoutes.lessonIdParameter: lesson.id,
-                        },
-                      );
-                    } else {
-                      _completeLesson();
-                    }
-                  },
+            label: isCompleted ? 'Ders tamamlandı' : 'Dersi Tamamla',
+            onPressed: isCompleted ? null : _completeLesson,
           ),
         ],
       ),
@@ -447,9 +437,10 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
 }
 
 class _LessonImage extends ConsumerStatefulWidget {
-  const _LessonImage({required this.media});
+  const _LessonImage({required this.media, this.caption});
 
   final LessonMedia media;
+  final String? caption;
 
   @override
   ConsumerState<_LessonImage> createState() => _LessonImageState();
@@ -515,6 +506,7 @@ class _LessonImageState extends ConsumerState<_LessonImage> {
         ListTile(
           leading: const Icon(Icons.image_outlined),
           title: Text(widget.media.originalFileName),
+          subtitle: widget.caption == null ? null : Text(widget.caption!),
         ),
       ],
     ),

@@ -181,7 +181,9 @@ final class LessonContentBlockResponse {
         id: json['id'] as String,
         lessonId: json['lessonId'] as String,
         blockType: LessonContentBlockType.values.firstWhere(
-          (type) => type.name == (json['blockType'] as String).toLowerCase(),
+          (type) =>
+              (type == LessonContentBlockType.caseStudy ? 'case' : type.name) ==
+              (json['blockType'] as String).toLowerCase(),
         ),
         textContent: json['textContent'] as String?,
         media: json['media'] == null

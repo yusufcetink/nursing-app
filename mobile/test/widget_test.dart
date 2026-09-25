@@ -109,10 +109,8 @@ void main() {
 
     await tester.tap(find.text('Bakım kararlarını yalnızca ekip adına vermek'));
     await tester.pump();
-    await tester.tap(find.text('Kontrol Et'));
+    await tester.tap(find.text('Cevabı Onayla'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sonraki Soru'));
-    await tester.pump();
 
     expect(find.text('Soru 2 / 2'), findsOneWidget);
     expect(
@@ -126,9 +124,7 @@ void main() {
     await tester.reveal(correctAnswer, 150);
     await tester.tap(correctAnswer);
     await tester.pump();
-    await tester.tap(find.text('Kontrol Et'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Quizi Bitir'));
+    await tester.tap(find.text('Cevabı Onayla ve Bitir'));
     await tester.pumpAndSettle();
 
     expect(find.text('Quiz Sonucu'), findsOneWidget);

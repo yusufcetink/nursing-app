@@ -314,7 +314,9 @@ final class ContentLessonContentBlockResponse {
 
   static ContentBlockType _blockTypeFromJson(String value) =>
       ContentBlockType.values.firstWhere(
-        (type) => type.name == value.toLowerCase(),
+        (type) =>
+            (type == ContentBlockType.caseStudy ? 'case' : type.name) ==
+            value.toLowerCase(),
         orElse: () => throw FormatException('Unsupported block type: $value'),
       );
 }

@@ -71,13 +71,6 @@ public sealed record StudentQuizOptionResponse(
     string Text,
     int Order);
 
-public sealed record QuizAnswerCheckRequest(Guid OptionId);
-
-public sealed record QuizAnswerCheckResponse(bool IsCorrect, Guid CorrectOptionId);
-
-public sealed record QuizSubmissionRequest(
-    [Required, MinLength(1)] IReadOnlyList<QuizAnswerRequest> Answers);
-
 public sealed record QuizAnswerRequest(
     Guid QuestionId,
     Guid SelectedOptionId);

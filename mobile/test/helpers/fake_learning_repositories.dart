@@ -4,7 +4,7 @@ import 'package:asli_app/features/education/domain/models/lesson.dart';
 import 'package:asli_app/features/quiz/data/quiz_repository.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_answer.dart';
-import 'package:asli_app/features/quiz/domain/models/quiz_answer_check.dart';
+
 import 'package:asli_app/features/quiz/domain/models/quiz_question.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_submission_result.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
@@ -167,54 +167,72 @@ final class FakeEducationRepository implements EducationRepository {
 }
 
 final class FakeQuizRepository implements QuizRepository {
-  int checkCalls = 0;
-  int submitCalls = 0;
-  bool failCheck = false;
-  bool failSubmit = false;
+  int saveCalls = 0;
+  bool failSave = false;
+  bool failAfterSave = false;
+  final List<QuizAnswer> saved = [];
+  bool started = false;
+  QuizSubmissionResult? result;
 
+  Quiz get current => Quiz(
+    id: testQuiz.id,
+    lessonId: testQuiz.lessonId,
+    title: testQuiz.title,
+    questions: testQuiz.questions,
+    attemptId: started ? 'new-attempt-id' : null,
+    status: result != null
+        ? 'Completed'
+        : started
+        ? 'InProgress'
+        : 'NotStarted',
+    savedAnswers: List.of(saved),
+    result: result,
+  );
   @override
-  Future<QuizAnswerCheck> checkAnswer(
-    String quizId,
-    String questionId,
-    String optionId,
-  ) async {
-    checkCalls++;
-    if (failCheck) throw Exception('check failed');
-    final question = testQuiz.questions.firstWhere(
-      (item) => item.id == questionId,
-    );
-    final correct = question.options.firstWhere(
-      (option) => option.id == 'care-1' || option.id == 'advocacy-2',
-    );
-    return QuizAnswerCheck(
-      isCorrect: optionId == correct.id,
-      correctOptionId: correct.id,
-    );
+  Future<Quiz> getLessonQuiz(String lessonId) async => testQuiz;
+  @override
+  Future<Quiz> getLessonAttempt(String lessonId) async => current;
+  @override
+  Future<Quiz> startLessonQuiz(String lessonId) async {
+    started = true;
+    return current;
   }
 
   @override
-  Future<Quiz> getLessonQuiz(String lessonId) async => testQuiz;
-
-  @override
-  Future<QuizSubmissionResult> submitLessonQuiz(
-    String lessonId,
-    List<QuizAnswer> answers,
-  ) async {
-    submitCalls++;
-    if (failSubmit) throw Exception('submit failed');
-    final correct = answers.where((answer) {
-      return answer.selectedOptionId == 'care-1' ||
-          answer.selectedOptionId == 'advocacy-2';
-    }).length;
-    return QuizSubmissionResult(
-      attemptId: 'new-attempt-id',
-      quizId: testQuiz.id,
-      totalQuestionCount: answers.length,
-      correctCount: correct,
-      incorrectCount: answers.length - correct,
-      successPercentage: ((correct / answers.length) * 100).round(),
-      completedAtUtc: DateTime.utc(2026, 9, 5),
-    );
+  Future<Quiz> saveAnswer(String attemptId, QuizAnswer answer) async {
+    started = true;
+    saveCalls++;
+    await Future<void>.delayed(Duration.zero);
+    if (failSave) throw Exception('save failed');
+    final existing = saved.where((a) => a.questionId == answer.questionId);
+    if (existing.isNotEmpty) {
+      if (existing.single.selectedOptionId != answer.selectedOptionId) {
+        throw Exception('immutable');
+      }
+      return current;
+    }
+    if (result != null) throw Exception('completed');
+    saved.add(answer);
+    if (saved.length == testQuiz.questions.length) {
+      final correct = saved
+          .where(
+            (a) =>
+                a.selectedOptionId == 'care-1' ||
+                a.selectedOptionId == 'advocacy-2',
+          )
+          .length;
+      result = QuizSubmissionResult(
+        attemptId: 'new-attempt-id',
+        quizId: testQuiz.id,
+        totalQuestionCount: saved.length,
+        correctCount: correct,
+        incorrectCount: saved.length - correct,
+        successPercentage: (100 * correct / saved.length).round(),
+        completedAtUtc: DateTime.utc(2026, 9, 21),
+      );
+    }
+    if (failAfterSave) throw Exception('response lost');
+    return current;
   }
 }
 

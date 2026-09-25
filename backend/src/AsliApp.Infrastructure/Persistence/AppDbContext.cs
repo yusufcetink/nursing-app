@@ -180,8 +180,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<QuizAttempt>(entity =>
         {
             entity.HasKey(attempt => attempt.Id);
-            entity.HasQueryFilter(attempt => !attempt.Quiz.IsDeleted);
+            entity.HasQueryFilter(attempt => !attempt.Quiz.IsDeleted && !attempt.IsArchived);
             entity.Property(attempt => attempt.ScorePercentage).HasPrecision(5, 2);
+            entity.Property(attempt => attempt.Version).IsConcurrencyToken();
+            entity.HasIndex(attempt => new { attempt.UserId, attempt.QuizId }).IsUnique()
+                .HasFilter("[IsArchived] = 0");
             entity.HasIndex(attempt => new { attempt.UserId, attempt.CompletedAtUtc });
             entity.HasOne(attempt => attempt.User)
                 .WithMany(user => user.QuizAttempts)
@@ -197,8 +200,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             entity.HasKey(answer => answer.Id);
             entity.HasQueryFilter(answer =>
-                !answer.QuizAttempt.Quiz.IsDeleted &&
-                !answer.QuizQuestion.IsDeleted);
+                !answer.QuizAttempt.Quiz.IsDeleted);
             entity.HasIndex(answer => new { answer.QuizAttemptId, answer.QuizQuestionId })
                 .IsUnique();
             entity.HasOne(answer => answer.QuizAttempt)

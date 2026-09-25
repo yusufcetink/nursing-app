@@ -19,6 +19,7 @@ import 'package:asli_app/features/content_management/presentation/pages/quiz_edi
 import 'package:asli_app/features/education/presentation/pages/education_module_page.dart';
 import 'package:asli_app/features/education/presentation/pages/lesson_page.dart';
 import 'package:asli_app/features/home/presentation/pages/home_page.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_page.dart';
 import 'package:asli_app/features/profile/presentation/pages/profile_page.dart';
 import 'package:asli_app/features/profile/presentation/pages/quiz_history_page.dart';
 import 'package:asli_app/features/profile/presentation/pages/quiz_result_detail_page.dart';
@@ -41,6 +42,8 @@ abstract final class AppRoutes {
   static const resetPasswordPath = '/reset-password';
   static const home = 'home';
   static const homePath = '/home';
+  static const leaderboard = 'leaderboard';
+  static const leaderboardPath = '/leaderboard';
   static const profile = 'profile';
   static const profilePath = '/profile';
   static const quizHistory = 'quiz-history';
@@ -171,6 +174,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.homePath,
                 name: AppRoutes.home,
                 builder: (context, state) => const HomePage(),
+              ),
+              GoRoute(
+                path: AppRoutes.leaderboardPath,
+                name: AppRoutes.leaderboard,
+                builder: (context, state) => const LeaderboardPage(),
               ),
               GoRoute(
                 path: AppRoutes.educationModulePath,
