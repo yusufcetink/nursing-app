@@ -1,0 +1,115 @@
+name: Deploy backend to production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore local .NET tools
+        working-directory: backend
+        run: dotnet tool restore
+
+      - name: Test backend
+        working-directory: backend
+        run: dotnet test --configuration Release
+
+      - name: Publish Windows API
+        run: dotnet publish backend/src/AsliApp.Api/AsliApp.Api.csproj --configuration Release --output backend/publish/api
+
+      - name: Remove production settings from publish output
+        shell: pwsh
+        run: |
+          $settings = 'backend/publish/api/appsettings.Production.json'
+          if (Test-Path -LiteralPath $settings) {
+            Remove-Item -LiteralPath $settings -Force
+          }
+          if (Test-Path -LiteralPath $settings) {
+            throw 'Production settings remain in the publish output.'
+          }
+
+      - name: Take API offline
+        shell: pwsh
+        env:
+          FTP_HOST: ${{ secrets.PLESK_FTP_HOST }}
+          FTP_USER: ${{ secrets.PLESK_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.PLESK_FTP_PASSWORD }}
+        run: |
+          $offline = Join-Path $env:RUNNER_TEMP 'app_offline.htm'
+          [System.IO.File]::WriteAllText($offline, 'Updating...')
+          & curl.exe --fail --silent --show-error --ssl-reqd --insecure `
+            --user "${env:FTP_USER}:${env:FTP_PASSWORD}" `
+            --upload-file $offline "ftp://${env:FTP_HOST}:21/app_offline.htm"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not upload app_offline.htm.' }
+
+      - name: Deploy API via explicit FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.PLESK_FTP_HOST }}
+          username: ${{ secrets.PLESK_FTP_USER }}
+          password: ${{ secrets.PLESK_FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          security: loose
+          local-dir: ./backend/publish/api/
+          server-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            App_Data/
+            App_Data/**
+            **/App_Data/**
+            appsettings.Production.json
+            **/appsettings.Production.json
+            .user.ini
+            **/.user.ini
+            app_offline.htm
+            **/app_offline.htm
+
+      - name: Remove offline marker
+        if: always()
+        shell: pwsh
+        env:
+          FTP_HOST: ${{ secrets.PLESK_FTP_HOST }}
+          FTP_USER: ${{ secrets.PLESK_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.PLESK_FTP_PASSWORD }}
+        run: |
+          & curl.exe --fail --silent --show-error --ssl-reqd --insecure `
+            --user "${env:FTP_USER}:${env:FTP_PASSWORD}" `
+            --quote 'DELE app_offline.htm' "ftp://${env:FTP_HOST}:21/" `
+            --output NUL
+          if ($LASTEXITCODE -ne 0) { throw 'Could not remove app_offline.htm.' }
+
+      - name: Verify production health
+        shell: pwsh
+        run: |
+          for ($attempt = 1; $attempt -le 5; $attempt++) {
+            try {
+              $response = Invoke-WebRequest -Uri 'https://api.nursing-app.com/health' -TimeoutSec 15
+              if ($response.StatusCode -eq 200 -and $response.Content -match 'Healthy') {
+                Write-Host 'Production health check passed.'
+                exit 0
+              }
+            } catch {
+              Write-Host "Health check attempt $attempt failed."
+            }
+            if ($attempt -lt 5) { Start-Sleep -Seconds 5 }
+          }
+          throw 'Production health check failed after 5 attempts.'
