@@ -8,6 +8,11 @@ public sealed class LocalFileStorage : IFileStorage
 
     public LocalFileStorage(IOptions<FileStorageOptions> options)
     {
+        if (!Path.IsPathFullyQualified(options.Value.RootPath))
+        {
+            throw new InvalidOperationException("The storage root must be resolved to an absolute path.");
+        }
+
         _rootPath = Path.GetFullPath(options.Value.RootPath)
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         Directory.CreateDirectory(_rootPath);
@@ -23,6 +28,7 @@ public sealed class LocalFileStorage : IFileStorage
             ?? throw new InvalidOperationException("The storage key has no directory.");
         Directory.CreateDirectory(directory);
 
+        var created = false;
         try
         {
             await using var output = new FileStream(
@@ -32,11 +38,12 @@ public sealed class LocalFileStorage : IFileStorage
                 FileShare.None,
                 bufferSize: 81920,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
+            created = true;
             await content.CopyToAsync(output, cancellationToken);
         }
         catch
         {
-            if (File.Exists(path))
+            if (created && File.Exists(path))
             {
                 File.Delete(path);
             }

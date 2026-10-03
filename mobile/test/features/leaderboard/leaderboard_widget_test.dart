@@ -49,6 +49,85 @@ const _me = LeaderboardEntry(
 );
 
 void main() {
+  for (final dark in [false, true]) {
+    testWidgets(
+      'profile ranking supports filters and pagination at 200% scale dark=$dark',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(320, 700));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final selections = <LeaderboardSelection>[];
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              leaderboardCoursesProvider.overrideWith(
+                (ref) async => const [
+                  LeaderboardCourse('course-a', 'Temel Hemşirelik', 4),
+                ],
+              ),
+              leaderboardProvider.overrideWith((ref, selection) async {
+                selections.add(selection);
+                return LeaderboardData(
+                  entries: selection.offset == 0 ? _entries : [_me],
+                  currentUser: _me,
+                  totalUsers: 21,
+                  offset: selection.offset,
+                  limit: 20,
+                  courseQuizCount: 4,
+                  courseName: 'Temel Hemşirelik',
+                );
+              }),
+            ],
+            child: MaterialApp(
+              theme: dark ? ThemeData.dark() : ThemeData.light(),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: const TextScaler.linear(2)),
+                child: child!,
+              ),
+              home: const Scaffold(
+                body: SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: LeaderboardSection(embedded: true),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Öğrenci sıralaması'), findsOneWidget);
+        expect(find.text('Küçük başarıların'), findsNothing);
+        expect(find.text('Deniz Yılmaz'), findsOneWidget);
+        expect(find.text('DY'), findsOneWidget);
+        expect(find.text('Sen'), findsOneWidget);
+        expect(find.textContaining('@'), findsNothing);
+        expect(find.text('39 doğru'), findsOneWidget);
+        expect(find.text('3 quiz • %72 başarı'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.ensureVisible(find.text('Sonraki'));
+        await tester.tap(find.text('Sonraki'));
+        await tester.pumpAndSettle();
+        expect(selections.last.offset, 20);
+        expect(find.text('Deniz Yılmaz'), findsOneWidget);
+        await tester.ensureVisible(find.text('Bu Ay'));
+        await tester.tap(find.text('Bu Ay'));
+        await tester.pumpAndSettle();
+        expect(selections.last.period, 'monthly');
+        expect(selections.last.offset, 0);
+        await tester.ensureVisible(find.text('Tüm Zamanlar'));
+        await tester.tap(find.text('Tüm Zamanlar'));
+        await tester.pumpAndSettle();
+        expect(selections.last.period, 'allTime');
+        await tester.ensureVisible(find.text('Modüle Göre'));
+        await tester.tap(find.text('Modüle Göre'));
+        await tester.pumpAndSettle();
+        expect(selections.last.courseId, 'course-a');
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   test('initials use the first name and surname initial', () {
     expect(_entries[0].initials, 'EA');
     expect(_entries[1].initials, 'YC');
@@ -176,7 +255,7 @@ void main() {
     await tester.tap(find.text('Bu Ay'));
     await tester.pumpAndSettle();
     expect(selections.last.period, 'monthly');
-    await tester.tap(find.text('Derse Göre'));
+    await tester.tap(find.text('Modüle Göre'));
     await tester.pumpAndSettle();
     expect(selections.last.courseId, 'course-a');
     expect(find.text('Ağrı ve Ağrı Yönetimi'), findsWidgets);

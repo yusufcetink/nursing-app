@@ -11,9 +11,9 @@ final quizRepositoryProvider = Provider<QuizRepository>((ref) {
 });
 
 abstract interface class QuizRepository {
-  Future<Quiz> getLessonQuiz(String lessonId);
-  Future<Quiz> getLessonAttempt(String lessonId);
-  Future<Quiz> startLessonQuiz(String lessonId);
+  Future<Quiz> getQuiz(String quizId);
+  Future<Quiz> getQuizAttempt(String quizId);
+  Future<Quiz> startQuiz(String quizId);
   Future<Quiz> saveAnswer(String attemptId, QuizAnswer answer);
 }
 
@@ -21,14 +21,14 @@ final class DioQuizRepository implements QuizRepository {
   const DioQuizRepository(this._apiClient);
   final ApiClient _apiClient;
   @override
-  Future<Quiz> getLessonQuiz(String lessonId) =>
-      _request('/api/education/lessons/$lessonId/quiz', attempt: false);
+  Future<Quiz> getQuiz(String quizId) =>
+      _request('/api/education/quizzes/$quizId', attempt: false);
   @override
-  Future<Quiz> getLessonAttempt(String lessonId) =>
-      _request('/api/education/lessons/$lessonId/quiz/attempt');
+  Future<Quiz> getQuizAttempt(String quizId) =>
+      _request('/api/education/quizzes/$quizId/attempt');
   @override
-  Future<Quiz> startLessonQuiz(String lessonId) =>
-      _request('/api/education/lessons/$lessonId/quiz/start', post: true);
+  Future<Quiz> startQuiz(String quizId) =>
+      _request('/api/education/quizzes/$quizId/start', post: true);
   @override
   Future<Quiz> saveAnswer(String attemptId, QuizAnswer answer) => _request(
     '/api/education/quiz-attempts/$attemptId/answers',
@@ -87,6 +87,11 @@ final class DioQuizRepository implements QuizRepository {
               ).toDomain(),
       );
     } on DioException catch (error) {
+      if (error.response?.statusCode == 403 &&
+          error.response?.data is Map &&
+          error.response?.data['code'] == 'lesson_not_completed') {
+        throw const NetworkException('Quizi açmak için önce dersi tamamla.');
+      }
       throw mapNetworkException(error);
     } on FormatException {
       throw const NetworkException('Sunucudan geçersiz quiz verisi alındı.');

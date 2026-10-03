@@ -33,7 +33,10 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
       ..httpClientAdapter = adapter;
     final storage = _MemoryTokenStorage();
-    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+    final repository = DioAuthRepository(
+      ApiClient(dio: dio, tokenStorage: storage),
+      storage,
+    );
 
     await repository.register(
       const RegisterRequest(
@@ -126,7 +129,10 @@ void main() {
       final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
         ..httpClientAdapter = adapter;
       final storage = _MemoryTokenStorage('stored-jwt-token');
-      final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+      final repository = DioAuthRepository(
+        ApiClient(dio: dio, tokenStorage: storage),
+        storage,
+      );
 
       final user = await repository.restoreSession();
 
@@ -145,7 +151,10 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
       ..httpClientAdapter = adapter;
     final storage = _MemoryTokenStorage('expired-jwt-token');
-    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+    final repository = DioAuthRepository(
+      ApiClient(dio: dio, tokenStorage: storage),
+      storage,
+    );
 
     final user = await repository.restoreSession();
 
@@ -158,7 +167,10 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
       ..httpClientAdapter = adapter;
     final storage = _MemoryTokenStorage();
-    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+    final repository = DioAuthRepository(
+      ApiClient(dio: dio, tokenStorage: storage),
+      storage,
+    );
 
     await repository.login(
       const LoginRequest(
@@ -177,13 +189,14 @@ void main() {
   });
 
   test('remember false access tokenı yalnızca geçici tutar', () async {
-    final adapter = _SequenceAdapter([
-      _JsonResponse(200, _loginResponse(refreshToken: null)),
-    ]);
+    final adapter = _SequenceAdapter([_JsonResponse(200, _loginResponse())]);
     final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
       ..httpClientAdapter = adapter;
     final storage = _MemoryTokenStorage();
-    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+    final repository = DioAuthRepository(
+      ApiClient(dio: dio, tokenStorage: storage),
+      storage,
+    );
 
     await repository.login(
       const LoginRequest(
@@ -194,8 +207,9 @@ void main() {
     );
 
     expect(storage.accessToken, 'new-access-token');
-    expect(storage.refreshToken, isNull);
+    expect(storage.refreshToken, 'new-refresh-token');
     expect(storage.persisted, isFalse);
+    expect(storage.storedValues, isEmpty);
   });
 
   test(
@@ -204,11 +218,15 @@ void main() {
       final adapter = _SequenceAdapter([
         _JsonResponse(401, const {}),
         _JsonResponse(200, _loginResponse()),
+        _JsonResponse(200, _loginResponse()['user'] as Map<String, Object?>),
       ]);
       final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
         ..httpClientAdapter = adapter;
       final storage = _MemoryTokenStorage('expired-access', 'old-refresh');
-      final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+      final repository = DioAuthRepository(
+        ApiClient(dio: dio, tokenStorage: storage),
+        storage,
+      );
 
       final user = await repository.restoreSession();
 
@@ -216,8 +234,9 @@ void main() {
       expect(adapter.requests.map((request) => request.path), [
         '/api/auth/me',
         '/api/auth/refresh',
+        '/api/auth/me',
       ]);
-      expect(adapter.requests.last.data['refreshToken'], 'old-refresh');
+      expect(adapter.requests[1].data['refreshToken'], 'old-refresh');
       expect(storage.accessToken, 'new-access-token');
       expect(storage.refreshToken, 'new-refresh-token');
     },
@@ -231,7 +250,10 @@ void main() {
     final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
       ..httpClientAdapter = adapter;
     final storage = _MemoryTokenStorage('expired-access', 'revoked-refresh');
-    final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+    final repository = DioAuthRepository(
+      ApiClient(dio: dio, tokenStorage: storage),
+      storage,
+    );
 
     expect(await repository.restoreSession(), isNull);
     expect(storage.accessToken, isNull);
@@ -245,7 +267,10 @@ void main() {
       final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
         ..httpClientAdapter = adapter;
       final storage = _MemoryTokenStorage('access', 'refresh');
-      final repository = DioAuthRepository(ApiClient(dio: dio), storage);
+      final repository = DioAuthRepository(
+        ApiClient(dio: dio, tokenStorage: storage),
+        storage,
+      );
 
       await repository.logout();
 
@@ -277,6 +302,37 @@ final class _MemoryTokenStorage implements TokenStorage {
 
   @override
   Future<String?> readRefreshToken() async => refreshToken;
+
+  @override
+  Future<bool> rotateTokens({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    if (await readRefreshToken() != expectedRefreshToken) {
+      return false;
+    }
+    await writeTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      persist: true,
+    );
+    return true;
+  }
+
+  @override
+  Future<bool> clearTokensIfUnchanged({
+    required String? accessToken,
+    required String? refreshToken,
+  }) async {
+    if (await readAccessToken() != accessToken ||
+        await readRefreshToken() != refreshToken ||
+        (accessToken == null && refreshToken == null)) {
+      return false;
+    }
+    await deleteTokens();
+    return true;
+  }
 
   @override
   Future<String> getDeviceId() async => 'test-device';

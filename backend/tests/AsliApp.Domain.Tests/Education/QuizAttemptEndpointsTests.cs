@@ -25,13 +25,14 @@ public sealed partial class EducationEndpointsTests
             }));
             await db.SaveChangesAsync();
         }
-        var start = await student.PostAsync($"/api/education/lessons/{content.LessonId}/quiz/start", null);
+        (await student.PutAsync($"/api/education/lessons/{content.LessonId}/progress", null)).EnsureSuccessStatusCode();
+        var start = await student.PostAsync($"/api/education/quizzes/{await GetQuizIdAsync(content.LessonId)}/start", null);
         start.EnsureSuccessStatusCode();
         var attempt = (await start.Content.ReadFromJsonAsync<QuizAttemptResponse>())!;
         Assert.Equal(HttpStatusCode.NoContent, (await admin.PutAsJsonAsync(
             $"/api/education/options/{content.CorrectOptionId}", new QuizOptionWriteRequest("Edited", false, 1))).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync($"/api/education/questions/{content.QuestionId}")).StatusCode);
-        var resumed = await student.GetFromJsonAsync<QuizAttemptResponse>($"/api/education/lessons/{content.LessonId}/quiz/attempt");
+        var resumed = await student.GetFromJsonAsync<QuizAttemptResponse>($"/api/education/quizzes/{await GetQuizIdAsync(content.LessonId)}/attempt");
         Assert.Equal(attempt.Quiz.Questions[0].Prompt, resumed!.Quiz.Questions[0].Prompt);
         Assert.Equal("Correct", resumed.Quiz.Questions[0].Options[0].Text);
         var saved = await student.PostAsJsonAsync($"/api/education/quiz-attempts/{attempt.AttemptId}/answers",
@@ -43,7 +44,8 @@ public sealed partial class EducationEndpointsTests
     private async Task<QuizAttemptResponse> StartPainQuiz(HttpClient client)
     {
         await DevelopmentEducationSeeder.SeedAsync(_factory.Services);
-        var response = await client.PostAsync($"/api/education/lessons/{PainLessonSeed.LessonId}/quiz/start", null);
+        (await client.PutAsync($"/api/education/lessons/{PainLessonSeed.LessonId}/progress", null)).EnsureSuccessStatusCode();
+        var response = await client.PostAsync($"/api/education/quizzes/{PainLessonSeed.QuizId}/start", null);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<QuizAttemptResponse>())!;
     }
@@ -147,7 +149,7 @@ public sealed partial class EducationEndpointsTests
         Assert.False(await db.QuizAttempts.IgnoreQueryFilters().AnyAsync(a => a.Id == attempt.AttemptId));
         Assert.False(await db.QuizAttemptAnswers.IgnoreQueryFilters().AnyAsync(a => a.QuizAttemptId == attempt.AttemptId));
         Assert.False(await db.LessonProgress.AnyAsync(p => p.UserId == userId && p.LessonId == PainLessonSeed.LessonId));
-        var status = await student.GetFromJsonAsync<QuizAttemptResponse>($"/api/education/lessons/{PainLessonSeed.LessonId}/quiz/attempt");
+        var status = await student.GetFromJsonAsync<QuizAttemptResponse>($"/api/education/quizzes/{PainLessonSeed.QuizId}/attempt");
         Assert.Equal("NotStarted", status!.Status);
         Assert.NotEqual(attempt.AttemptId, (await StartPainQuiz(student)).AttemptId);
     }

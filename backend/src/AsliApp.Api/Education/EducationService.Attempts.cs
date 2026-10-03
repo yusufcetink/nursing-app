@@ -21,11 +21,11 @@ public sealed partial class EducationService
     private sealed record AttemptSnapshot(StudentQuizResponse Quiz, Dictionary<Guid, Guid> AnswerKey);
 
     public async Task<QuizAttemptOutcome> GetQuizAttemptAsync(
-        Guid userId, Guid lessonId, bool start, CancellationToken cancellationToken)
+        Guid userId, Guid quizId, bool start, CancellationToken cancellationToken)
     {
         var quiz = await dbContext.Quizzes
             .Include(q => q.Questions.Where(q => !q.IsDeleted)).ThenInclude(q => q.Options)
-            .SingleOrDefaultAsync(q => q.LessonId == lessonId &&
+            .SingleOrDefaultAsync(q => q.Id == quizId &&
                 q.Lesson.IsPublished && q.Lesson.EducationModule.IsPublished &&
                 !q.Lesson.IsDeleted && !q.Lesson.EducationModule.IsDeleted, cancellationToken);
         if (quiz is null) return new(404);
@@ -35,6 +35,10 @@ public sealed partial class EducationService
         if (!quiz.IsPublished) return new(404);
         var studentQuiz = ToStudentQuiz(quiz);
         if (!start) return new(200, new(null, "NotStarted", studentQuiz, [], 0, null));
+        // Existing attempts above remain resumable, including attempts from before this prerequisite.
+        if (!await dbContext.LessonProgress.AnyAsync(p =>
+                p.UserId == userId && p.LessonId == quiz.LessonId && p.IsCompleted,
+                cancellationToken)) return new(403);
         if (quiz.Questions.Count == 0 || quiz.Questions.Any(q =>
             q.Options.Count != 4 || q.Options.Count(o => o.IsCorrect) != 1)) return new(409);
         attempt = new QuizAttempt

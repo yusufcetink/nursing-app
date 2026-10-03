@@ -32,7 +32,7 @@ public sealed record LessonResponse(
     string Description,
     int EstimatedDurationMinutes,
     int Order,
-    Guid? QuizId,
+    IReadOnlyList<QuizSummaryResponse> Quizzes,
     IReadOnlyList<LessonContentBlockResponse> Blocks,
     DateTimeOffset UpdatedAtUtc);
 
@@ -52,6 +52,8 @@ public sealed record LessonContentBlockResponse(
     string? TextContent,
     LessonMediaResponse? Media,
     int SortOrder);
+
+public sealed record QuizSummaryResponse(Guid Id, string Title, int Order, bool IsPublished);
 
 public sealed record StudentQuizResponse(
     Guid Id,
@@ -157,7 +159,7 @@ public sealed record ContentLessonResponse(
     int EstimatedDurationMinutes,
     int Order,
     bool IsPublished,
-    Guid? QuizId,
+    IReadOnlyList<QuizSummaryResponse> Quizzes,
     IReadOnlyList<LessonContentBlockResponse> Blocks,
     DateTimeOffset UpdatedAtUtc);
 
@@ -189,7 +191,8 @@ public sealed record ContentQuizResponse(
     string Title,
     bool IsPublished,
     IReadOnlyList<ContentQuizQuestionResponse> Questions,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc,
+    int Order = 0);
 
 public sealed record ContentQuizQuestionResponse(
     Guid Id,
@@ -218,7 +221,8 @@ public sealed record LessonWriteRequest(
 
 public sealed record QuizWriteRequest(
     [Required, MaxLength(200)] string Title,
-    bool IsPublished);
+    bool IsPublished,
+    [Range(0, int.MaxValue)] int Order = 0);
 
 public sealed record QuizQuestionWriteRequest(
     [Required, MaxLength(1000)] string Prompt,

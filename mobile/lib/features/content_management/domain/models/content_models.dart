@@ -1,3 +1,5 @@
+import 'package:asli_app/features/quiz/domain/models/quiz_summary.dart';
+
 final class ContentModuleSummary {
   const ContentModuleSummary({
     required this.id,
@@ -57,6 +59,7 @@ final class ContentQuiz {
     required this.id,
     required this.lessonId,
     required this.title,
+    this.order = 0,
     required this.isPublished,
     required this.questions,
   });
@@ -64,6 +67,7 @@ final class ContentQuiz {
   final String id;
   final String lessonId;
   final String title;
+  final int order;
   final bool isPublished;
   final List<ContentQuizQuestion> questions;
 }
@@ -97,7 +101,13 @@ final class ContentQuizOption {
 }
 
 final class QuizWriteInput {
-  const QuizWriteInput({required this.title, required this.isPublished});
+  const QuizWriteInput({
+    required this.title,
+    required this.isPublished,
+    this.order = 0,
+  });
+
+  final int order;
 
   final String title;
   final bool isPublished;
@@ -131,7 +141,7 @@ final class ContentLesson {
     required this.estimatedDurationMinutes,
     required this.order,
     required this.isPublished,
-    required this.quizId,
+    this.quizzes = const [],
     this.blocks = const [],
   });
 
@@ -142,7 +152,7 @@ final class ContentLesson {
   final int estimatedDurationMinutes;
   final int order;
   final bool isPublished;
-  final String? quizId;
+  final List<QuizSummary> quizzes;
   final List<ContentLessonContentBlock> blocks;
 }
 

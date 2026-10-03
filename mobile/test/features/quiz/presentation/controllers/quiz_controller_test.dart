@@ -14,12 +14,13 @@ void main() {
         overrides: [quizRepositoryProvider.overrideWithValue(repository)],
       );
       addTearDown(container.dispose);
-      final quiz = quizForLessonProvider(testQuiz.lessonId);
+      final quiz = quizProvider(testQuiz.id);
       container.listen(quiz, (_, _) {});
       await container.read(quiz.future);
       final provider = quizControllerProvider((
         moduleId: testModule.id,
         lessonId: testQuiz.lessonId,
+        quizId: testQuiz.id,
       ));
       container.listen(provider, (_, _) {});
       final controller = container.read(provider.notifier);
@@ -61,14 +62,15 @@ void main() {
         final container = ProviderContainer(
           overrides: [quizRepositoryProvider.overrideWithValue(repository)],
         );
-        container.listen(quizForLessonProvider(testQuiz.lessonId), (_, _) {});
-        await container.read(quizForLessonProvider(testQuiz.lessonId).future);
+        container.listen(quizProvider(testQuiz.id), (_, _) {});
+        await container.read(quizProvider(testQuiz.id).future);
         return container;
       }
 
       final provider = quizControllerProvider((
         moduleId: testModule.id,
         lessonId: testQuiz.lessonId,
+        quizId: testQuiz.id,
       ));
       final first = await open();
       first.listen(provider, (_, _) {});

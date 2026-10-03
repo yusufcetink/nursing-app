@@ -6,19 +6,17 @@ import 'package:asli_app/features/quiz/domain/models/quiz.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_answer.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_submission_result.dart';
 import 'package:asli_app/features/analytics/application/activity_tracker.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
 
-typedef QuizSelection = ({String moduleId, String lessonId});
+typedef QuizSelection = ({String moduleId, String lessonId, String quizId});
 
 // Only the quiz route starts an attempt; lesson cards read status without mutation.
-final quizForLessonProvider = FutureProvider.autoDispose.family<Quiz, String>(
-  (ref, lessonId) =>
-      ref.watch(quizRepositoryProvider).startLessonQuiz(lessonId),
+final quizProvider = FutureProvider.autoDispose.family<Quiz, String>(
+  (ref, quizId) => ref.watch(quizRepositoryProvider).startQuiz(quizId),
 );
-final lessonQuizStatusProvider = FutureProvider.autoDispose
-    .family<Quiz, String>(
-      (ref, lessonId) =>
-          ref.watch(quizRepositoryProvider).getLessonAttempt(lessonId),
-    );
+final quizStatusProvider = FutureProvider.autoDispose.family<Quiz, String>(
+  (ref, quizId) => ref.watch(quizRepositoryProvider).getQuizAttempt(quizId),
+);
 final quizControllerProvider = NotifierProvider.autoDispose
     .family<QuizController, QuizSessionState, QuizSelection>(
       QuizController.new,
@@ -32,10 +30,11 @@ final class QuizController extends Notifier<QuizSessionState> {
   ActivityContext get _activityContext => ActivityContext(
     moduleId: selection.moduleId,
     lessonId: selection.lessonId,
+    quizId: selection.quizId,
   );
   @override
   QuizSessionState build() {
-    _quiz = ref.read(quizForLessonProvider(selection.lessonId)).requireValue;
+    _quiz = ref.read(quizProvider(selection.quizId)).requireValue;
     _startedAt = ref
         .read(activityTrackerProvider)
         .activeScreenDuration('quiz', _activityContext);
@@ -78,7 +77,7 @@ final class QuizController extends Notifier<QuizSessionState> {
       if (!ref.mounted) return;
       _quiz = updated;
       state = QuizSessionState.fromQuiz(updated);
-      ref.invalidate(lessonQuizStatusProvider(selection.lessonId));
+      ref.invalidate(quizStatusProvider(selection.quizId));
       ref
           .read(activityTrackerProvider)
           .track(
@@ -91,6 +90,8 @@ final class QuizController extends Notifier<QuizSessionState> {
       if (state.isCompleted) {
         ref.invalidate(quizHistoryProvider);
         ref.invalidate(profileOverviewProvider);
+        ref.invalidate(homeLeaderboardProvider);
+        ref.invalidate(leaderboardProvider);
         ref
             .read(activityTrackerProvider)
             .track(

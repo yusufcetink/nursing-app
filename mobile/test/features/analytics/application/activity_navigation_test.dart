@@ -1,3 +1,5 @@
+import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
 import 'package:asli_app/app/app.dart';
 import 'package:asli_app/app/router/app_router.dart';
 import 'package:asli_app/features/analytics/application/activity_tracker.dart';
@@ -33,6 +35,15 @@ void main() {
             FakeProgressRepository(),
           ),
           profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+          leaderboardCoursesProvider.overrideWith((ref) async => const []),
+          leaderboardProvider.overrideWith(
+            (ref, selection) async => const LeaderboardData(
+              entries: [],
+              totalUsers: 0,
+              offset: 0,
+              limit: 20,
+            ),
+          ),
           quizRepositoryProvider.overrideWithValue(FakeQuizRepository()),
         ],
       );

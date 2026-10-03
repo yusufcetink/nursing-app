@@ -57,7 +57,7 @@ public static class PainLessonSeed
                 TextContent = block.Text, SortOrder = i, Media = media,
             });
         }
-        lesson.Quiz = new Quiz
+        lesson.Quizzes = [new Quiz
         {
             Id = QuizId, Title = "Ağrı değerlendirmesi • 18 soruda klinik düşünme",
             IsPublished = true, CreatedAtUtc = now, UpdatedAtUtc = now,
@@ -70,7 +70,7 @@ public static class PainLessonSeed
                     Order = j + 1, CreatedAtUtc = now, UpdatedAtUtc = now,
                 }).ToList(),
             }).ToList(),
-        };
+        }];
         var module = await db.EducationModules.IgnoreQueryFilters().SingleOrDefaultAsync(m => m.Id == ModuleId, ct);
         if (module is null)
         {

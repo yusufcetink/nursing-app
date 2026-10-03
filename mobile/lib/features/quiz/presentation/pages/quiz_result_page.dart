@@ -68,7 +68,7 @@ class QuizResultPage extends ConsumerWidget {
               (module?.title ?? quiz.title).toUpperCase(),
               style: theme.textTheme.labelLarge?.copyWith(
                 color: scheme.primary,
-                letterSpacing: 2.6,
+                letterSpacing: 1.2,
               ),
               textAlign: TextAlign.center,
             ),
@@ -110,7 +110,15 @@ class QuizResultPage extends ConsumerWidget {
                   ? 'Sonuç bilgisi alınamadı'
                   : 'Başarı oranı yüzde ${session.successPercentage}. ${session.correctCount} doğru, ${session.incorrectCount} yanlış.',
               excludeSemantics: true,
-              child: IntrinsicHeight(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18,
+                  horizontal: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -122,7 +130,7 @@ class QuizResultPage extends ConsumerWidget {
                         label: 'Doğru',
                       ),
                     ),
-                    const VerticalDivider(width: 1, indent: 4, endIndent: 4),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _ResultStat(
                         value: session.result == null
@@ -131,7 +139,7 @@ class QuizResultPage extends ConsumerWidget {
                         label: 'Yanlış',
                       ),
                     ),
-                    const VerticalDivider(width: 1, indent: 4, endIndent: 4),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _ResultStat(
                         value: session.result == null

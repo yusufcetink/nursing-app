@@ -5,14 +5,26 @@ import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
 import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
 import 'package:asli_app/features/leaderboard/presentation/leaderboard_widgets.dart';
 
-class LeaderboardPage extends ConsumerStatefulWidget {
+class LeaderboardPage extends StatelessWidget {
   const LeaderboardPage({super.key});
 
   @override
-  ConsumerState<LeaderboardPage> createState() => _LeaderboardPageState();
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Sıralama')),
+    body: const LeaderboardSection(),
+  );
 }
 
-class _LeaderboardPageState extends ConsumerState<LeaderboardPage> {
+// Shared detailed view: the profile supplies its own outer scrolling surface.
+class LeaderboardSection extends ConsumerStatefulWidget {
+  const LeaderboardSection({this.embedded = false, super.key});
+  final bool embedded;
+
+  @override
+  ConsumerState<LeaderboardSection> createState() => _LeaderboardSectionState();
+}
+
+class _LeaderboardSectionState extends ConsumerState<LeaderboardSection> {
   String _period = 'weekly';
   bool _byLesson = false;
   String? _courseId;
@@ -34,114 +46,134 @@ class _LeaderboardPageState extends ConsumerState<LeaderboardPage> {
     final ranking = !_byLesson || selectedLesson != null
         ? ref.watch(leaderboardProvider(selection))
         : null;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sıralama')),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(leaderboardCoursesProvider);
-          ref.invalidate(leaderboardProvider(selection));
-          if (_byLesson) {
-            await ref.read(leaderboardCoursesProvider.future);
-          }
-          if (ranking != null) {
-            await ref.read(leaderboardProvider(selection).future);
-          }
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+    Future<void> refresh() async {
+      ref.invalidate(leaderboardCoursesProvider);
+      ref.invalidate(leaderboardProvider(selection));
+      if (_byLesson) {
+        await ref.read(leaderboardCoursesProvider.future);
+      }
+      if (ranking != null) {
+        await ref.read(leaderboardProvider(selection).future);
+      }
+    }
+
+    final children = <Widget>[
+      if (widget.embedded)
+        Row(
           children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'weekly', label: Text('Bu Hafta')),
-                  ButtonSegment(value: 'monthly', label: Text('Bu Ay')),
-                  ButtonSegment(value: 'allTime', label: Text('Tüm Zamanlar')),
-                ],
-                selected: {_period},
-                showSelectedIcon: false,
-                onSelectionChanged: (value) => setState(() {
-                  _period = value.first;
-                  _offset = 0;
-                }),
+            Expanded(
+              child: Text(
+                'Öğrenci sıralaması',
+                style: theme.textTheme.headlineSmall,
               ),
             ),
-            const SizedBox(height: 12),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('Genel')),
-                ButtonSegment(value: true, label: Text('Derse Göre')),
-              ],
-              selected: {_byLesson},
-              showSelectedIcon: false,
-              onSelectionChanged: (value) => setState(() {
-                _byLesson = value.first;
-                _offset = 0;
-              }),
+            IconButton(
+              tooltip: 'Sıralamayı yenile',
+              onPressed: refresh,
+              icon: const Icon(Icons.refresh),
             ),
-            if (_byLesson) ...[
-              const SizedBox(height: 16),
-              lessons.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => _ErrorTile(
-                  message: networkErrorMessage(error),
-                  retry: () => ref.invalidate(leaderboardCoursesProvider),
-                ),
-                data: (items) => items.isEmpty
-                    ? const ListTile(title: Text('Henüz seçilebilir ders yok.'))
-                    : DropdownMenu<String>(
-                        leadingIcon: const Icon(Icons.menu_book_outlined),
-                        label: const Text('Ders'),
-                        expandedInsets: EdgeInsets.zero,
-                        initialSelection: selectedLesson,
-                        dropdownMenuEntries: [
-                          for (final lesson in items)
-                            DropdownMenuEntry(
-                              value: lesson.id,
-                              label: lesson.title,
-                            ),
-                        ],
-                        onSelected: (id) => setState(() {
-                          _courseId = id;
-                          _offset = 0;
-                        }),
-                      ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            if (ranking != null)
-              ranking.when(
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                error: (error, _) => _ErrorTile(
-                  message: networkErrorMessage(error),
-                  retry: () => ref.invalidate(leaderboardProvider(selection)),
-                ),
-                data: (data) => _RankingContent(
-                  data: data,
-                  isLesson: _byLesson,
-                  period: _period,
-                  onPrevious: _offset == 0
-                      ? null
-                      : () => setState(() => _offset -= 20),
-                  onNext: _offset + data.entries.length >= data.totalUsers
-                      ? null
-                      : () => setState(() => _offset += 20),
-                ),
-              ),
-            if (_byLesson && lessons.hasValue && available.isEmpty)
-              Text(
-                'Bu derste henüz sıralama oluşmadı.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
           ],
         ),
+
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SegmentedButton<String>(
+          segments: const [
+            ButtonSegment(value: 'weekly', label: Text('Bu Hafta')),
+            ButtonSegment(value: 'monthly', label: Text('Bu Ay')),
+            ButtonSegment(value: 'allTime', label: Text('Tüm Zamanlar')),
+          ],
+          selected: {_period},
+          showSelectedIcon: false,
+          onSelectionChanged: (value) => setState(() {
+            _period = value.first;
+            _offset = 0;
+          }),
+        ),
+      ),
+      const SizedBox(height: 12),
+      SegmentedButton<bool>(
+        segments: const [
+          ButtonSegment(value: false, label: Text('Genel')),
+          ButtonSegment(value: true, label: Text('Modüle Göre')),
+        ],
+        selected: {_byLesson},
+        showSelectedIcon: false,
+        onSelectionChanged: (value) => setState(() {
+          _byLesson = value.first;
+          _offset = 0;
+        }),
+      ),
+      if (_byLesson) ...[
+        const SizedBox(height: 16),
+        lessons.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => _ErrorTile(
+            message: networkErrorMessage(error),
+            retry: () => ref.invalidate(leaderboardCoursesProvider),
+          ),
+          data: (items) => items.isEmpty
+              ? const ListTile(title: Text('Henüz seçilebilir modül yok.'))
+              : DropdownMenu<String>(
+                  leadingIcon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Modül'),
+                  expandedInsets: EdgeInsets.zero,
+                  initialSelection: selectedLesson,
+                  dropdownMenuEntries: [
+                    for (final lesson in items)
+                      DropdownMenuEntry(value: lesson.id, label: lesson.title),
+                  ],
+                  onSelected: (id) => setState(() {
+                    _courseId = id;
+                    _offset = 0;
+                  }),
+                ),
+        ),
+      ],
+      const SizedBox(height: 24),
+      if (ranking != null)
+        ranking.when(
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (error, _) => _ErrorTile(
+            message: networkErrorMessage(error),
+            retry: () => ref.invalidate(leaderboardProvider(selection)),
+          ),
+          data: (data) => _RankingContent(
+            data: data,
+            isLesson: _byLesson,
+            period: _period,
+            onPrevious: _offset == 0
+                ? null
+                : () => setState(() => _offset -= 20),
+            onNext: _offset + data.entries.length >= data.totalUsers
+                ? null
+                : () => setState(() => _offset += 20),
+          ),
+        ),
+      if (_byLesson && lessons.hasValue && available.isEmpty)
+        Text(
+          'Bu modülde henüz sıralama oluşmadı.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+    ];
+    if (widget.embedded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: refresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        children: children,
       ),
     );
   }
@@ -170,7 +202,7 @@ class _RankingContent extends StatelessWidget {
         child: ListTile(
           title: Text(
             isLesson
-                ? 'Bu derste henüz sıralama oluşmadı.'
+                ? 'Bu modülde henüz sıralama oluşmadı.'
                 : 'Sıralama henüz oluşmadı.',
           ),
           subtitle: const Text('Quizlerini tamamlayarak sıralamada yerini al.'),
@@ -188,7 +220,7 @@ class _RankingContent extends StatelessWidget {
       children: [
         Text(
           isLesson
-              ? (data.courseName ?? 'Ders sıralaması')
+              ? (data.courseName ?? 'Modül sıralaması')
               : period == 'weekly'
               ? 'Bu haftanın liderleri'
               : period == 'monthly'
@@ -199,7 +231,7 @@ class _RankingContent extends StatelessWidget {
         Text(
           isLesson
               ? '${data.courseQuizCount ?? 0} quiz • Tamamlanan sonuçlar'
-              : 'Tüm derslerdeki quiz sonuçları',
+              : 'Tüm modüllerdeki quiz sonuçları',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: scheme.onSurfaceVariant,
           ),
@@ -209,7 +241,7 @@ class _RankingContent extends StatelessWidget {
         if (rest.isNotEmpty) ...[
           const SizedBox(height: 24),
           Text(
-            isLesson ? 'Ders sıralaması' : 'Sıralama',
+            isLesson ? 'Modül sıralaması' : 'Sıralama',
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
@@ -223,8 +255,8 @@ class _RankingContent extends StatelessWidget {
           LeaderboardListItem(entry: current, isLesson: isLesson),
         ],
         if (onPrevious != null || onNext != null)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 16,
             children: [
               TextButton(onPressed: onPrevious, child: const Text('Önceki')),
               TextButton(onPressed: onNext, child: const Text('Sonraki')),

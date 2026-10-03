@@ -1,3 +1,5 @@
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_page.dart';
+import 'package:asli_app/features/auth/domain/models/user_role.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -68,28 +70,6 @@ class _ProfileContent extends ConsumerWidget {
           const SizedBox(height: 8),
           _ProfileHero(overview: overview),
           const SizedBox(height: 24),
-          _ProfileSurface(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Görünüm', style: theme.textTheme.titleLarge),
-                const SizedBox(height: 4),
-                Text(
-                  'Sana en iyi gelen görünümü seç.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _ThemeModeSelector(
-                  mode: ref.watch(themeModeControllerProvider),
-                  onChanged: (mode) => ref
-                      .read(themeModeControllerProvider.notifier)
-                      .setThemeMode(mode),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 26),
           Text('Her adımın değerli.', style: theme.textTheme.headlineSmall),
           const SizedBox(height: 6),
@@ -169,26 +149,8 @@ class _ProfileContent extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 26),
-          Text('Küçük başarıların', style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) => Wrap(
-              spacing: 10,
-              runSpacing: 12,
-              children: [
-                for (final badge in LearningBadge.values)
-                  SizedBox(
-                    width: MediaQuery.textScalerOf(context).scale(1) > 1.4
-                        ? constraints.maxWidth
-                        : (constraints.maxWidth - 20) / 3,
-                    child: _Badge(
-                      badge: badge,
-                      earned: overview.earnedBadges.contains(badge),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+          if (overview.user.role == UserRole.student)
+            const LeaderboardSection(embedded: true),
           const SizedBox(height: 24),
           Row(
             children: [
@@ -229,7 +191,7 @@ class _ProfileContent extends ConsumerWidget {
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 12,
+                      vertical: 8,
                     ),
                     leading: MediaQuery.textScalerOf(context).scale(1) > 1.4
                         ? null
@@ -253,6 +215,28 @@ class _ProfileContent extends ConsumerWidget {
                 ),
               ),
           const SizedBox(height: 20),
+          _ProfileSurface(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Görünüm', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  'Sana en iyi gelen görünümü seç.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _ThemeModeSelector(
+                  mode: ref.watch(themeModeControllerProvider),
+                  onChanged: (mode) => ref
+                      .read(themeModeControllerProvider.notifier)
+                      .setThemeMode(mode),
+                ),
+              ],
+            ),
+          ),
           const Divider(),
           if (overview.user.role.canAccessAdministration)
             ListTile(
@@ -298,12 +282,12 @@ class _ProfileHero extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final avatar = Container(
-      width: 88,
-      height: 88,
-      padding: const EdgeInsets.all(6),
+      width: MediaQuery.textScalerOf(context).scale(1) > 1.4 ? 88 : 64,
+      height: MediaQuery.textScalerOf(context).scale(1) > 1.4 ? 88 : 64,
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: scheme.secondaryFixedDim, width: 3),
+        border: Border.all(color: scheme.outlineVariant, width: 1),
       ),
       child: CircleAvatar(
         backgroundColor: scheme.primaryContainer,
@@ -320,7 +304,10 @@ class _ProfileHero extends StatelessWidget {
       children: [
         Text(
           overview.user.fullName,
-          style: theme.textTheme.displaySmall?.copyWith(letterSpacing: -1.2),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -.5,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -486,90 +473,6 @@ class _ThemeModeSelector extends StatelessWidget {
                 ? scheme.onPrimary
                 : scheme.onSurfaceVariant,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.badge, required this.earned});
-  final LearningBadge badge;
-  final bool earned;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (title, requirement, icon, color) = switch (badge) {
-      LearningBadge.firstLesson => (
-        'İlk adım',
-        '1 ders tamamla',
-        Icons.auto_stories_outlined,
-        scheme.primaryContainer,
-      ),
-      LearningBadge.fiveLessons => (
-        'Meraklı zihin',
-        '5 ders tamamla',
-        Icons.auto_awesome_rounded,
-        scheme.secondaryContainer,
-      ),
-      LearningBadge.firstQuiz => (
-        'İlk keşif',
-        '1 quiz tamamla',
-        Icons.workspace_premium_outlined,
-        scheme.tertiaryContainer,
-      ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: earned ? color : scheme.outlineVariant.withValues(alpha: .45),
-        ),
-      ),
-      child: Semantics(
-        label: '$title. ${earned ? 'Kazanıldı' : requirement}',
-        excludeSemantics: true,
-        child: Column(
-          children: [
-            Container(
-              width: 78,
-              height: 78,
-              decoration: BoxDecoration(
-                color: earned ? color : scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: earned && badge != LearningBadge.fiveLessons
-                  ? LearningArt(
-                      artwork: badge == LearningBadge.firstLesson
-                          ? LearningArtwork.book
-                          : LearningArtwork.medal,
-                      size: 78,
-                    )
-                  : Icon(
-                      icon,
-                      size: 36,
-                      color: earned
-                          ? scheme.onSurface
-                          : scheme.onSurfaceVariant,
-                    ),
-            ),
-            const SizedBox(height: 9),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              earned ? 'Kazanıldı' : requirement,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(fontSize: 12, color: scheme.onSurfaceVariant),
-            ),
-          ],
         ),
       ),
     );

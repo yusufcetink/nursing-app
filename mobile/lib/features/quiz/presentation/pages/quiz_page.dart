@@ -11,14 +11,20 @@ import 'package:asli_app/shared/widgets/learning_design.dart';
 import 'package:asli_app/shared/widgets/learning_motion.dart';
 
 class QuizPage extends ConsumerWidget {
-  const QuizPage({required this.moduleId, required this.lessonId, super.key});
+  const QuizPage({
+    required this.moduleId,
+    required this.lessonId,
+    required this.quizId,
+    super.key,
+  });
   final String moduleId;
   final String lessonId;
+  final String quizId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref
-        .watch(quizForLessonProvider(lessonId))
+        .watch(quizProvider(quizId))
         .when(
           loading: () =>
               Scaffold(appBar: AppBar(), body: const ContentLoadingView()),
@@ -26,7 +32,7 @@ class QuizPage extends ConsumerWidget {
             appBar: AppBar(),
             body: ContentErrorView(
               message: networkErrorMessage(error),
-              onRetry: () => ref.invalidate(quizForLessonProvider(lessonId)),
+              onRetry: () => ref.invalidate(quizProvider(quizId)),
             ),
           ),
           data: (quiz) => quiz.questions.isEmpty
@@ -48,7 +54,11 @@ class _QuizContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selection = (moduleId: moduleId, lessonId: quiz.lessonId);
+    final selection = (
+      moduleId: moduleId,
+      lessonId: quiz.lessonId,
+      quizId: quiz.id,
+    );
     final session = ref.watch(quizControllerProvider(selection));
     if (session.isCompleted) {
       return QuizResultPage(
@@ -101,7 +111,7 @@ class _QuizContent extends ConsumerWidget {
                       LinearProgressIndicator(
                         value: session.answers.length / quiz.questions.length,
                         semanticsLabel: 'Soru ilerlemesi',
-                        minHeight: 12,
+                        minHeight: 6,
                         borderRadius: BorderRadius.circular(20),
                         color: scheme.primary,
                         backgroundColor: scheme.outlineVariant.withValues(
@@ -131,8 +141,8 @@ class _QuizContent extends ConsumerWidget {
                         question.prompt,
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800,
-                          height: 1.18,
-                          letterSpacing: -.7,
+                          height: 1.3,
+                          letterSpacing: -.4,
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -159,20 +169,14 @@ class _QuizContent extends ConsumerWidget {
                                     .selectOption(option.id),
                         ),
                       const SizedBox(height: 8),
-                      LearningPanel(
-                        color: scheme.secondaryContainer,
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Acele yok. Kendi ritminde ilerle.',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSecondaryContainer,
-                                ),
-                              ),
-                            ),
-                          ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          'Acele yok. Kendi ritminde ilerle.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
@@ -196,7 +200,7 @@ class _QuizContent extends ConsumerWidget {
                       LearningAction(
                         style: FilledButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                         ),
                         label: isLast
@@ -248,7 +252,7 @@ class _QuizOption extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AnimatedScale(
-        scale: selected ? .99 : 1,
+        scale: 1,
         duration: LearningMotion.duration(
           context,
           const Duration(milliseconds: 120),
@@ -276,7 +280,7 @@ class _QuizOption extends StatelessWidget {
                   : selected
                   ? scheme.primaryContainer
                   : theme.scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: correct
                     ? scheme.tertiary
@@ -290,7 +294,7 @@ class _QuizOption extends StatelessWidget {
             ),
             child: Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(18),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: onTap,

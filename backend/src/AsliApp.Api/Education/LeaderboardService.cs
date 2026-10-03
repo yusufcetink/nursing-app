@@ -16,10 +16,10 @@ public sealed class LeaderboardService(AppDbContext dbContext, TimeProvider cloc
     public Task<List<LeaderboardCourseResponse>> GetCoursesAsync(CancellationToken cancellationToken) =>
         dbContext.EducationModules.AsNoTracking()
             .Where(m => m.IsPublished && m.Lessons.Any(l =>
-                l.IsPublished && l.Quiz != null && l.Quiz.IsPublished))
+                l.IsPublished && l.Quizzes.Any(q => q.IsPublished)))
             .OrderBy(m => m.Order)
             .Select(m => new LeaderboardCourseResponse(m.Id, m.Title,
-                m.Lessons.Count(l => l.IsPublished && l.Quiz != null && l.Quiz.IsPublished)))
+                m.Lessons.Where(l => l.IsPublished).SelectMany(l => l.Quizzes).Count(q => q.IsPublished)))
             .ToListAsync(cancellationToken);
 
     public async Task<LeaderboardResponse?> GetAsync(
@@ -32,8 +32,7 @@ public sealed class LeaderboardService(AppDbContext dbContext, TimeProvider cloc
         {
             var course = await dbContext.EducationModules.AsNoTracking()
                 .Where(m => m.Id == courseId && m.IsPublished)
-                .Select(m => new { m.Title, QuizCount = m.Lessons.Count(l =>
-                    l.IsPublished && l.Quiz != null && l.Quiz.IsPublished) })
+                .Select(m => new { m.Title, QuizCount = m.Lessons.Where(l => l.IsPublished).SelectMany(l => l.Quizzes).Count(q => q.IsPublished) })
                 .SingleOrDefaultAsync(cancellationToken);
             if (course is null) return null;
             courseName = course.Title;

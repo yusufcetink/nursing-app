@@ -5,6 +5,7 @@ import 'package:asli_app/features/auth/domain/models/authenticated_user.dart';
 import 'package:asli_app/features/notifications/application/push_notification_service.dart';
 import 'package:asli_app/features/analytics/application/activity_tracker.dart';
 import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
+import 'package:asli_app/core/network/session_expiration.dart';
 
 final authControllerProvider =
     AsyncNotifierProvider<AuthController, AuthenticatedUser?>(
@@ -18,6 +19,11 @@ final class AuthController extends AsyncNotifier<AuthenticatedUser?> {
 
   @override
   Future<AuthenticatedUser?> build() {
+    ref.listen(sessionExpirationProvider, (_, _) {
+      _lastActionError = null;
+      ref.read(progressControllerProvider.notifier).reset();
+      state = const AsyncData(null);
+    });
     return ref.read(authRepositoryProvider).restoreSession();
   }
 

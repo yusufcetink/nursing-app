@@ -43,12 +43,14 @@ public sealed class SqlServerQuizAttemptTests
                 UserName = userId.ToString(), FirstName = "SQL", LastName = "Test",
             });
             await db.SaveChangesAsync();
+            await new EducationService(db, storage, storageOptions)
+                .CompleteLessonAsync(userId, PainLessonSeed.LessonId, default);
         }
         async Task<QuizAttemptOutcome> Start()
         {
             await using var db = new AppDbContext(options);
             return await new EducationService(db, storage, storageOptions)
-                .GetQuizAttemptAsync(userId, PainLessonSeed.LessonId, true, default);
+                .GetQuizAttemptAsync(userId, PainLessonSeed.QuizId, true, default);
         }
         var starts = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => Start()));
         Assert.All(starts, start => Assert.Equal(200, start.StatusCode));

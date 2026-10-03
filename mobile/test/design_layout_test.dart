@@ -1,3 +1,6 @@
+import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
+
 import 'helpers/fake_activity_repository.dart';
 import 'helpers/ui_test_helpers.dart';
 
@@ -16,6 +19,7 @@ import 'package:asli_app/features/auth/presentation/controllers/auth_controller.
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
+import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
 import 'package:asli_app/features/quiz/data/quiz_repository.dart';
 import 'package:asli_app/features/quiz/presentation/controllers/quiz_controller.dart';
 
@@ -57,6 +61,16 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final container = ProviderContainer(
         overrides: [
+          leaderboardCoursesProvider.overrideWith((ref) async => const []),
+          leaderboardProvider.overrideWith(
+            (ref, selection) async => const LeaderboardData(
+              entries: [],
+              totalUsers: 0,
+              offset: 0,
+              limit: 20,
+            ),
+          ),
+
           activityRepositoryProvider.overrideWithValue(
             FakeActivityRepository(),
           ),
@@ -161,12 +175,17 @@ void main() {
       await tester.tap(find.text('Hemşirenin Temel Rolleri'));
       await tester.pumpAndSettle();
       await inspect('04-lesson');
+      await container
+          .read(progressControllerProvider.notifier)
+          .completeLesson(testLessons.first.id);
+      await tester.pumpAndSettle();
       await tester.reveal(find.text('Quiz’e Başla'), 200);
       await tester.tap(find.text('Quiz’e Başla'));
       await tester.pumpAndSettle();
       final selection = (
         moduleId: testModule.id,
         lessonId: testLessons.first.id,
+        quizId: testQuiz.id,
       );
       final controller = container.read(
         quizControllerProvider(selection).notifier,

@@ -26,6 +26,7 @@ class LearningPathStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.4;
     final current = status == LessonStepStatus.current;
     final completed = status == LessonStepStatus.completed;
     final locked = status == LessonStepStatus.locked;
@@ -51,18 +52,26 @@ class LearningPathStep extends StatelessWidget {
         fontWeight: completed || current ? FontWeight.w600 : FontWeight.w400,
       ),
     );
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 44,
-            child: CustomPaint(
-              painter: _PathConnector(
-                color: completed ? scheme.tertiary : scheme.outline,
-                dashed: !completed,
-                last: last,
-              ),
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 44,
+          child: CustomPaint(
+            painter: _PathConnector(
+              color: completed ? scheme.tertiary : scheme.outline,
+              dashed: !completed,
+              last: last,
+            ),
+          ),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 44,
               child: Column(
                 children: [
                   const SizedBox(height: 13),
@@ -116,105 +125,113 @@ class LearningPathStep extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: current ? 14 : 4),
-              child: Material(
-                color: current
-                    ? theme.brightness == Brightness.dark
-                          ? scheme.surface
-                          : scheme.primaryContainer
-                    : Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: current && theme.brightness == Brightness.dark
-                        ? scheme.outlineVariant
-                        : Colors.transparent,
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: locked ? null : onOpen,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      current ? 10 : 6,
-                      12,
-                      current ? 10 : 0,
-                      current ? 10 : 12,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Material(
+                  color: current
+                      ? Color.alphaBlend(
+                          scheme.primary.withValues(alpha: .08),
+                          scheme.surface,
+                        )
+                      : scheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: current
+                          ? scheme.primary
+                          : scheme.outlineVariant.withValues(alpha: .45),
+                      width: current ? 1.5 : 1,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                '${index + 1}'.padLeft(2, '0'),
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  color: current
-                                      ? scheme.primary
-                                      : scheme.onSurfaceVariant,
-                                  fontWeight: current
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: locked ? null : onOpen,
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (!largeText)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    '${index + 1}'.padLeft(2, '0'),
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      color: current
+                                          ? scheme.primary
+                                          : scheme.onSurfaceVariant,
+                                      fontWeight: current
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              if (!largeText) const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (largeText) ...[
+                                      Text(
+                                        'Ders ${index + 1}',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                    ],
+                                    if (current) ...[
+                                      statusText,
+                                      const SizedBox(height: 4),
+                                    ],
+                                    title,
+                                    const SizedBox(height: 4),
+                                    if (current)
+                                      Text(
+                                        'Sıradaki adımın hazır.',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                      )
+                                    else
+                                      statusText,
+                                  ],
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (current) ...[
-                                    statusText,
-                                    const SizedBox(height: 4),
-                                  ],
-                                  title,
-                                  const SizedBox(height: 4),
-                                  if (current)
-                                    Text(
-                                      'Sıradaki adımın hazır.',
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: scheme.onSurfaceVariant,
-                                          ),
-                                    )
-                                  else
-                                    statusText,
-                                ],
+                            ],
+                          ),
+                          if (current) ...[
+                            const SizedBox(height: 12),
+                            LearningAction(
+                              label: 'Derse devam et',
+                              onPressed: onOpen,
+                              style: FilledButton.styleFrom(
+                                minimumSize: const Size(0, 48),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                shape: const StadiumBorder(),
                               ),
                             ),
                           ],
-                        ),
-                        if (current) ...[
-                          const SizedBox(height: 12),
-                          LearningAction(
-                            label: 'Derse devam et',
-                            onPressed: onOpen,
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size(0, 48),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
-                              ),
-                              shape: const StadiumBorder(),
-                            ),
-                          ),
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -1,3 +1,6 @@
+import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
+
 import '../../../../helpers/fake_activity_repository.dart';
 
 import 'dart:async';
@@ -20,12 +23,57 @@ import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/home/presentation/pages/home_page.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
+import 'package:asli_app/core/network/session_expiration.dart';
 
 import '../../../../helpers/fake_auth_repository.dart';
 import '../../../../helpers/fake_content_management_repository.dart';
 import '../../../../helpers/fake_learning_repositories.dart';
 
 void main() {
+  testWidgets('session expiration redirects the protected screen to login', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        activityRepositoryProvider.overrideWithValue(FakeActivityRepository()),
+        authRepositoryProvider.overrideWithValue(
+          FakeAuthRepository(restoredUser: FakeAuthRepository.user),
+        ),
+        educationRepositoryProvider.overrideWithValue(
+          FakeEducationRepository(),
+        ),
+        progressRepositoryProvider.overrideWithValue(FakeProgressRepository()),
+        profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        leaderboardCoursesProvider.overrideWith((ref) async => const []),
+        leaderboardProvider.overrideWith(
+          (ref, selection) async => const LeaderboardData(
+            entries: [],
+            totalUsers: 0,
+            offset: 0,
+            limit: 20,
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(container: container, child: const App()),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      container.read(appRouterProvider).state.uri.path,
+      AppRoutes.homePath,
+    );
+    container.read(sessionExpirationProvider.notifier).notify();
+    await tester.pumpAndSettle();
+    expect(container.read(authControllerProvider).value, isNull);
+    expect(
+      container.read(appRouterProvider).state.uri.path,
+      AppRoutes.loginPath,
+    );
+    expect(find.byKey(const Key('login_remember_me')), findsOneWidget);
+  });
+
   testWidgets('yeni ders ekranı blok oluşturma yönlendirmesini gösterir', (
     tester,
   ) async {
@@ -66,6 +114,15 @@ void main() {
         ),
         progressRepositoryProvider.overrideWithValue(FakeProgressRepository()),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        leaderboardCoursesProvider.overrideWith((ref) async => const []),
+        leaderboardProvider.overrideWith(
+          (ref, selection) async => const LeaderboardData(
+            entries: [],
+            totalUsers: 0,
+            offset: 0,
+            limit: 20,
+          ),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -83,9 +140,7 @@ void main() {
     await tester.pump();
     expect(
       tester
-          .widget<CheckboxListTile>(
-            find.byKey(const Key('login_remember_me')),
-          )
+          .widget<CheckboxListTile>(find.byKey(const Key('login_remember_me')))
           .value,
       isFalse,
     );
@@ -223,6 +278,15 @@ void main() {
         ),
         progressRepositoryProvider.overrideWithValue(FakeProgressRepository()),
         profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+        leaderboardCoursesProvider.overrideWith((ref) async => const []),
+        leaderboardProvider.overrideWith(
+          (ref, selection) async => const LeaderboardData(
+            entries: [],
+            totalUsers: 0,
+            offset: 0,
+            limit: 20,
+          ),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -365,6 +429,15 @@ void main() {
             FakeProgressRepository(),
           ),
           profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+          leaderboardCoursesProvider.overrideWith((ref) async => const []),
+          leaderboardProvider.overrideWith(
+            (ref, selection) async => const LeaderboardData(
+              entries: [],
+              totalUsers: 0,
+              offset: 0,
+              limit: 20,
+            ),
+          ),
         ],
         child: const App(),
       ),
@@ -424,6 +497,8 @@ void main() {
     await tester.ensureVisible(manageQuizButton);
     await tester.pumpAndSettle();
     await tester.tap(manageQuizButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('quiz-id')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('create_question_button')));
     await tester.pumpAndSettle();

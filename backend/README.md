@@ -13,7 +13,19 @@ Configure SQL Server outside source control, for example with the `ConnectionStr
 
 Configure the JWT signing key with the `Jwt__Key` environment variable. It must be at least 32 bytes. The issuer, audience, and token lifetime have non-secret defaults in `appsettings.json` and can also be overridden through configuration.
 
-Lesson media files are stored outside the application and source directories. Development uses `C:\AsliAppStorage`; production has no machine-specific default and requires an explicit external path:
+For a new, dedicated local development database, apply migrations after setting
+the connection string. Check the target database before running this command:
+
+```powershell
+dotnet tool restore
+dotnet ef database update --project src/AsliApp.Infrastructure --startup-project src/AsliApp.Api
+dotnet run --project src/AsliApp.Api --launch-profile http
+```
+
+The API does not apply migrations at startup. Its local health endpoint is
+`http://localhost:5218/health`.
+
+Lesson media files are stored outside the application and source directories. Development uses `C:\AsliAppStorage`. Production defaults to `App_Data\asliapp-storage` for Plesk hosting; override it with a persistent external path when the host provides one:
 
 ```powershell
 $env:FileStorage__RootPath = "D:\AsliAppStorage"

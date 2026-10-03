@@ -22,8 +22,8 @@ class CompactLeaderboardSection extends ConsumerWidget {
             Expanded(
               child: Text(
                 'Bu Haftanın Liderleri',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -71,9 +71,10 @@ class CompactLeaderboardSection extends ConsumerWidget {
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   children: [
-                    LeaderboardPodium(entries: result.entries, isLesson: false),
+                    for (final entry in result.entries)
+                      LeaderboardListItem(entry: entry, isLesson: false),
                     if (current != null && current.rank > 3) ...[
-                      const Divider(height: 24),
+                      const SizedBox(height: 8),
                       LeaderboardListItem(entry: current, isLesson: false),
                     ],
                   ],

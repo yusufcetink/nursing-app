@@ -51,7 +51,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                 .StatusCode);
 
         var quizResponse = await client.GetAsync(
-            $"/api/education/lessons/{content.LessonId}/quiz");
+            $"/api/education/quizzes/{await GetQuizIdAsync(content.LessonId)}");
         Assert.Equal(HttpStatusCode.OK, quizResponse.StatusCode);
         var quizJson = await quizResponse.Content.ReadAsStringAsync();
         Assert.DoesNotContain("isCorrect", quizJson, StringComparison.OrdinalIgnoreCase);
@@ -81,7 +81,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                 $"/api/education/lessons/{id}",
                 new LessonWriteRequest("Denied", "Denied", 1, 0, false)),
             client.PostAsJsonAsync(
-                $"/api/education/lessons/{id}/quiz",
+                $"/api/education/lessons/{id}/quizzes",
                 new QuizWriteRequest("Denied", false)),
             client.PutAsJsonAsync(
                 $"/api/education/quizzes/{id}",
@@ -114,7 +114,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
             (await client.GetAsync("/api/education/content/modules")).StatusCode);
         Assert.Equal(
             HttpStatusCode.Forbidden,
-            (await client.GetAsync($"/api/education/content/lessons/{Guid.NewGuid()}/quiz"))
+            (await client.GetAsync($"/api/education/content/quizzes/{Guid.NewGuid()}"))
                 .StatusCode);
 
         using var upload = CreateMediaUpload([1, 2, 3], "denied.mp4", "video/mp4", 0);
@@ -422,6 +422,32 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
     }
 
     [Fact]
+    public async Task LocalFileStorageCollisionPreservesExistingFile()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "AsliApp.StorageTest", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var storage = new LocalFileStorage(Options.Create(new FileStorageOptions
+            {
+                RootPath = root,
+                MaxFileSizeBytes = 1024,
+            }));
+            await storage.WriteAsync("existing.png", new MemoryStream([1, 2, 3]));
+
+            await Assert.ThrowsAsync<IOException>(() => storage.WriteAsync(
+                "existing.png", new MemoryStream([4, 5, 6])));
+            Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(Path.Combine(root, "existing.png")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task QuizSubmissionIsEvaluatedByServerWithoutLeakingCorrectOption()
     {
         var content = await SeedContentAsync();
@@ -560,7 +586,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
         Assert.Equal(
             HttpStatusCode.Created,
             (await client.PostAsJsonAsync(
-                $"/api/education/lessons/{createdLesson.Id}/quiz",
+                $"/api/education/lessons/{createdLesson.Id}/quizzes",
                 new QuizWriteRequest("Draft quiz", false))).StatusCode);
         using var videoUpload = CreateMediaUpload(
             [0, 1, 2, 3],
@@ -596,7 +622,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
             modules,
             item => item.Id == createdModule.Id && item.Order == moduleOrder);
         Assert.Equal(2, module.Lessons.Single().Order);
-        Assert.NotNull(lesson.QuizId);
+        Assert.Single(lesson.Quizzes);
         Assert.Contains(lesson.Blocks, block => block.Media?.Id == createdVideo.Id);
         Assert.Equal(
             HttpStatusCode.NoContent,
@@ -629,7 +655,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
         Assert.False(lesson.IsPublished);
 
         var quiz = await client.GetFromJsonAsync<ContentQuizResponse>(
-            $"/api/education/content/lessons/{content.LessonId}/quiz");
+            $"/api/education/content/quizzes/{await GetQuizIdAsync(content.LessonId)}");
         Assert.NotNull(quiz);
         Assert.Contains(
             quiz.Questions.Single().Options,
@@ -676,7 +702,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                 new QuizOptionWriteRequest("Correct", true, 2))).StatusCode);
 
         var reorderedQuiz = await client.GetFromJsonAsync<ContentQuizResponse>(
-            $"/api/education/content/lessons/{content.LessonId}/quiz");
+            $"/api/education/content/quizzes/{await GetQuizIdAsync(content.LessonId)}");
         Assert.NotNull(reorderedQuiz);
         Assert.False(reorderedQuiz.IsPublished);
         Assert.Equal(
@@ -728,7 +754,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                 $"/api/education/questions/{questionContent.QuestionId}"))
                 .StatusCode);
         var questionQuiz = await admin.GetFromJsonAsync<ContentQuizResponse>(
-            $"/api/education/content/lessons/{questionContent.LessonId}/quiz");
+            $"/api/education/content/quizzes/{await GetQuizIdAsync(questionContent.LessonId)}");
         Assert.NotNull(questionQuiz);
         Assert.Empty(questionQuiz.Questions);
         Assert.False(questionQuiz.IsPublished);
@@ -740,12 +766,12 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
         Assert.Equal(
             HttpStatusCode.NotFound,
             (await admin.GetAsync(
-                $"/api/education/content/lessons/{quizContent.LessonId}/quiz"))
+                $"/api/education/content/quizzes/{await GetQuizIdAsync(quizContent.LessonId)}"))
                 .StatusCode);
         Assert.Equal(
             HttpStatusCode.Created,
             (await admin.PostAsJsonAsync(
-                $"/api/education/lessons/{quizContent.LessonId}/quiz",
+                $"/api/education/lessons/{quizContent.LessonId}/quizzes",
                 new QuizWriteRequest("Replacement quiz", false))).StatusCode);
 
         Assert.Equal(
@@ -809,7 +835,7 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
     {
         using var scope = _factory.Services.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<AppDbContext>()
-            .Quizzes
+            .Quizzes.IgnoreQueryFilters()
             .Where(quiz => quiz.LessonId == lessonId)
             .Select(quiz => quiz.Id)
             .SingleAsync();
@@ -850,7 +876,8 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                     db.QuizOptions.Add(new QuizOption { Id = Guid.NewGuid(), QuizQuestionId = q.Id, Text = $"Distractor {i}", Order = i + 1 });
             await db.SaveChangesAsync();
         }
-        var start = await client.PostAsync($"/api/education/lessons/{lessonId}/quiz/start", null);
+        (await client.PutAsync($"/api/education/lessons/{lessonId}/progress", null)).EnsureSuccessStatusCode();
+        var start = await client.PostAsync($"/api/education/quizzes/{await GetQuizIdAsync(lessonId)}/start", null);
         start.EnsureSuccessStatusCode();
         var attempt = (await start.Content.ReadFromJsonAsync<QuizAttemptResponse>())!;
         foreach (var answer in answers)

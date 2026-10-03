@@ -49,7 +49,7 @@ void main() {
               lessonReads++;
               return testLessons.first;
             }),
-            quizForLessonProvider.overrideWith((ref, lessonId) async {
+            quizProvider.overrideWith((ref, lessonId) async {
               quizReads++;
               return testQuiz;
             }),
@@ -59,11 +59,11 @@ void main() {
         container.listen(educationModulesProvider, (_, _) {});
         container.listen(educationModuleProvider(moduleId), (_, _) {});
         container.listen(lessonProvider(selection), (_, _) {});
-        container.listen(quizForLessonProvider(lessonId), (_, _) {});
+        container.listen(quizProvider(lessonId), (_, _) {});
         await container.read(educationModulesProvider.future);
         await container.read(educationModuleProvider(moduleId).future);
         await container.read(lessonProvider(selection).future);
-        await container.read(quizForLessonProvider(lessonId).future);
+        await container.read(quizProvider(lessonId).future);
         final controller = container.read(
           contentMutationControllerProvider.notifier,
         );
@@ -103,7 +103,7 @@ void main() {
         await container.read(educationModulesProvider.future);
         await container.read(educationModuleProvider(moduleId).future);
         await container.read(lessonProvider(selection).future);
-        await container.read(quizForLessonProvider(lessonId).future);
+        await container.read(quizProvider(lessonId).future);
         expect(repository.getModulesCallCount, 2);
         expect(repository.getModuleCallCount, 2);
         expect(lessonReads, isModule && isCreate ? 1 : 2);
@@ -172,7 +172,7 @@ void main() {
             FakeContentManagementRepository(),
           ),
           educationRepositoryProvider.overrideWithValue(repository),
-          quizForLessonProvider.overrideWith((ref, id) async {
+          quizProvider.overrideWith((ref, id) async {
             quizReads++;
             return testQuiz;
           }),
@@ -184,9 +184,9 @@ void main() {
         lessonId: testLessons.first.id,
       );
       container.listen(lessonProvider(selection), (_, _) {});
-      container.listen(quizForLessonProvider(selection.lessonId), (_, _) {});
+      container.listen(quizProvider(testQuiz.id), (_, _) {});
       await container.read(lessonProvider(selection).future);
-      await container.read(quizForLessonProvider(selection.lessonId).future);
+      await container.read(quizProvider(testQuiz.id).future);
       final controller = container.read(
         contentMutationControllerProvider.notifier,
       );
@@ -223,7 +223,7 @@ void main() {
         );
       }
       await container.read(lessonProvider(selection).future);
-      await container.read(quizForLessonProvider(selection.lessonId).future);
+      await container.read(quizProvider(testQuiz.id).future);
       expect(repository.getLessonCallCount, 2);
       expect(quizReads, 2);
     });

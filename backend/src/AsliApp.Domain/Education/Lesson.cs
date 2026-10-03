@@ -15,7 +15,7 @@ public sealed class Lesson
     public DateTimeOffset UpdatedAtUtc { get; set; }
 
     public EducationModule EducationModule { get; set; } = null!;
-    public Quiz? Quiz { get; set; }
+    public ICollection<Quiz> Quizzes { get; set; } = [];
     public ICollection<LessonMedia> Media { get; set; } = [];
     public ICollection<LessonContentBlock> ContentBlocks { get; set; } = [];
     public ICollection<LessonProgress> ProgressEntries { get; set; } = [];

@@ -24,13 +24,20 @@ class HomeModuleCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final state = ref.watch(progressControllerProvider);
+    final availability = ref.watch(
+      progressControllerProvider.select(
+        (state) => (
+          known: state.hasValue && !state.hasError,
+          hasError: state.hasError,
+        ),
+      ),
+    );
     final progress = ref.watch(moduleProgressProvider(module)).clamp(0.0, 1.0);
-    final known = state.hasValue && !state.hasError;
+    final known = availability.known;
     final count = (progress * module.lessonCount).round();
     final completed = known && module.lessonCount > 0 && progress >= 1;
     final caption = !known
-        ? state.hasError
+        ? availability.hasError
               ? 'İlerleme yüklenemedi'
               : 'İlerleme yükleniyor…'
         : module.lessonCount == 0
@@ -51,7 +58,7 @@ class HomeModuleCard extends ConsumerWidget {
     final title = Text(
       module.title,
       style: theme.textTheme.titleLarge?.copyWith(
-        fontSize: hero ? 25 : 14,
+        fontSize: hero ? 24 : 18,
         height: 1.15,
         fontWeight: FontWeight.w800,
         letterSpacing: hero ? -.8 : -.3,
@@ -61,16 +68,15 @@ class HomeModuleCard extends ConsumerWidget {
       module.description,
       maxLines: largeText ? null : 2,
       overflow: largeText ? null : TextOverflow.ellipsis,
-      style: theme.textTheme.bodyMedium?.copyWith(
-        fontSize: hero ? 14 : 12,
-        height: 1.4,
-      ),
+      style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14, height: 1.4),
     );
     return Material(
       color: scheme.surface,
+      elevation: hero ? 2 : 0,
+      shadowColor: scheme.shadow.withValues(alpha: .12),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(hero ? 18 : 14),
+        borderRadius: BorderRadius.circular(hero ? 26 : 20),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .3)),
       ),
       child: InkWell(
@@ -98,8 +104,8 @@ class HomeModuleCard extends ConsumerWidget {
                                 : known && progress == 0
                                 ? 'İLK ADIMIN'
                                 : 'KALDIĞIN YERDEN',
-                            color: const Color(0xff0642d9),
-                            foreground: Colors.white,
+                            color: scheme.primaryContainer,
+                            foreground: scheme.onPrimaryContainer,
                           ),
                         ),
                       ),
@@ -108,7 +114,7 @@ class HomeModuleCard extends ConsumerWidget {
                   CustomPaint(
                     painter: _PanelWave(scheme.surface),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(13, 10, 13, 11),
+                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -162,85 +168,73 @@ class HomeModuleCard extends ConsumerWidget {
                   ),
                 ],
               )
-            : Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 84,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(9),
-                        child: ModuleCover(
-                          title: module.title,
-                          aspectRatio: 84 / 124,
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ModuleCover(title: module.title, aspectRatio: 1.8),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        title,
+                        const SizedBox(height: 6),
+                        description,
+                        const SizedBox(height: 14),
+                        Text(
+                          caption,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 11),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          title,
-                          const SizedBox(height: 3),
-                          description,
-                          const SizedBox(height: 5),
-                          Text(
-                            caption,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                            ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: known ? progress : null,
+                          minHeight: 5,
+                          borderRadius: BorderRadius.circular(10),
+                          semanticsLabel: '${module.title} ilerlemesi',
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            ref
+                                .read(activityTrackerProvider)
+                                .track('button_click', target: action);
+                            onOpen();
+                          },
+                          style: TextButton.styleFrom(
+                            alignment: Alignment.centerLeft,
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(48, 48),
+                            tapTargetSize: MaterialTapTargetSize.padded,
+                            visualDensity: VisualDensity.compact,
                           ),
-                          const SizedBox(height: 3),
-                          LinearProgressIndicator(
-                            value: known ? progress : null,
-                            minHeight: 6,
-                            borderRadius: BorderRadius.circular(10),
-                            semanticsLabel: '${module.title} ilerlemesi',
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              ref
-                                  .read(activityTrackerProvider)
-                                  .track('button_click', target: action);
-                              onOpen();
-                            },
-                            style: TextButton.styleFrom(
-                              alignment: Alignment.centerLeft,
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(48, 32),
-                              tapTargetSize: MaterialTapTargetSize.padded,
-                              visualDensity: VisualDensity.compact,
-                            ),
-                            child: Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(text: action),
-                                  WidgetSpan(
-                                    alignment: PlaceholderAlignment.middle,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 18,
-                                        color: scheme.primary,
-                                      ),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(text: action),
+                                WidgetSpan(
+                                  alignment: PlaceholderAlignment.middle,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 8),
+                                    child: Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 18,
+                                      color: scheme.primary,
                                     ),
                                   ),
-                                ],
-                              ),
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: scheme.primary,
-                                fontSize: 14,
-                              ),
+                                ),
+                              ],
+                            ),
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: scheme.primary,
+                              fontSize: 14,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
       ),
     );

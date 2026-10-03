@@ -9,6 +9,7 @@ import 'package:asli_app/features/analytics/application/activity_tracker.dart';
 import 'package:asli_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:asli_app/features/notifications/application/push_notification_service.dart';
 import 'package:asli_app/features/notifications/application/local_inactivity_reminder_service.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
 
 class App extends ConsumerStatefulWidget {
   const App({super.key});
@@ -34,6 +35,11 @@ class _AppState extends ConsumerState<App> {
     }
     ref.listenManual(authControllerProvider, (previous, next) {
       if (next.isLoading || next.hasError) return;
+      if (previous?.value?.id != next.value?.id) {
+        ref.invalidate(homeLeaderboardProvider);
+        ref.invalidate(leaderboardProvider);
+        ref.invalidate(leaderboardCoursesProvider);
+      }
       final authenticated = next.hasValue && next.value != null;
       if (authenticated) {
         _tracker.startSession();

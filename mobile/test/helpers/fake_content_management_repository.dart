@@ -1,3 +1,4 @@
+import 'package:asli_app/features/quiz/domain/models/quiz_summary.dart';
 import 'package:asli_app/features/content_management/data/content_management_repository.dart';
 import 'package:asli_app/features/content_management/domain/models/content_models.dart';
 
@@ -133,7 +134,7 @@ final class FakeContentManagementRepository
     estimatedDurationMinutes: 5,
     order: 1,
     isPublished: false,
-    quizId: 'quiz-id',
+    quizzes: [QuizSummary(id: 'quiz-id', title: 'Quiz', order: 0)],
     blocks: [
       ContentLessonContentBlock(
         id: 'text-block-id',
@@ -146,14 +147,13 @@ final class FakeContentManagementRepository
   );
 
   @override
-  Future<ContentQuiz?> getQuizForLesson(String lessonId) async =>
-      const ContentQuiz(
-        id: 'quiz-id',
-        lessonId: 'draft-lesson',
-        title: 'Taslak Quiz',
-        isPublished: false,
-        questions: [],
-      );
+  Future<ContentQuiz?> getQuiz(String lessonId) async => const ContentQuiz(
+    id: 'quiz-id',
+    lessonId: 'draft-lesson',
+    title: 'Taslak Quiz',
+    isPublished: false,
+    questions: [],
+  );
 
   @override
   Future<ContentModule> getModule(String id) async => const ContentModule(

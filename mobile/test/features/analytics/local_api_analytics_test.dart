@@ -1,3 +1,5 @@
+import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
+
 // Opt-in: uses real local API accounts supplied in an ignored fixture file.
 // ANALYTICS_LOCAL_FIXTURE must contain student/admin {id,email,password}.
 import 'dart:convert';
@@ -153,16 +155,31 @@ void main() {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(seconds: 3)),
     );
-    final selectedQuiz = quizForLessonProvider(lesson.id);
+    await tester.runAsync(
+      () => container
+          .read(progressControllerProvider.notifier)
+          .completeLesson(lesson.id),
+    );
+    final selectedQuiz = quizProvider(
+      container.read(selectedLesson).requireValue.quizzes.first.id,
+    );
     container.read(selectedQuiz);
     await waitFor(() => container.read(selectedQuiz).hasValue);
     final quiz = container.read(selectedQuiz).requireValue;
     router.pushNamed(
       AppRoutes.quiz,
-      pathParameters: {'moduleId': module.id, 'lessonId': lesson.id},
+      pathParameters: {
+        'moduleId': module.id,
+        'lessonId': lesson.id,
+        'quizId': quiz.id,
+      },
     );
     await tester.pump(const Duration(milliseconds: 400));
-    final selection = (moduleId: module.id, lessonId: lesson.id);
+    final selection = (
+      moduleId: module.id,
+      lessonId: lesson.id,
+      quizId: quiz.id,
+    );
     for (var index = 0; index < quiz.questions.length; index++) {
       final option = find.text(quiz.questions[index].options.first.text);
       await tester.ensureVisible(option);
@@ -284,6 +301,37 @@ class _MemoryTokenStorage implements TokenStorage {
   Future<String?> readAccessToken() async => _token;
   @override
   Future<String?> readRefreshToken() async => null;
+  @override
+  Future<bool> rotateTokens({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    if (await readRefreshToken() != expectedRefreshToken) {
+      return false;
+    }
+    await writeTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      persist: true,
+    );
+    return true;
+  }
+
+  @override
+  Future<bool> clearTokensIfUnchanged({
+    required String? accessToken,
+    required String? refreshToken,
+  }) async {
+    if (await readAccessToken() != accessToken ||
+        await readRefreshToken() != refreshToken ||
+        (accessToken == null && refreshToken == null)) {
+      return false;
+    }
+    await deleteTokens();
+    return true;
+  }
+
   @override
   Future<String> getDeviceId() async => 'test-device';
   @override

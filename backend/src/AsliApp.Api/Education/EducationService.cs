@@ -73,9 +73,9 @@ public sealed partial class EducationService(
                 lesson.Description,
                 lesson.EstimatedDurationMinutes,
                 lesson.Order,
-                lesson.Quiz != null && lesson.Quiz.IsPublished && !lesson.Quiz.IsDeleted
-                    ? lesson.Quiz.Id
-                    : null,
+                lesson.Quizzes.Where(q => q.IsPublished && !q.IsDeleted)
+                    .OrderBy(q => q.Order).ThenBy(q => q.Id)
+                    .Select(q => new QuizSummaryResponse(q.Id, q.Title, q.Order, q.IsPublished)).ToList(),
                 lesson.ContentBlocks
                     .OrderBy(block => block.SortOrder)
                     .Select(block => new LessonContentBlockResponse(
@@ -97,14 +97,14 @@ public sealed partial class EducationService(
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    public Task<StudentQuizResponse?> GetLessonQuizAsync(
-        Guid lessonId,
+    public Task<StudentQuizResponse?> GetQuizAsync(
+        Guid quizId,
         CancellationToken cancellationToken)
     {
         return dbContext.Quizzes
             .AsNoTracking()
             .Where(quiz =>
-                quiz.LessonId == lessonId &&
+                quiz.Id == quizId &&
                 quiz.IsPublished &&
                 !quiz.IsDeleted &&
                 quiz.Lesson.IsPublished &&
@@ -313,7 +313,8 @@ public sealed partial class EducationService(
                 lesson.EstimatedDurationMinutes,
                 lesson.Order,
                 lesson.IsPublished,
-                lesson.Quiz == null || lesson.Quiz.IsDeleted ? null : lesson.Quiz.Id,
+                lesson.Quizzes.Where(q => !q.IsDeleted).OrderBy(q => q.Order).ThenBy(q => q.Id)
+                    .Select(q => new QuizSummaryResponse(q.Id, q.Title, q.Order, q.IsPublished)).ToList(),
                 lesson.ContentBlocks
                     .OrderBy(block => block.SortOrder)
                     .Select(block => new LessonContentBlockResponse(
@@ -662,12 +663,12 @@ public sealed partial class EducationService(
     }
 
     public Task<ContentQuizResponse?> GetContentQuizAsync(
-        Guid lessonId,
+        Guid quizId,
         CancellationToken cancellationToken)
     {
         return dbContext.Quizzes
             .AsNoTracking()
-            .Where(quiz => quiz.LessonId == lessonId && !quiz.IsDeleted)
+            .Where(quiz => quiz.Id == quizId && !quiz.IsDeleted)
             .Select(quiz => new ContentQuizResponse(
                 quiz.Id,
                 quiz.LessonId,
@@ -689,7 +690,7 @@ public sealed partial class EducationService(
                                 option.Order))
                             .ToList()))
                     .ToList(),
-                quiz.UpdatedAtUtc))
+                quiz.UpdatedAtUtc, quiz.Order))
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -786,9 +787,6 @@ public sealed partial class EducationService(
         if (request.IsPublished ||
             !await dbContext.Lessons.AnyAsync(
                 lesson => lesson.Id == lessonId && !lesson.IsDeleted,
-                cancellationToken) ||
-            await dbContext.Quizzes.AnyAsync(
-                quiz => quiz.LessonId == lessonId && !quiz.IsDeleted,
                 cancellationToken))
         {
             return null;
@@ -799,6 +797,7 @@ public sealed partial class EducationService(
         {
             Id = Guid.NewGuid(),
             LessonId = lessonId,
+            Order = request.Order,
             Title = request.Title.Trim(),
             IsPublished = request.IsPublished,
             CreatedAtUtc = now,
@@ -832,6 +831,7 @@ public sealed partial class EducationService(
         }
 
         quiz.Title = request.Title.Trim();
+        quiz.Order = request.Order;
         quiz.IsPublished = request.IsPublished;
         quiz.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -998,8 +998,8 @@ public sealed partial class EducationService(
     {
         var module = await dbContext.EducationModules
             .Include(candidate => candidate.Lessons)
-                .ThenInclude(lesson => lesson.Quiz)
-                .ThenInclude(quiz => quiz!.Questions)
+                .ThenInclude(lesson => lesson.Quizzes)
+                .ThenInclude(quiz => quiz.Questions)
             .SingleOrDefaultAsync(
                 candidate => candidate.Id == id && !candidate.IsDeleted,
                 cancellationToken);
@@ -1024,8 +1024,8 @@ public sealed partial class EducationService(
         CancellationToken cancellationToken)
     {
         var lesson = await dbContext.Lessons
-            .Include(candidate => candidate.Quiz)
-                .ThenInclude(quiz => quiz!.Questions)
+            .Include(candidate => candidate.Quizzes)
+                .ThenInclude(quiz => quiz.Questions)
             .SingleOrDefaultAsync(
                 candidate => candidate.Id == id && !candidate.IsDeleted,
                 cancellationToken);
@@ -1080,9 +1080,9 @@ public sealed partial class EducationService(
         lesson.IsPublished = false;
         lesson.DeletedAtUtc = now;
         lesson.UpdatedAtUtc = now;
-        if (lesson.Quiz is not null && !lesson.Quiz.IsDeleted)
+        foreach (var quiz in lesson.Quizzes.Where(q => !q.IsDeleted))
         {
-            SoftDeleteQuiz(lesson.Quiz, now);
+            SoftDeleteQuiz(quiz, now);
         }
     }
 

@@ -4,6 +4,7 @@ public sealed class Quiz
 {
     public Guid Id { get; set; }
     public Guid LessonId { get; set; }
+    public int Order { get; set; }
     public string Title { get; set; } = string.Empty;
     public bool IsPublished { get; set; }
     public bool IsDeleted { get; set; }

@@ -1,3 +1,4 @@
+import 'package:asli_app/features/quiz/domain/models/quiz_summary.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/education/domain/models/education_module.dart';
 import 'package:asli_app/features/education/domain/models/lesson.dart';
@@ -20,7 +21,13 @@ final testLessons = [
     description: 'Hemşirelik uygulamasındaki temel rol ve sorumluluklar.',
     estimatedDurationMinutes: 8,
     order: 1,
-    quizId: 'nursing-roles-quiz',
+    quizzes: [
+      QuizSummary(
+        id: 'nursing-roles-quiz',
+        title: 'Hemşirenin Temel Rolleri Quizi',
+        order: 0,
+      ),
+    ],
     blocks: [
       LessonContentBlock(
         id: 'block-1',
@@ -189,11 +196,11 @@ final class FakeQuizRepository implements QuizRepository {
     result: result,
   );
   @override
-  Future<Quiz> getLessonQuiz(String lessonId) async => testQuiz;
+  Future<Quiz> getQuiz(String lessonId) async => testQuiz;
   @override
-  Future<Quiz> getLessonAttempt(String lessonId) async => current;
+  Future<Quiz> getQuizAttempt(String lessonId) async => current;
   @override
-  Future<Quiz> startLessonQuiz(String lessonId) async {
+  Future<Quiz> startQuiz(String lessonId) async {
     started = true;
     return current;
   }

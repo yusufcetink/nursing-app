@@ -87,7 +87,7 @@ void main() {
           ),
           profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
           quizRepositoryProvider.overrideWithValue(FakeQuizRepository()),
-          quizForLessonProvider.overrideWith((ref, id) async => quiz),
+          quizProvider.overrideWith((ref, id) async => quiz),
         ],
       );
       addTearDown(container.dispose);
@@ -108,12 +108,14 @@ void main() {
             pathParameters: {
               AppRoutes.moduleIdParameter: testModule.id,
               AppRoutes.lessonIdParameter: testQuiz.lessonId,
+              AppRoutes.quizIdParameter: testQuiz.id,
             },
           );
       await tester.pumpAndSettle();
       final provider = quizControllerProvider((
         moduleId: testModule.id,
         lessonId: testQuiz.lessonId,
+        quizId: testQuiz.id,
       ));
       expect(
         tester

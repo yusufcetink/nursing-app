@@ -511,7 +511,7 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
                     onPressed: isLoading
                         ? null
                         : () => context.pushNamed(
-                            AppRoutes.contentQuiz,
+                            AppRoutes.contentQuizzes,
                             pathParameters: {
                               AppRoutes.contentModuleIdParameter:
                                   widget.moduleId,
@@ -520,11 +520,7 @@ class _LessonFormState extends ConsumerState<_LessonForm> {
                             },
                           ),
                     icon: const Icon(Icons.quiz_outlined),
-                    label: Text(
-                      widget.lesson!.quizId == null
-                          ? 'Quiz Oluştur'
-                          : 'Quizi Yönet',
-                    ),
+                    label: Text('Quizleri Yönet'),
                   ),
                 ],
               ],

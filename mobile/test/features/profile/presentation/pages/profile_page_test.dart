@@ -1,3 +1,6 @@
+import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
+
 import '../../../../helpers/fake_activity_repository.dart';
 import '../../../../helpers/ui_test_helpers.dart';
 
@@ -26,6 +29,16 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          leaderboardCoursesProvider.overrideWith((ref) async => const []),
+          leaderboardProvider.overrideWith(
+            (ref, selection) async => const LeaderboardData(
+              entries: [],
+              totalUsers: 0,
+              offset: 0,
+              limit: 20,
+            ),
+          ),
+
           activityRepositoryProvider.overrideWithValue(
             FakeActivityRepository(),
           ),
@@ -90,6 +103,16 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              leaderboardCoursesProvider.overrideWith((ref) async => const []),
+              leaderboardProvider.overrideWith(
+                (ref, selection) async => const LeaderboardData(
+                  entries: [],
+                  totalUsers: 0,
+                  offset: 0,
+                  limit: 20,
+                ),
+              ),
+
               activityRepositoryProvider.overrideWithValue(
                 FakeActivityRepository(),
               ),
@@ -141,6 +164,16 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          leaderboardCoursesProvider.overrideWith((ref) async => const []),
+          leaderboardProvider.overrideWith(
+            (ref, selection) async => const LeaderboardData(
+              entries: [],
+              totalUsers: 0,
+              offset: 0,
+              limit: 20,
+            ),
+          ),
+
           activityRepositoryProvider.overrideWithValue(
             FakeActivityRepository(),
           ),

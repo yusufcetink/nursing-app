@@ -1,3 +1,6 @@
+import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
+
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -74,6 +77,16 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final container = ProviderContainer(
         overrides: [
+          leaderboardCoursesProvider.overrideWith((ref) async => const []),
+          leaderboardProvider.overrideWith(
+            (ref, selection) async => const LeaderboardData(
+              entries: [],
+              totalUsers: 0,
+              offset: 0,
+              limit: 20,
+            ),
+          ),
+
           activityRepositoryProvider.overrideWithValue(
             FakeActivityRepository(),
           ),

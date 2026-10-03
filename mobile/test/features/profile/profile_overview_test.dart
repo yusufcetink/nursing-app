@@ -12,28 +12,29 @@ void main() {
     email: '',
     role: UserRole.student,
   );
-  test('yeni kullanıcı için başarı uydurulmaz ve rozet verilmez', () {
+  test('yeni kullanıcı için başarı uydurulmaz', () {
     final overview = ProfileOverview(
       user: user,
       completedLessonCount: 0,
       quizResults: [],
     );
     expect(overview.averageSuccessPercentage, isNull);
-    expect(overview.earnedBadges, isEmpty);
+    expect(overview.completedQuizCount, 0);
   });
-  test('ders ve quiz rozetleri yalnızca tamamlanınca açılır', () {
+  test('profil tamamlanan ders ve quiz sayılarını korur', () {
     final started = ProfileOverview(
       user: user,
       completedLessonCount: 1,
       quizResults: [],
     );
-    expect(started.earnedBadges, {LearningBadge.firstLesson});
+    expect(started.completedLessonCount, 1);
     final progressed = ProfileOverview(
       user: user,
       completedLessonCount: 5,
       quizResults: [testProfileQuizResult],
     );
-    expect(progressed.earnedBadges, LearningBadge.values.toSet());
+    expect(progressed.completedLessonCount, 5);
+    expect(progressed.completedQuizCount, 1);
     expect(progressed.averageSuccessPercentage, 100);
   });
   test('boş isim profil avatarında hataya yol açmaz', () {

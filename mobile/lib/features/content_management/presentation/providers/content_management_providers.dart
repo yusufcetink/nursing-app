@@ -17,8 +17,8 @@ final contentLessonProvider = FutureProvider.family<ContentLesson, String>(
 );
 
 final contentQuizProvider = FutureProvider.family<ContentQuiz?, String>(
-  (ref, lessonId) =>
-      ref.watch(contentManagementRepositoryProvider).getQuizForLesson(lessonId),
+  (ref, quizId) =>
+      ref.watch(contentManagementRepositoryProvider).getQuiz(quizId),
 );
 
 final contentMutationControllerProvider =
@@ -186,10 +186,11 @@ final class ContentMutationController extends AsyncNotifier<void> {
         await repository.updateQuiz(quiz.id, input);
       }
       ref
-        ..invalidate(contentQuizProvider(lessonId))
+        ..invalidate(contentQuizProvider)
         ..invalidate(contentLessonProvider(lessonId))
         ..invalidate(lessonProvider)
-        ..invalidate(quizForLessonProvider(lessonId));
+        ..invalidate(quizStatusProvider)
+        ..invalidate(quizProvider);
       return true;
     });
     return result ?? false;
@@ -199,10 +200,11 @@ final class ContentMutationController extends AsyncNotifier<void> {
       await _mutate(() async {
         await ref.read(contentManagementRepositoryProvider).deleteQuiz(id);
         ref
-          ..invalidate(contentQuizProvider(lessonId))
+          ..invalidate(contentQuizProvider)
           ..invalidate(contentLessonProvider(lessonId))
           ..invalidate(lessonProvider)
-          ..invalidate(quizForLessonProvider(lessonId));
+          ..invalidate(quizStatusProvider)
+          ..invalidate(quizProvider);
         return true;
       }) ??
       false;
@@ -234,9 +236,11 @@ final class ContentMutationController extends AsyncNotifier<void> {
         }
       }
       ref
-        ..invalidate(contentQuizProvider(lessonId))
+        ..invalidate(contentQuizProvider)
+        ..invalidate(contentLessonProvider(lessonId))
         ..invalidate(lessonProvider)
-        ..invalidate(quizForLessonProvider(lessonId));
+        ..invalidate(quizStatusProvider)
+        ..invalidate(quizProvider);
       return true;
     });
     return result ?? false;
@@ -246,9 +250,11 @@ final class ContentMutationController extends AsyncNotifier<void> {
       await _mutate(() async {
         await ref.read(contentManagementRepositoryProvider).deleteQuestion(id);
         ref
-          ..invalidate(contentQuizProvider(lessonId))
+          ..invalidate(contentQuizProvider)
+          ..invalidate(contentLessonProvider(lessonId))
           ..invalidate(lessonProvider)
-          ..invalidate(quizForLessonProvider(lessonId));
+          ..invalidate(quizStatusProvider)
+          ..invalidate(quizProvider);
         return true;
       }) ??
       false;
@@ -264,7 +270,8 @@ final class ContentMutationController extends AsyncNotifier<void> {
       // Invalidate the families even when module details were never loaded.
       ref
         ..invalidate(lessonProvider)
-        ..invalidate(quizForLessonProvider);
+        ..invalidate(quizStatusProvider)
+        ..invalidate(quizProvider);
     }
   }
 
@@ -272,9 +279,10 @@ final class ContentMutationController extends AsyncNotifier<void> {
     _invalidateModule(moduleId);
     ref
       ..invalidate(contentLessonProvider(lessonId))
-      ..invalidate(contentQuizProvider(lessonId))
+      ..invalidate(contentQuizProvider)
       ..invalidate(lessonProvider((moduleId: moduleId, lessonId: lessonId)))
-      ..invalidate(quizForLessonProvider(lessonId));
+      ..invalidate(quizStatusProvider)
+      ..invalidate(quizProvider);
   }
 
   Future<T?> _mutate<T>(Future<T> Function() action) async {

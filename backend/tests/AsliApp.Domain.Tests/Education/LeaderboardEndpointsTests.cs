@@ -22,7 +22,7 @@ public sealed partial class EducationEndpointsTests
         db.Users.Single(u => u.Id == second).FirstName = "Second";
         db.Users.Single(u => u.Id == third).FirstName = "Third";
         var now = DateTimeOffset.UtcNow;
-        var previousMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero).AddDays(-1);
+        var previousMonth = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero).AddMonths(-1);
         var course = new EducationModule { Id = Guid.NewGuid(), Title = "Course A", IsPublished = true };
         var otherCourse = new EducationModule { Id = Guid.NewGuid(), Title = "Course B", IsPublished = true };
         var lessons = Enumerable.Range(0, 4).Select(index => new Lesson

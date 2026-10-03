@@ -67,7 +67,7 @@ class _ModuleContent extends ConsumerWidget {
             borderRadius: BorderRadius.circular(AppRadius.medium),
             child: ModuleCover(
               title: module.title,
-              aspectRatio: 1.95,
+              aspectRatio: 3.0,
               alignment: Alignment.topCenter,
             ),
           ),
@@ -75,45 +75,27 @@ class _ModuleContent extends ConsumerWidget {
           Text(
             module.title,
             style: theme.textTheme.displaySmall?.copyWith(
-              fontSize: 38,
+              fontSize: 28,
               fontWeight: FontWeight.w800,
-              letterSpacing: -1.1,
+              letterSpacing: -.7,
               height: 1.12,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             module.description,
-            style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onSurface),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 14),
           if (known && module.lessonCount > 0)
-            ExcludeSemantics(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 20,
-                runSpacing: 10,
-                children: [
-                  for (var i = 0; i < module.lessonCount; i++)
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: i < (progress * module.lessonCount).round()
-                            ? scheme.tertiary
-                            : scheme.onSurface.withValues(alpha: .12),
-                      ),
-                      child: i < (progress * module.lessonCount).round()
-                          ? Icon(
-                              Icons.check_rounded,
-                              size: 20,
-                              color: scheme.onTertiary,
-                            )
-                          : null,
-                    ),
-                ],
-              ),
+            LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(8),
+              semanticsLabel: 'Modül ilerlemesi',
             ),
           const SizedBox(height: 8),
           Text(
@@ -123,7 +105,7 @@ class _ModuleContent extends ConsumerWidget {
                       : 'İlerlemen yükleniyor…'
                 : '${(progress * module.lessonCount).round()} / ${module.lessonCount} ders tamamlandı',
             style: theme.textTheme.bodyMedium,
-            textAlign: TextAlign.center,
+            textAlign: TextAlign.start,
           ),
           if (known && module.lessonCount > 0 && progress == 1)
             Padding(
@@ -140,11 +122,9 @@ class _ModuleContent extends ConsumerWidget {
               onPressed: () => ref.invalidate(progressControllerProvider),
               child: const Text('Yeniden dene'),
             ),
-          const SizedBox(height: 12),
-          const Divider(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 28),
           Text('Öğrenme yolculuğun', style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 6),
+          const SizedBox(height: 16),
           if (module.lessons.isEmpty)
             const EmptyContentView(message: 'Bu modüle henüz ders eklenmemiş.'),
           for (final (index, lesson) in module.lessons.indexed)

@@ -6,11 +6,11 @@ authentication, profiles, content management, and Admin-only user management.
 Run locally with `flutter pub get` followed by `flutter run`. Use
 `--dart-define=API_BASE_URL=<url>` to override the debug API URL.
 
-Release builds require an HTTPS API URL and reject localhost, `127.0.0.1`, and
-`10.0.2.2`:
+Release builds default to `https://api.nursing-app.com`. API URL overrides require
+HTTPS and reject localhost, `127.0.0.1`, and `10.0.2.2`:
 
 ```powershell
-flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com
+flutter build appbundle --release
 ```
 
 Android production signing is read from the ignored `android/key.properties` file.
@@ -25,8 +25,8 @@ Manrope is bundled locally under the SIL Open Font License in
 `assets/fonts/OFL.txt`. Decorative illustrations are local transparent assets;
 all text, controls, progress, and navigation are native Flutter widgets.
 
-The home recommendation uses unfinished module progress. Profile activity and
-badges derive from completed lessons and submitted quizzes; sample values from
+The home recommendation uses unfinished module progress. Profile activity derives from completed lessons and submitted quizzes;
+its detailed leaderboard uses the existing ranking API and period/module filters; sample values from
 the design references are not used in production. Existing role-based content
 and user management remain available.
 

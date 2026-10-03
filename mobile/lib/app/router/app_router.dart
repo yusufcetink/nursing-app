@@ -16,6 +16,7 @@ import 'package:asli_app/features/content_management/presentation/pages/lesson_f
 import 'package:asli_app/features/content_management/presentation/pages/module_form_page.dart';
 import 'package:asli_app/features/content_management/presentation/pages/question_form_page.dart';
 import 'package:asli_app/features/content_management/presentation/pages/quiz_editor_page.dart';
+import 'package:asli_app/features/content_management/presentation/pages/lesson_quizzes_page.dart';
 import 'package:asli_app/features/education/presentation/pages/education_module_page.dart';
 import 'package:asli_app/features/education/presentation/pages/lesson_page.dart';
 import 'package:asli_app/features/home/presentation/pages/home_page.dart';
@@ -63,7 +64,9 @@ abstract final class AppRoutes {
   static const lessonPath = '/education/:moduleId/lessons/:lessonId';
   static const lessonIdParameter = 'lessonId';
   static const quiz = 'quiz';
-  static const quizPath = '/education/:moduleId/lessons/:lessonId/quiz';
+  static const quizPath =
+      '/education/:moduleId/lessons/:lessonId/quizzes/:quizId';
+  static const quizIdParameter = 'quizId';
   static const content = 'content';
   static const contentPath = '/content';
   static const contentModuleCreate = 'content-module-create';
@@ -80,9 +83,12 @@ abstract final class AppRoutes {
       '/content/modules/:contentModuleId/lessons/:contentLessonId/edit';
   static const contentModuleIdParameter = 'contentModuleId';
   static const contentLessonIdParameter = 'contentLessonId';
+  static const contentQuizzes = 'content-quizzes';
+  static const contentQuizzesPath =
+      '/content/modules/:contentModuleId/lessons/:contentLessonId/quizzes';
   static const contentQuiz = 'content-quiz';
   static const contentQuizPath =
-      '/content/modules/:contentModuleId/lessons/:contentLessonId/quiz';
+      '/content/modules/:contentModuleId/lessons/:contentLessonId/quizzes/:contentQuizId';
   static const contentQuestionCreate = 'content-question-create';
   static const contentQuestionCreatePath =
       '/content/modules/:contentModuleId/lessons/:contentLessonId/quiz/:contentQuizId/questions/new';
@@ -199,6 +205,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoutes.quizPath,
                 name: AppRoutes.quiz,
                 builder: (context, state) => QuizPage(
+                  quizId: state.pathParameters[AppRoutes.quizIdParameter]!,
                   moduleId: state.pathParameters[AppRoutes.moduleIdParameter]!,
                   lessonId: state.pathParameters[AppRoutes.lessonIdParameter]!,
                 ),
@@ -244,9 +251,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
               GoRoute(
+                path: AppRoutes.contentQuizzesPath,
+                name: AppRoutes.contentQuizzes,
+                builder: (context, state) => LessonQuizzesPage(
+                  moduleId:
+                      state.pathParameters[AppRoutes.contentModuleIdParameter]!,
+                  lessonId:
+                      state.pathParameters[AppRoutes.contentLessonIdParameter]!,
+                ),
+              ),
+              GoRoute(
                 path: AppRoutes.contentQuizPath,
                 name: AppRoutes.contentQuiz,
                 builder: (context, state) => QuizEditorPage(
+                  quizId:
+                      state.pathParameters[AppRoutes.contentQuizIdParameter]!,
                   moduleId:
                       state.pathParameters[AppRoutes.contentModuleIdParameter]!,
                   lessonId:
@@ -332,6 +351,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       context: ActivityContext(
         moduleId: state.pathParameters[AppRoutes.moduleIdParameter],
         lessonId: state.pathParameters[AppRoutes.lessonIdParameter],
+        quizId: state.pathParameters[AppRoutes.quizIdParameter],
       ),
     );
   }

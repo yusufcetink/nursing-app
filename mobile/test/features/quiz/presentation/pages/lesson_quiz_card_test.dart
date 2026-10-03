@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:asli_app/features/progress/presentation/controllers/progress_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz.dart';
@@ -49,7 +50,10 @@ void main() {
           await tester.pumpWidget(
             ProviderScope(
               overrides: [
-                lessonQuizStatusProvider.overrideWith((ref, id) async => quiz),
+                lessonCompletedProvider.overrideWith(
+                  (ref, id) => status == 'NotStarted',
+                ),
+                quizStatusProvider.overrideWith((ref, id) async => quiz),
               ],
               child: MaterialApp(
                 theme: ThemeData(
@@ -57,7 +61,11 @@ void main() {
                 ),
                 home: const Scaffold(
                   body: SingleChildScrollView(
-                    child: LessonQuizCard(moduleId: 'm', lessonId: 'l'),
+                    child: LessonQuizCard(
+                      moduleId: 'm',
+                      lessonId: 'l',
+                      quizId: 'q',
+                    ),
                   ),
                 ),
               ),

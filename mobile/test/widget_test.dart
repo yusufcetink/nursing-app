@@ -95,10 +95,14 @@ void main() {
     expect(find.byType(LessonCompletionSheet), findsOneWidget);
     final completionAction = find.descendant(
       of: find.byType(LessonCompletionSheet),
-      matching: find.text("Quiz'e Geç"),
+      matching: find.text("Quizlere Geç"),
     );
     await tester.ensureVisible(completionAction);
     await tester.tap(completionAction);
+    await tester.pumpAndSettle();
+
+    await tester.reveal(find.text('Quiz’e Başla'), 200);
+    await tester.tap(find.text('Quiz’e Başla'));
     await tester.pumpAndSettle();
 
     expect(find.text('Soru 1 / 2'), findsOneWidget);

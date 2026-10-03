@@ -145,12 +145,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             entity.HasKey(quiz => quiz.Id);
             entity.HasQueryFilter(quiz => !quiz.IsDeleted);
             entity.Property(quiz => quiz.Title).HasMaxLength(200).IsRequired();
-            entity.HasIndex(quiz => quiz.LessonId)
-                .IsUnique()
-                .HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(quiz => quiz.LessonId);
             entity.HasOne(quiz => quiz.Lesson)
-                .WithOne(lesson => lesson.Quiz)
-                .HasForeignKey<Quiz>(quiz => quiz.LessonId);
+                .WithMany(lesson => lesson.Quizzes)
+                .HasForeignKey(quiz => quiz.LessonId);
         });
 
         modelBuilder.Entity<QuizQuestion>(entity =>

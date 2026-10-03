@@ -1,3 +1,5 @@
+import 'package:asli_app/features/quiz/domain/models/quiz_summary.dart';
+
 final class Lesson {
   const Lesson({
     required this.id,
@@ -7,7 +9,7 @@ final class Lesson {
     required this.estimatedDurationMinutes,
     required this.order,
     required this.blocks,
-    this.quizId,
+    this.quizzes = const [],
   });
 
   final String id;
@@ -17,7 +19,7 @@ final class Lesson {
   final int estimatedDurationMinutes;
   final int order;
   final List<LessonContentBlock> blocks;
-  final String? quizId;
+  final List<QuizSummary> quizzes;
 }
 
 final class LessonContentBlock {

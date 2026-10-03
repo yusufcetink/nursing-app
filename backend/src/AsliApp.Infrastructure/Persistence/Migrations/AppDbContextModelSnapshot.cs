@@ -329,6 +329,9 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("LessonId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -339,9 +342,7 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LessonId")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                    b.HasIndex("LessonId");
 
                     b.ToTable("Quizzes");
                 });
@@ -1014,8 +1015,8 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("AsliApp.Domain.Education.Quiz", b =>
                 {
                     b.HasOne("AsliApp.Domain.Education.Lesson", "Lesson")
-                        .WithOne("Quiz")
-                        .HasForeignKey("AsliApp.Domain.Education.Quiz", "LessonId")
+                        .WithMany("Quizzes")
+                        .HasForeignKey("LessonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1203,7 +1204,7 @@ namespace AsliApp.Infrastructure.Persistence.Migrations
 
                     b.Navigation("ProgressEntries");
 
-                    b.Navigation("Quiz");
+                    b.Navigation("Quizzes");
                 });
 
             modelBuilder.Entity("AsliApp.Domain.Education.LessonMedia", b =>

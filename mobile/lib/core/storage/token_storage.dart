@@ -21,6 +21,17 @@ abstract interface class TokenStorage {
   });
 
   Future<void> deleteTokens();
+
+  Future<bool> rotateTokens({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  });
+
+  Future<bool> clearTokensIfUnchanged({
+    required String? accessToken,
+    required String? refreshToken,
+  });
 }
 
 final class SecureTokenStorage implements TokenStorage {
@@ -34,15 +45,49 @@ final class SecureTokenStorage implements TokenStorage {
   final FlutterSecureStorage _storage;
   String? _volatileAccessToken;
   String? _volatileRefreshToken;
+  bool _loaded = false;
+  bool _persist = false;
+  Future<void>? _loading;
+  Future<void> _operations = Future.value();
+
+  Future<void> _load() {
+    if (_loaded) return Future.value();
+    return _loading ??= _readStoredTokens().whenComplete(() => _loading = null);
+  }
+
+  Future<void> _readStoredTokens() async {
+    final accessToken = await _storage.read(key: _accessTokenKey);
+    final refreshToken = await _storage.read(key: _refreshTokenKey);
+    _volatileAccessToken = accessToken;
+    _volatileRefreshToken = refreshToken;
+    _persist = _volatileRefreshToken != null;
+    _loaded = true;
+  }
+
+  Future<T> _mutate<T>(Future<T> Function() action) {
+    final operation = _operations.then((_) async {
+      await _load();
+      return action();
+    });
+    _operations = operation.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return operation;
+  }
 
   @override
   Future<String?> readAccessToken() async {
-    return _volatileAccessToken ?? _storage.read(key: _accessTokenKey);
+    await _operations;
+    await _load();
+    return _volatileAccessToken;
   }
 
   @override
   Future<String?> readRefreshToken() async {
-    return _volatileRefreshToken ?? _storage.read(key: _refreshTokenKey);
+    await _operations;
+    await _load();
+    return _volatileRefreshToken;
   }
 
   @override
@@ -64,7 +109,13 @@ final class SecureTokenStorage implements TokenStorage {
     required String accessToken,
     required String? refreshToken,
     required bool persist,
-  }) async {
+  }) => _mutate(() => _writeTokens(accessToken, refreshToken, persist));
+
+  Future<void> _writeTokens(
+    String accessToken,
+    String? refreshToken,
+    bool persist,
+  ) async {
     if (persist && (refreshToken == null || refreshToken.trim().isEmpty)) {
       throw ArgumentError('A refresh token is required for persistent login.');
     }
@@ -72,7 +123,8 @@ final class SecureTokenStorage implements TokenStorage {
     if (!persist) {
       await _deletePersistedTokens();
       _volatileAccessToken = accessToken;
-      _volatileRefreshToken = null;
+      _volatileRefreshToken = refreshToken;
+      _persist = false;
       return;
     }
 
@@ -80,14 +132,45 @@ final class SecureTokenStorage implements TokenStorage {
     await _storage.write(key: _refreshTokenKey, value: refreshToken);
     _volatileAccessToken = accessToken;
     _volatileRefreshToken = refreshToken;
+    _persist = true;
   }
 
   @override
-  Future<void> deleteTokens() async {
+  Future<void> deleteTokens() => _mutate(_clearTokens);
+
+  Future<void> _clearTokens() async {
     _volatileAccessToken = null;
     _volatileRefreshToken = null;
+    _persist = false;
     await _deletePersistedTokens();
   }
+
+  @override
+  Future<bool> rotateTokens({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  }) => _mutate(() async {
+    if (_volatileRefreshToken != expectedRefreshToken) {
+      return false;
+    }
+    await _writeTokens(accessToken, refreshToken, _persist);
+    return true;
+  });
+
+  @override
+  Future<bool> clearTokensIfUnchanged({
+    required String? accessToken,
+    required String? refreshToken,
+  }) => _mutate(() async {
+    if (_volatileAccessToken != accessToken ||
+        _volatileRefreshToken != refreshToken ||
+        (_volatileAccessToken == null && _volatileRefreshToken == null)) {
+      return false;
+    }
+    await _clearTokens();
+    return true;
+  });
 
   Future<void> _deletePersistedTokens() async {
     await _storage.delete(key: _accessTokenKey);

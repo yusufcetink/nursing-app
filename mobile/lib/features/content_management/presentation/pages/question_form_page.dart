@@ -23,7 +23,7 @@ class QuestionFormPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref
-        .watch(contentQuizProvider(lessonId))
+        .watch(contentQuizProvider(quizId))
         .when(
           loading: () => Scaffold(
             appBar: AppBar(title: const Text('Soru')),
@@ -33,7 +33,7 @@ class QuestionFormPage extends ConsumerWidget {
             appBar: AppBar(title: const Text('Soru')),
             body: ContentErrorView(
               message: networkErrorMessage(error),
-              onRetry: () => ref.invalidate(contentQuizProvider(lessonId)),
+              onRetry: () => ref.invalidate(contentQuizProvider(quizId)),
             ),
           ),
           data: (quiz) {

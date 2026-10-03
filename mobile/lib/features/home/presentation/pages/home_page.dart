@@ -30,7 +30,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final recommended = ref.watch(recommendedModuleProvider);
-    final activity = ref.watch(learningActivityProvider);
     final initials = [user?.firstName ?? '', user?.lastName ?? '']
         .where((name) => name.trim().isNotEmpty)
         .map((name) => name.trim().characters.first.toUpperCase())
@@ -50,7 +49,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ),
         data: (modules) => LearningBody(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           children: [
             Row(
               children: [
@@ -70,9 +69,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   tooltip: 'Profilini aç',
                   onPressed: () => context.goNamed(AppRoutes.profile),
                   style: IconButton.styleFrom(
-                    backgroundColor: theme.brightness == Brightness.dark
-                        ? const Color(0xff354c54)
-                        : const Color(0xffcfdfd8),
+                    backgroundColor: scheme.secondaryContainer,
                     foregroundColor: scheme.onSurface,
                   ),
                   icon: Text(
@@ -98,11 +95,11 @@ class _HomePageState extends ConsumerState<HomePage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                'Bugün bir\nadım daha.',
+                'Bugün bir adım daha.',
                 style: theme.textTheme.displaySmall?.copyWith(
-                  fontSize: 38,
-                  height: 1.04,
-                  letterSpacing: -1.8,
+                  fontSize: 34,
+                  height: 1.16,
+                  letterSpacing: -1.1,
                 ),
               ),
             ),
@@ -118,60 +115,61 @@ class _HomePageState extends ConsumerState<HomePage> {
                 message: 'Henüz yayınlanmış eğitim modülü bulunmuyor.',
               ),
             const SizedBox(height: 14),
-            const Divider(),
-            activity.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('Günlük aktivite yükleniyor…'),
-              ),
-              error: (error, _) => ListTile(
-                title: const Text('İlerlemen yüklenemedi'),
-                trailing: IconButton(
-                  tooltip: 'Yeniden dene',
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () => ref.invalidate(progressControllerProvider),
-                ),
-              ),
-              data: (activity) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                child: Row(
-                  children: [
-                    const HomeActivitySun(),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            Consumer(
+              builder: (context, activityRef, _) => activityRef
+                  .watch(learningActivityProvider)
+                  .when(
+                    loading: () => const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text('Günlük aktivite yükleniyor…'),
+                    ),
+                    error: (error, _) => ListTile(
+                      title: const Text('İlerlemen yüklenemedi'),
+                      trailing: IconButton(
+                        tooltip: 'Yeniden dene',
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () =>
+                            activityRef.invalidate(progressControllerProvider),
+                      ),
+                    ),
+                    data: (activity) => Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 9,
+                        horizontal: 8,
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'Bugünkü emeğin',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            activity.todayCount == 0
-                                ? 'Bir ders, yeni bir bakış.'
-                                : '${activity.todayCount} ders tamamladın',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
+                          const HomeActivitySun(),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Bugünkü emeğin',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  activity.todayCount == 0
+                                      ? 'Bir ders, yeni bir bakış.'
+                                      : '${activity.todayCount} ders tamamladın',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const ExcludeSemantics(
-                      child: Icon(Icons.chevron_right_rounded, size: 22),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
             ),
-            const Divider(),
             const SizedBox(height: 12),
-            const CompactLeaderboardSection(),
             const SizedBox(height: 14),
-            const Divider(),
             const SizedBox(height: 4),
             Wrap(
               alignment: WrapAlignment.spaceBetween,
@@ -223,9 +221,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                   children: [
                     for (final module in modules)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.only(right: 14),
                         child: SizedBox(
-                          width: 224,
+                          width: 248,
                           child: HomeModuleCard(
                             key: Key('home_module_${module.id}'),
                             module: module,
@@ -236,6 +234,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ],
                 ),
               ),
+            const SizedBox(height: 28),
+            const CompactLeaderboardSection(),
           ],
         ),
       ),

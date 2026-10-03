@@ -48,7 +48,9 @@ void main() {
         'estimatedDurationMinutes': 5,
         'order': 1,
         'isPublished': false,
-        'quizId': 'quiz-id',
+        'quizzes': [
+          {'id': 'quiz-id', 'title': 'Quiz', 'order': 2, 'isPublished': false},
+        ],
         'blocks': [
           {
             'id': 'block-id',
@@ -122,6 +124,8 @@ void main() {
       '/api/education/modules/module-id',
       '/api/education/lessons/lesson-id',
     ]);
+    expect(lesson.quizzes.single.id, 'quiz-id');
+    expect(lesson.quizzes.single.order, 2);
     expect(adapter.requests[7].method, 'DELETE');
     expect(adapter.requests[8].method, 'DELETE');
     expect(adapter.requests[3].data['isPublished'], isTrue);
@@ -167,14 +171,14 @@ void main() {
         ..httpClientAdapter = adapter;
       final repository = DioContentManagementRepository(ApiClient(dio: dio));
 
-      final quiz = await repository.getQuizForLesson('lesson-id');
+      final quiz = await repository.getQuiz('quiz-id');
       await repository.createQuiz(
         'lesson-id',
         const QuizWriteInput(title: 'Quiz', isPublished: false),
       );
       await repository.updateQuiz(
         'quiz-id',
-        const QuizWriteInput(title: 'Quiz 2', isPublished: true),
+        const QuizWriteInput(title: 'Quiz 2', isPublished: true, order: 4),
       );
       await repository.createQuestion(
         'quiz-id',
@@ -201,8 +205,8 @@ void main() {
 
       expect(quiz!.questions.single.options.single.isCorrect, isTrue);
       expect(adapter.requests.map((request) => request.path), [
-        '/api/education/content/lessons/lesson-id/quiz',
-        '/api/education/lessons/lesson-id/quiz',
+        '/api/education/content/quizzes/quiz-id',
+        '/api/education/lessons/lesson-id/quizzes',
         '/api/education/quizzes/quiz-id',
         '/api/education/quizzes/quiz-id/questions',
         '/api/education/questions/question-id',
@@ -211,6 +215,7 @@ void main() {
         '/api/education/quizzes/quiz-id',
         '/api/education/questions/question-id',
       ]);
+      expect(adapter.requests[2].data['order'], 4);
       expect(adapter.requests[7].method, 'DELETE');
       expect(adapter.requests[8].method, 'DELETE');
       expect(adapter.requests[5].data['isCorrect'], isTrue);

@@ -1,3 +1,5 @@
+import 'package:asli_app/core/network/network_exception.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -13,6 +15,29 @@ import 'package:asli_app/features/quiz/data/quiz_repository.dart';
 import 'package:asli_app/features/quiz/domain/models/quiz_answer.dart';
 
 void main() {
+  test('direct quiz start explains the lesson prerequisite', () async {
+    final adapter = _SequenceAdapter([
+      _JsonResponse(403, {'code': 'lesson_not_completed'}),
+    ]);
+    final dio = Dio(BaseOptions(baseUrl: 'http://example.test'))
+      ..httpClientAdapter = adapter;
+    final repository = DioQuizRepository(ApiClient(dio: dio));
+    await expectLater(
+      repository.startQuiz('quiz-id'),
+      throwsA(
+        isA<NetworkException>().having(
+          (e) => e.message,
+          'message',
+          'Quizi açmak için önce dersi tamamla.',
+        ),
+      ),
+    );
+    expect(
+      adapter.requests.single.path,
+      '/api/education/quizzes/quiz-id/start',
+    );
+  });
+
   test('modülleri typed modele dönüştürür ve JWT otomatik gönderir', () async {
     final adapter = _SequenceAdapter([
       _JsonResponse(200, [
@@ -53,7 +78,10 @@ void main() {
           'description': 'Açıklama',
           'estimatedDurationMinutes': 5,
           'order': 1,
-          'quizId': null,
+          'quizzes': [
+            {'id': 'second', 'title': 'İkinci', 'order': 2},
+            {'id': 'first', 'title': 'İlk', 'order': 1},
+          ],
           'blocks': [
             {
               'id': 'image-block',
@@ -96,6 +124,7 @@ void main() {
       final repository = DioEducationRepository(ApiClient(dio: dio));
 
       final lesson = await repository.getLesson('lesson-id');
+      expect(lesson.quizzes.map((q) => q.id), ['first', 'second']);
 
       expect(lesson.blocks.first.media?.id, 'image-id');
       expect(lesson.blocks.first.blockType, LessonContentBlockType.image);
@@ -160,7 +189,8 @@ void main() {
         ..httpClientAdapter = adapter;
       final repository = DioQuizRepository(ApiClient(dio: dio));
 
-      final quiz = await repository.getLessonQuiz('lesson-id');
+      final quiz = await repository.getQuiz('quiz-id');
+      expect(adapter.requests.last.path, '/api/education/quizzes/quiz-id');
       final saved = await repository.saveAnswer(
         'attempt-id',
         const QuizAnswer(
@@ -239,6 +269,37 @@ final class _MemoryTokenStorage implements TokenStorage {
 
   @override
   Future<String?> readRefreshToken() async => null;
+
+  @override
+  Future<bool> rotateTokens({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    if (await readRefreshToken() != expectedRefreshToken) {
+      return false;
+    }
+    await writeTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      persist: true,
+    );
+    return true;
+  }
+
+  @override
+  Future<bool> clearTokensIfUnchanged({
+    required String? accessToken,
+    required String? refreshToken,
+  }) async {
+    if (await readAccessToken() != accessToken ||
+        await readRefreshToken() != refreshToken ||
+        (accessToken == null && refreshToken == null)) {
+      return false;
+    }
+    await deleteTokens();
+    return true;
+  }
 
   @override
   Future<String> getDeviceId() async => 'test-device';

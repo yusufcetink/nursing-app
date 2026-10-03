@@ -57,12 +57,19 @@ public sealed class EducationController(EducationService educationService) : Con
                     media.Metadata.MediaType == nameof(LessonMediaType.Video));
     }
 
-    [HttpGet("lessons/{id:guid}/quiz")]
-    public async Task<ActionResult<StudentQuizResponse>> GetLessonQuiz(
+    [HttpGet("lessons/{id:guid}/quizzes")]
+    public async Task<ActionResult<IReadOnlyList<QuizSummaryResponse>>> GetLessonQuizzes(Guid id, CancellationToken cancellationToken)
+    {
+        var lesson = await educationService.GetLessonAsync(id, cancellationToken);
+        return lesson is null ? NotFound() : Ok(lesson.Quizzes);
+    }
+
+    [HttpGet("quizzes/{id:guid}")]
+    public async Task<ActionResult<StudentQuizResponse>> GetQuiz(
         Guid id,
         CancellationToken cancellationToken)
     {
-        var quiz = await educationService.GetLessonQuizAsync(id, cancellationToken);
+        var quiz = await educationService.GetQuizAsync(id, cancellationToken);
         return quiz is null ? NotFound() : Ok(quiz);
     }
 
@@ -158,12 +165,19 @@ public sealed class EducationContentController(EducationService educationService
         return lesson is null ? NotFound() : Ok(lesson);
     }
 
-    [HttpGet("content/lessons/{lessonId:guid}/quiz")]
+    [HttpGet("content/lessons/{id:guid}/quizzes")]
+    public async Task<ActionResult<IReadOnlyList<QuizSummaryResponse>>> GetContentQuizzes(Guid id, CancellationToken cancellationToken)
+    {
+        var lesson = await educationService.GetContentLessonAsync(id, cancellationToken);
+        return lesson is null ? NotFound() : Ok(lesson.Quizzes);
+    }
+
+    [HttpGet("content/quizzes/{quizId:guid}")]
     public async Task<ActionResult<ContentQuizResponse>> GetContentQuiz(
-        Guid lessonId,
+        Guid quizId,
         CancellationToken cancellationToken)
     {
-        var quiz = await educationService.GetContentQuizAsync(lessonId, cancellationToken);
+        var quiz = await educationService.GetContentQuizAsync(quizId, cancellationToken);
         return quiz is null ? NotFound() : Ok(quiz);
     }
 
@@ -349,7 +363,7 @@ public sealed class EducationContentController(EducationService educationService
             _ => BadRequest(),
         };
 
-    [HttpPost("lessons/{lessonId:guid}/quiz")]
+    [HttpPost("lessons/{lessonId:guid}/quizzes")]
     public async Task<ActionResult<ContentMutationResponse>> CreateQuiz(
         Guid lessonId,
         QuizWriteRequest request,

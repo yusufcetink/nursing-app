@@ -55,6 +55,7 @@ class _LessonContent extends ConsumerStatefulWidget {
 }
 
 class _LessonContentState extends ConsumerState<_LessonContent> {
+  final _quizzesKey = GlobalKey();
   bool _saving = false;
 
   Future<void> _completeLesson() async {
@@ -100,8 +101,8 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
           builder: (context) => LessonCompletionSheet(
             lessonTitle: widget.lesson.title,
             completion: completion,
-            actionLabel: widget.lesson.quizId != null
-                ? "Quiz'e Geç"
+            actionLabel: widget.lesson.quizzes.isNotEmpty
+                ? 'Quizlere Geç'
                 : completion?.moduleCompleted == true
                 ? 'Eğitim modüllerini keşfet'
                 : completion?.nextLesson != null
@@ -110,14 +111,14 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
           ),
         );
         if (!mounted || continueLearning != true) return;
-        if (widget.lesson.quizId != null) {
-          context.pushNamed(
-            AppRoutes.quiz,
-            pathParameters: {
-              AppRoutes.moduleIdParameter: widget.moduleId,
-              AppRoutes.lessonIdParameter: widget.lesson.id,
-            },
-          );
+        if (widget.lesson.quizzes.isNotEmpty) {
+          final quizzesContext = _quizzesKey.currentContext;
+          if (quizzesContext != null && quizzesContext.mounted) {
+            await Scrollable.ensureVisible(
+              quizzesContext,
+              duration: const Duration(milliseconds: 300),
+            );
+          }
         } else if (completion?.moduleCompleted == true) {
           context.goNamed(AppRoutes.home);
         } else if (completion?.nextLesson != null) {
@@ -169,18 +170,21 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
           for (final block in lesson.blocks) ...[
             if (block.blockType == LessonContentBlockType.heading)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 16),
                 child: Text(
                   block.textContent ?? '',
-                  style: theme.textTheme.headlineSmall,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    height: 1.3,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               )
             else if (block.blockType == LessonContentBlockType.text)
               SelectableText(
                 block.textContent ?? '',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  height: 1.55,
-                  color: scheme.onSurfaceVariant,
+                  height: 1.7,
+                  color: scheme.onSurface,
                 ),
               )
             else if (block.blockType == LessonContentBlockType.image &&
@@ -191,7 +195,7 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
               _LessonVideoPlayer(media: block.media!)
             else
               LessonContentCard(block: block),
-            const SizedBox(height: 18),
+            const SizedBox(height: 24),
           ],
           const SizedBox(height: 16),
           Container(
@@ -238,8 +242,27 @@ class _LessonContentState extends ConsumerState<_LessonContent> {
             ),
           ),
           const SizedBox(height: 20),
-          if (lesson.quizId != null) ...[
-            LessonQuizCard(moduleId: widget.moduleId, lessonId: lesson.id),
+          if (lesson.quizzes.isNotEmpty) ...[
+            SizedBox(key: _quizzesKey),
+            const Divider(height: 32),
+            Text('Bilgini pekiştir', style: theme.textTheme.headlineSmall),
+            const SizedBox(height: 6),
+            Text(
+              'Bu dersin quizleri',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            for (final quiz in lesson.quizzes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: LessonQuizCard(
+                  moduleId: widget.moduleId,
+                  lessonId: lesson.id,
+                  quizId: quiz.id,
+                ),
+              ),
             const SizedBox(height: 16),
           ],
           LearningAction(
@@ -368,7 +391,10 @@ class _LessonVideoPlayerState extends ConsumerState<_LessonVideoPlayer> {
             ),
           ],
           ListTile(
-            title: Text(widget.media.originalFileName),
+            title: Text(
+              widget.media.originalFileName,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
             subtitle: controller == null
                 ? null
                 : ValueListenableBuilder<VideoPlayerValue>(
@@ -505,7 +531,10 @@ class _LessonImageState extends ConsumerState<_LessonImage> {
         ),
         ListTile(
           leading: const Icon(Icons.image_outlined),
-          title: Text(widget.media.originalFileName),
+          title: Text(
+            widget.media.originalFileName,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
           subtitle: widget.caption == null ? null : Text(widget.caption!),
         ),
       ],

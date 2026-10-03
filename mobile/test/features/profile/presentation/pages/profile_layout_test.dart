@@ -12,6 +12,8 @@ import 'package:asli_app/features/auth/data/auth_repository.dart';
 import 'package:asli_app/features/education/data/education_repository.dart';
 import 'package:asli_app/features/profile/data/profile_repository.dart';
 import 'package:asli_app/features/progress/data/progress_repository.dart';
+import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
 
 import '../../../../helpers/fake_activity_repository.dart';
 import '../../../../helpers/fake_auth_repository.dart';
@@ -40,6 +42,25 @@ void main() {
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
         final container = ProviderContainer(
           overrides: [
+            leaderboardCoursesProvider.overrideWith((ref) async => const []),
+            leaderboardProvider.overrideWith(
+              (ref, selection) async => const LeaderboardData(
+                entries: [
+                  LeaderboardEntry(
+                    rank: 1,
+                    displayName: 'Ayşe Yılmaz',
+                    totalCorrectAnswers: 9,
+                    totalQuestionCount: 10,
+                    completedQuizCount: 2,
+                    accuracyPercentage: 90,
+                    isCurrentUser: true,
+                  ),
+                ],
+                totalUsers: 1,
+                offset: 0,
+                limit: 20,
+              ),
+            ),
             activityRepositoryProvider.overrideWithValue(
               FakeActivityRepository(),
             ),
@@ -74,17 +95,6 @@ void main() {
         await tester.tap(find.text('Profil'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        if (scale == 1) {
-          final label = tester.renderObject<RenderParagraph>(
-            find.text('Sistem'),
-          );
-          expect(
-            label.getBoxesForSelection(
-              const TextSelection(baseOffset: 0, extentOffset: 6),
-            ),
-            hasLength(1),
-          );
-        }
         if (const bool.fromEnvironment('CAPTURE_PROFILE') && scale == 1) {
           final boundary = tester.renderObject<RenderRepaintBoundary>(
             find.byKey(const Key('profile-capture')),
@@ -102,14 +112,27 @@ void main() {
             image.dispose();
           });
         }
+        await tester.reveal(find.text('Görünüm'), 160);
+        if (scale == 1) {
+          final label = tester.renderObject<RenderParagraph>(
+            find.text('Sistem'),
+          );
+          expect(
+            label.getBoxesForSelection(
+              const TextSelection(baseOffset: 0, extentOffset: 6),
+            ),
+            hasLength(1),
+          );
+        }
         await tester.reveal(find.text('Koyu'), 120);
         await tester.tap(find.text('Koyu'));
         await tester.pumpAndSettle();
         expect(container.read(themeModeControllerProvider), ThemeMode.dark);
         expect(tester.takeException(), isNull);
+        await tester.reveal(find.text('Ortalama başarı'), -160);
         for (final label in [
           'Ortalama başarı',
-          'Küçük başarıların',
+          'Öğrenci sıralaması',
           'Quiz Sonuçları',
           'Çıkış Yap',
         ]) {

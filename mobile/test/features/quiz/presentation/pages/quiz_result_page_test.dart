@@ -1,3 +1,6 @@
+import 'package:asli_app/features/leaderboard/data/leaderboard_repository.dart';
+import 'package:asli_app/features/leaderboard/presentation/leaderboard_providers.dart';
+
 import '../../../../helpers/fake_activity_repository.dart';
 
 import 'dart:async';
@@ -36,13 +39,22 @@ Future<ProviderContainer> showResult(
         educationModuleProvider.overrideWith((ref, id) => loadModule()),
       progressRepositoryProvider.overrideWithValue(FakeProgressRepository()),
       profileRepositoryProvider.overrideWithValue(FakeProfileRepository()),
+      leaderboardCoursesProvider.overrideWith((ref) async => const []),
+      leaderboardProvider.overrideWith(
+        (ref, selection) async => const LeaderboardData(
+          entries: [],
+          totalUsers: 0,
+          offset: 0,
+          limit: 20,
+        ),
+      ),
       quizRepositoryProvider.overrideWithValue(FakeQuizRepository()),
-      quizForLessonProvider.overrideWith(
+      quizProvider.overrideWith(
         (ref, id) async => Quiz(
           id: testQuiz.id,
           attemptId: 'new-attempt-id',
           status: 'InProgress',
-          lessonId: id,
+          lessonId: lessonId,
           title: testQuiz.title,
           questions: testQuiz.questions,
         ),
@@ -61,11 +73,19 @@ Future<ProviderContainer> showResult(
   };
   unawaited(router.pushNamed(AppRoutes.lesson, pathParameters: parameters));
   await tester.pumpAndSettle();
-  unawaited(router.pushNamed(AppRoutes.quiz, pathParameters: parameters));
+  unawaited(
+    router.pushNamed(
+      AppRoutes.quiz,
+      pathParameters: {...parameters, AppRoutes.quizIdParameter: testQuiz.id},
+    ),
+  );
   await tester.pumpAndSettle();
   final controller = container.read(
-    quizControllerProvider((moduleId: testModule.id, lessonId: lessonId))
-        .notifier,
+    quizControllerProvider((
+      moduleId: testModule.id,
+      lessonId: lessonId,
+      quizId: testQuiz.id,
+    )).notifier,
   );
   controller.selectOption('care-1');
   await tester.runAsync(controller.submitAndContinue);

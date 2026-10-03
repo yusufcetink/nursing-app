@@ -76,6 +76,22 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task NonRememberedDeviceLoginCanRefreshDuringCurrentSession()
+    {
+        await using var context = new AuthTestContext();
+        const string email = "session@example.com";
+        await CreateConfirmedUserAsync(context, email);
+        var login = await context.AuthService.LoginAsync(
+            new LoginRequest(email, "SecurePass1!", RememberMe: false, DeviceId: "session-device"));
+        Assert.True(login.Succeeded);
+        Assert.NotNull(login.Value?.RefreshToken);
+        var refreshed = await context.AuthService.RefreshAsync(
+            new RefreshRequest(login.Value.RefreshToken, "session-device"));
+        Assert.True(refreshed.Succeeded);
+        Assert.NotEqual(login.Value.RefreshToken, refreshed.Value?.RefreshToken);
+    }
+
+    [Fact]
     public async Task RememberedLoginHashesAndRotatesRefreshTokenThenLogoutRevokesIt()
     {
         await using var context = new AuthTestContext();

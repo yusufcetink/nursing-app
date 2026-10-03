@@ -10,42 +10,84 @@ class LessonContentCard extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final lines = (block.textContent ?? '').split('\n');
-    final icon = switch (block.blockType) {
-      LessonContentBlockType.caseStudy => Icons.person_search_outlined,
-      LessonContentBlockType.comparison => Icons.compare_arrows_rounded,
-      LessonContentBlockType.summary => Icons.checklist_rounded,
-      LessonContentBlockType.recall => Icons.lightbulb_outline,
-      _ => Icons.info_outline,
+    final (label, icon, accent) = switch (block.blockType) {
+      LessonContentBlockType.caseStudy => (
+        'Klinik örnek',
+        Icons.person_search_outlined,
+        scheme.secondary,
+      ),
+      LessonContentBlockType.comparison => (
+        'Karşılaştırma',
+        Icons.compare_arrows_rounded,
+        scheme.primary,
+      ),
+      LessonContentBlockType.summary => (
+        'Özet',
+        Icons.checklist_rounded,
+        scheme.tertiary,
+      ),
+      LessonContentBlockType.recall => (
+        'Kendini yokla',
+        Icons.lightbulb_outline,
+        scheme.secondary,
+      ),
+      _ => ('Önemli nokta', Icons.info_outline, scheme.primary),
     };
-    return Card(
-      margin: EdgeInsets.zero,
-      color: block.blockType == LessonContentBlockType.callout
-          ? scheme.tertiaryContainer
-          : scheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              icon,
-              color: block.blockType == LessonContentBlockType.callout
-                  ? scheme.onTertiaryContainer
-                  : scheme.primary,
-            ),
-            const SizedBox(height: 12),
-            Text(lines.first, style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            for (final line in lines.skip(1).where((line) => line.isNotEmpty))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: SelectableText(
-                  line,
-                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(accent.withValues(alpha: .06), scheme.surface),
+        borderRadius: BorderRadius.circular(18),
+        border: Border(left: BorderSide(color: accent, width: 3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ExcludeSemantics(child: Icon(icon, color: accent, size: 22)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelLarge?.copyWith(color: accent),
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Semantics(
+            header: true,
+            child: Text(
+              lines.first,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
+            ),
+          ),
+          for (final line in lines.skip(1).where((line) => line.isNotEmpty))
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: block.blockType == LessonContentBlockType.comparison
+                  ? Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: scheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: SelectableText(
+                        line,
+                        style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
+                      ),
+                    )
+                  : SelectableText(
+                      line,
+                      style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
+                    ),
+            ),
+        ],
       ),
     );
   }

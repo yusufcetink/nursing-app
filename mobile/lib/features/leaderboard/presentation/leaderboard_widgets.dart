@@ -76,7 +76,9 @@ class _IdentityAndScore extends StatelessWidget {
             Expanded(
               child: Text(
                 entry.displayName,
-                maxLines: 1,
+                maxLines: MediaQuery.textScalerOf(context).scale(1) > 1.4
+                    ? null
+                    : 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,

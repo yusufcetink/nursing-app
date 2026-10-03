@@ -17,7 +17,7 @@ abstract interface class ContentManagementRepository {
 
   Future<ContentLesson> getLesson(String id);
 
-  Future<ContentQuiz?> getQuizForLesson(String lessonId);
+  Future<ContentQuiz?> getQuiz(String quizId);
 
   Future<String> createModule(ModuleWriteInput input);
 
@@ -131,10 +131,10 @@ final class DioContentManagementRepository
   }
 
   @override
-  Future<ContentQuiz?> getQuizForLesson(String lessonId) async {
+  Future<ContentQuiz?> getQuiz(String quizId) async {
     try {
       final response = await _apiClient.dio.get<Map<String, dynamic>>(
-        '/api/education/content/lessons/$lessonId/quiz',
+        '/api/education/content/quizzes/$quizId',
       );
       final data = response.data;
       if (data == null) throw const FormatException();
@@ -277,7 +277,7 @@ final class DioContentManagementRepository
 
   @override
   Future<String> createQuiz(String lessonId, QuizWriteInput input) =>
-      _create('/api/education/lessons/$lessonId/quiz', _quizJson(input));
+      _create('/api/education/lessons/$lessonId/quizzes', _quizJson(input));
 
   @override
   Future<void> updateQuiz(String id, QuizWriteInput input) =>
@@ -357,6 +357,7 @@ final class DioContentManagementRepository
   };
 
   static Map<String, Object> _quizJson(QuizWriteInput input) => {
+    'order': input.order,
     'title': input.title,
     'isPublished': input.isPublished,
   };

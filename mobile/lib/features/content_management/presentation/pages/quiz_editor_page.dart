@@ -12,16 +12,21 @@ class QuizEditorPage extends ConsumerWidget {
   const QuizEditorPage({
     required this.moduleId,
     required this.lessonId,
+    required this.quizId,
     super.key,
   });
 
   final String moduleId;
   final String lessonId;
+  final String quizId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (quizId == 'new') {
+      return _QuizEditor(moduleId: moduleId, lessonId: lessonId, quiz: null);
+    }
     return ref
-        .watch(contentQuizProvider(lessonId))
+        .watch(contentQuizProvider(quizId))
         .when(
           loading: () => Scaffold(
             appBar: AppBar(title: const Text('Quiz Yönetimi')),
@@ -31,11 +36,15 @@ class QuizEditorPage extends ConsumerWidget {
             appBar: AppBar(title: const Text('Quiz Yönetimi')),
             body: ContentErrorView(
               message: networkErrorMessage(error),
-              onRetry: () => ref.invalidate(contentQuizProvider(lessonId)),
+              onRetry: () => ref.invalidate(contentQuizProvider(quizId)),
             ),
           ),
-          data: (quiz) =>
-              _QuizEditor(moduleId: moduleId, lessonId: lessonId, quiz: quiz),
+          data: (quiz) => quiz == null
+              ? Scaffold(
+                  appBar: AppBar(title: const Text('Quiz Yönetimi')),
+                  body: const EmptyContentView(message: 'Quiz bulunamadı.'),
+                )
+              : _QuizEditor(moduleId: moduleId, lessonId: lessonId, quiz: quiz),
         );
   }
 }
@@ -58,12 +67,16 @@ class _QuizEditor extends ConsumerStatefulWidget {
 class _QuizEditorState extends ConsumerState<_QuizEditor> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
+  late final TextEditingController _orderController;
   late bool _isPublished;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.quiz?.title);
+    _orderController = TextEditingController(
+      text: (widget.quiz?.order ?? 0).toString(),
+    );
     _isPublished = widget.quiz?.isPublished ?? false;
   }
 
@@ -72,6 +85,7 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.quiz, widget.quiz)) {
       _titleController.text = widget.quiz?.title ?? _titleController.text;
+      _orderController.text = (widget.quiz?.order ?? 0).toString();
       _isPublished = widget.quiz?.isPublished ?? false;
     }
   }
@@ -79,6 +93,7 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
   @override
   void dispose() {
     _titleController.dispose();
+    _orderController.dispose();
     super.dispose();
   }
 
@@ -102,6 +117,7 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
           QuizWriteInput(
             title: _titleController.text.trim(),
             isPublished: _isPublished,
+            order: int.parse(_orderController.text),
           ),
         );
     if (!mounted) return;
@@ -117,6 +133,7 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
         ),
       ),
     );
+    if (succeeded && widget.quiz == null) context.pop();
   }
 
   bool get _isPublishable {
@@ -260,6 +277,14 @@ class _QuizEditorState extends ConsumerState<_QuizEditor> {
                   maxLength: 200,
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'Quiz başlığı zorunludur.'
+                      : null,
+                ),
+                TextFormField(
+                  controller: _orderController,
+                  decoration: const InputDecoration(labelText: 'Sıra'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => (int.tryParse(value ?? '') ?? -1) < 0
+                      ? 'Sıra sıfır veya daha büyük olmalıdır.'
                       : null,
                 ),
                 SwitchListTile.adaptive(

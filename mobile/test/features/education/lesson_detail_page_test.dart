@@ -34,6 +34,37 @@ class _UnavailableMediaToken implements TokenStorage {
   @override
   Future<String?> readRefreshToken() async => null;
   @override
+  Future<bool> rotateTokens({
+    required String expectedRefreshToken,
+    required String accessToken,
+    required String refreshToken,
+  }) async {
+    if (await readRefreshToken() != expectedRefreshToken) {
+      return false;
+    }
+    await writeTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      persist: true,
+    );
+    return true;
+  }
+
+  @override
+  Future<bool> clearTokensIfUnchanged({
+    required String? accessToken,
+    required String? refreshToken,
+  }) async {
+    if (await readAccessToken() != accessToken ||
+        await readRefreshToken() != refreshToken ||
+        (accessToken == null && refreshToken == null)) {
+      return false;
+    }
+    await deleteTokens();
+    return true;
+  }
+
+  @override
   Future<String> getDeviceId() async => 'test-device';
   @override
   Future<void> writeTokens({
@@ -256,12 +287,12 @@ void main() {
       expect(find.byType(LessonCompletionSheet), findsOneWidget);
       final next = find.descendant(
         of: find.byType(LessonCompletionSheet),
-        matching: find.text("Quiz'e Geç"),
+        matching: find.text("Quizlere Geç"),
       );
       await tester.ensureVisible(next);
       await tester.tap(next);
       await tester.pumpAndSettle();
-      expect(router.state.uri.path, endsWith('/${testLessons.first.id}/quiz'));
+      expect(router.state.uri.path, endsWith('/${testLessons.first.id}'));
       expect(tester.takeException(), isNull);
     });
   }

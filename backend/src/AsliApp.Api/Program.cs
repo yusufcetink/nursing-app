@@ -17,28 +17,35 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using AsliApp.Api.Configuration;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var allowedHosts = builder.Configuration["AllowedHosts"];
-if (builder.Environment.IsProduction() &&
-    (string.IsNullOrWhiteSpace(allowedHosts) || allowedHosts == "*"))
+if (builder.Environment.IsProduction())
 {
-    throw new InvalidOperationException(
-        "AllowedHosts must be explicitly configured for Production.");
+    DeploymentConfiguration.ValidateAllowedHosts(allowedHosts);
 }
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    DeploymentConfiguration.ConfigureForwardedHeaders(options, builder.Configuration));
+builder.Services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
 var fileStorageOptions = builder.Configuration
     .GetRequiredSection(FileStorageOptions.SectionName)
     .Get<FileStorageOptions>()
     ?? throw new InvalidOperationException("FileStorage configuration is missing.");
-fileStorageOptions.Validate(builder.Environment.ContentRootPath);
+var resolvedStorageRoot = fileStorageOptions.ResolveRootPath(builder.Environment.ContentRootPath);
 var maxRequestBodySize = checked(fileStorageOptions.MaxFileSizeBytes + 64 * 1024);
 builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = maxRequestBodySize);
 builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = maxRequestBodySize);
-builder.Services.AddSingleton(Options.Create(fileStorageOptions));
+builder.Services.AddSingleton(Options.Create(new FileStorageOptions
+{
+    RootPath = resolvedStorageRoot,
+    MaxFileSizeBytes = fileStorageOptions.MaxFileSizeBytes,
+}));
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -157,6 +164,8 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 await AdminBootstrapper.BootstrapAsync(app.Services, app.Configuration);
 
 if (app.Environment.IsDevelopment())
@@ -166,6 +175,14 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler();
+}
+
+if (app.Environment.IsProduction())
+{
+    app.UseHsts();
+    // Keep the liveness probe reachable over the private HTTP listener.
+    app.UseWhen(context => !context.Request.Path.Equals(new PathString("/health")),
+        branch => branch.UseHttpsRedirection());
 }
 
 app.UseAuthentication();

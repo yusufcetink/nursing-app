@@ -1,3 +1,5 @@
+import 'package:asli_app/features/quiz/data/models/quiz_summary_response.dart';
+import 'package:asli_app/features/quiz/domain/models/quiz_summary.dart';
 import 'package:asli_app/features/content_management/domain/models/content_models.dart';
 
 final class ContentModuleSummaryResponse {
@@ -122,6 +124,7 @@ final class ContentQuizResponse {
     required this.id,
     required this.lessonId,
     required this.title,
+    this.order = 0,
     required this.isPublished,
     required this.questions,
   });
@@ -131,6 +134,7 @@ final class ContentQuizResponse {
         id: json['id'] as String,
         lessonId: json['lessonId'] as String,
         title: json['title'] as String,
+        order: json['order'] as int? ?? 0,
         isPublished: json['isPublished'] as bool,
         questions: (json['questions'] as List<dynamic>)
             .map(
@@ -144,6 +148,7 @@ final class ContentQuizResponse {
   final String id;
   final String lessonId;
   final String title;
+  final int order;
   final bool isPublished;
   final List<ContentQuizQuestion> questions;
 
@@ -151,6 +156,7 @@ final class ContentQuizResponse {
     id: id,
     lessonId: lessonId,
     title: title,
+    order: order,
     isPublished: isPublished,
     questions: questions,
   );
@@ -225,7 +231,7 @@ final class ContentLessonResponse {
     required this.estimatedDurationMinutes,
     required this.order,
     required this.isPublished,
-    required this.quizId,
+    this.quizzes = const [],
     required this.blocks,
   });
 
@@ -238,7 +244,7 @@ final class ContentLessonResponse {
         estimatedDurationMinutes: json['estimatedDurationMinutes'] as int,
         order: json['order'] as int,
         isPublished: json['isPublished'] as bool,
-        quizId: json['quizId'] as String?,
+        quizzes: parseQuizSummaries(json['quizzes']),
         blocks: (json['blocks'] as List<dynamic>? ?? const [])
             .map(
               (item) => ContentLessonContentBlockResponse.fromJson(
@@ -255,7 +261,7 @@ final class ContentLessonResponse {
   final int estimatedDurationMinutes;
   final int order;
   final bool isPublished;
-  final String? quizId;
+  final List<QuizSummary> quizzes;
   final List<ContentLessonContentBlock> blocks;
 
   ContentLesson toDomain() => ContentLesson(
@@ -266,7 +272,7 @@ final class ContentLessonResponse {
     estimatedDurationMinutes: estimatedDurationMinutes,
     order: order,
     isPublished: isPublished,
-    quizId: quizId,
+    quizzes: quizzes,
     blocks: blocks,
   );
 }

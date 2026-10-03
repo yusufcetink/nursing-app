@@ -10,18 +10,25 @@ namespace AsliApp.Api.Controllers;
 [Route("api/education")]
 public sealed class QuizAttemptsController(EducationService educationService) : ControllerBase
 {
-    [HttpGet("lessons/{lessonId:guid}/quiz/attempt")]
-    public Task<IActionResult> Get(Guid lessonId, CancellationToken cancellationToken) =>
-        GetOrStart(lessonId, false, cancellationToken);
+    [HttpGet("quizzes/{quizId:guid}/attempt")]
+    public Task<IActionResult> Get(Guid quizId, CancellationToken cancellationToken) =>
+        GetOrStart(quizId, false, cancellationToken);
 
-    [HttpPost("lessons/{lessonId:guid}/quiz/start")]
-    public Task<IActionResult> Start(Guid lessonId, CancellationToken cancellationToken) =>
-        GetOrStart(lessonId, true, cancellationToken);
+    [HttpPost("quizzes/{quizId:guid}/start")]
+    public Task<IActionResult> Start(Guid quizId, CancellationToken cancellationToken) =>
+        GetOrStart(quizId, true, cancellationToken);
 
-    private async Task<IActionResult> GetOrStart(Guid lessonId, bool start, CancellationToken cancellationToken)
+    private async Task<IActionResult> GetOrStart(Guid quizId, bool start, CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(User.FindFirstValue("sub"), out var userId)) return Unauthorized();
-        var outcome = await educationService.GetQuizAttemptAsync(userId, lessonId, start, cancellationToken);
+        var outcome = await educationService.GetQuizAttemptAsync(userId, quizId, start, cancellationToken);
+        if (outcome.StatusCode == 403)
+            return StatusCode(403, new ProblemDetails
+            {
+                Status = 403,
+                Title = "Complete the lesson before starting a quiz.",
+                Extensions = { ["code"] = "lesson_not_completed" },
+            });
         return StatusCode(outcome.StatusCode, outcome.Response);
     }
 

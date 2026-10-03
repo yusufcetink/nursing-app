@@ -109,7 +109,9 @@ public sealed class AuthService(
         var token = CreateToken(user, identityRoles, expiresAtUtc);
         string? refreshToken = null;
         DateTimeOffset? refreshTokenExpiresAtUtc = null;
-        if (request.RememberMe)
+        // Clients with a device ID can refresh during the current app session.
+        // RememberMe controls whether the client persists these credentials.
+        if (!string.IsNullOrWhiteSpace(request.DeviceId))
         {
             var issuedRefreshToken = CreateRefreshToken(user, request.DeviceId!.Trim(), now);
             refreshToken = issuedRefreshToken.PlainText;

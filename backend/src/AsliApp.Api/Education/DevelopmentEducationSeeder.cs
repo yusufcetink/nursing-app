@@ -58,7 +58,7 @@ public static class DevelopmentEducationSeeder
                             SortOrder = 0,
                         },
                     ],
-                    Quiz = new Quiz
+                    Quizzes = [new Quiz
                     {
                         Id = QuizId,
                         Title = "Hasta Kimliğini Doğrulama Quizi",
@@ -83,7 +83,7 @@ public static class DevelopmentEducationSeeder
                                 ],
                             },
                         ],
-                    },
+                    }],
                 },
             ],
         };

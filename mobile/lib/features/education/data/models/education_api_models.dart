@@ -1,3 +1,5 @@
+import 'package:asli_app/features/quiz/data/models/quiz_summary_response.dart';
+import 'package:asli_app/features/quiz/domain/models/quiz_summary.dart';
 import 'package:asli_app/features/education/domain/models/education_module.dart';
 import 'package:asli_app/features/education/domain/models/lesson.dart';
 
@@ -122,7 +124,7 @@ final class LessonResponse {
     required this.description,
     required this.estimatedDurationMinutes,
     required this.order,
-    required this.quizId,
+    this.quizzes = const [],
     required this.blocks,
   });
 
@@ -134,7 +136,7 @@ final class LessonResponse {
       description: json['description'] as String,
       estimatedDurationMinutes: json['estimatedDurationMinutes'] as int,
       order: json['order'] as int,
-      quizId: json['quizId'] as String?,
+      quizzes: parseQuizSummaries(json['quizzes']),
       blocks: (json['blocks'] as List<dynamic>? ?? const [])
           .map(
             (item) => LessonContentBlockResponse.fromJson(
@@ -151,7 +153,7 @@ final class LessonResponse {
   final String description;
   final int estimatedDurationMinutes;
   final int order;
-  final String? quizId;
+  final List<QuizSummary> quizzes;
   final List<LessonContentBlock> blocks;
 
   Lesson toDomain() => Lesson(
@@ -162,7 +164,7 @@ final class LessonResponse {
     estimatedDurationMinutes: estimatedDurationMinutes,
     order: order,
     blocks: blocks,
-    quizId: quizId,
+    quizzes: quizzes,
   );
 }
 
