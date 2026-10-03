@@ -125,6 +125,40 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                 upload)).StatusCode);
     }
 
+    [Theory]
+    [InlineData("training.mp4")]
+    [InlineData("folder/training.mp4")]
+    [InlineData(@"folder\training.mp4")]
+    [InlineData(@"..\training.mp4")]
+    [InlineData("../training.mp4")]
+    public async Task MediaUploadNormalizesFileNameAndPersistsSafeStorageKey(string originalFileName)
+    {
+        var content = await SeedContentAsync();
+        using var admin = CreateClient("Admin");
+        using var upload = CreateMediaUpload([1, 2, 3], originalFileName, "video/mp4", 0);
+
+        using var response = await admin.PostAsync(
+            $"/api/education/lessons/{content.LessonId}/media", upload);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var uploaded = await response.Content.ReadFromJsonAsync<LessonMediaResponse>();
+        Assert.NotNull(uploaded);
+        Assert.Equal("training.mp4", uploaded.OriginalFileName);
+
+        using var scope = _factory.Services.CreateScope();
+        var metadata = await scope.ServiceProvider.GetRequiredService<AppDbContext>()
+            .LessonMedia.SingleAsync(media => media.Id == uploaded.Id);
+        Assert.Equal("training.mp4", metadata.OriginalFileName);
+        Assert.StartsWith("videos/", metadata.StorageKey, StringComparison.Ordinal);
+        Assert.EndsWith(".mp4", metadata.StorageKey, StringComparison.Ordinal);
+        Assert.True(Guid.TryParseExact(metadata.StorageKey[7..^4], "N", out _));
+        var storage = scope.ServiceProvider.GetRequiredService<IFileStorage>();
+        using var stored = await storage.OpenReadAsync(metadata.StorageKey);
+        Assert.NotNull(stored);
+        using var bytes = new MemoryStream();
+        await stored.CopyToAsync(bytes);
+        Assert.Equal(new byte[] { 1, 2, 3 }, bytes.ToArray());
+    }
+
     [Fact]
     public async Task MediaUploadPersistsMetadataStreamsRangesAndDeletesFile()
     {
@@ -397,8 +431,13 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                 .StatusCode);
     }
 
-    [Fact]
-    public async Task LocalFileStorageRejectsPathTraversal()
+    [Theory]
+    [InlineData("../escaped.mp4")]
+    [InlineData("../training.mp4")]
+    [InlineData(@"..\training.mp4")]
+    [InlineData("folder/../training.mp4")]
+    [InlineData(@"folder\..\training.mp4")]
+    public async Task LocalFileStorageRejectsPathTraversal(string storageKey)
     {
         var root = Path.Combine(Path.GetTempPath(), "AsliApp.StorageTest", Guid.NewGuid().ToString("N"));
         try
@@ -408,9 +447,10 @@ public sealed partial class EducationEndpointsTests : IClassFixture<Authenticati
                 RootPath = root,
                 MaxFileSizeBytes = 1024,
             }));
-            await Assert.ThrowsAsync<ArgumentException>(() => storage.WriteAsync(
-                "../escaped.mp4",
-                new MemoryStream([1, 2, 3])));
+            using var content = new MemoryStream([1, 2, 3]);
+            await Assert.ThrowsAsync<ArgumentException>(() => storage.WriteAsync(storageKey, content));
+            await Assert.ThrowsAsync<ArgumentException>(() => storage.OpenReadAsync(storageKey));
+            await Assert.ThrowsAsync<ArgumentException>(() => storage.DeleteAsync(storageKey));
         }
         finally
         {

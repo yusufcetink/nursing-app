@@ -353,7 +353,8 @@ public sealed partial class EducationService(
             return LessonMediaUploadOutcome.NotFound;
         }
 
-        var safeOriginalFileName = Path.GetFileName(originalFileName).Trim();
+        // Uploaded names can contain either separator, regardless of the server OS.
+        var safeOriginalFileName = Path.GetFileName(originalFileName.Replace('\\', '/')).Trim();
         var extension = Path.GetExtension(safeOriginalFileName).ToLowerInvariant();
         var normalizedContentType = contentType.Split(';', 2)[0].Trim().ToLowerInvariant();
         if (safeOriginalFileName.Length is 0 or > 255 ||
