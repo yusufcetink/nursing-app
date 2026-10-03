@@ -163,6 +163,7 @@ builder.Services.AddControllers()
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+app.Logger.LogInformation("Production deployment test - 2026-10-03");
 
 app.UseForwardedHeaders();
 
